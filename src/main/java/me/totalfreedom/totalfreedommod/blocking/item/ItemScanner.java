@@ -13,6 +13,7 @@ import io.papermc.paper.text.Filtered;
 import java.util.List;
 import me.totalfreedom.totalfreedommod.util.ComponentScanner;
 import net.kyori.adventure.text.Component;
+import org.bukkit.damage.DamageType;
 import org.bukkit.inventory.ItemStack;
 
 final class ItemScanner
@@ -206,6 +207,17 @@ final class ItemScanner
             }
         }
 
+        if(item.hasData(DataComponentTypes.DAMAGE_TYPE))
+        {
+            DamageType type = item.getData(DataComponentTypes.DAMAGE_TYPE);
+
+            Verdict v = inspectDamageType(type, depth);
+            if (v.isCursed())
+            {
+                return v;
+            }
+        }
+
         switch (RawNbtInspector.inspect(item, MAX_NBT_NODES, MAX_NBT_DEPTH))
         {
             case OVERSIZED -> {
@@ -292,6 +304,19 @@ final class ItemScanner
         if (len > MAX_LORE_LINE_LENGTH)
         {
             return new Verdict(Reason.OVERSIZED_LORE, len, depth);
+        }
+        return Verdict.CLEAN;
+    }
+
+    private static Verdict inspectDamageType(DamageType type, int depth)
+    {
+        if(type != null)
+        {
+            // DamageType GENERIC_KILL and OUT_OF_WORLD can be used to kill people in creative mode
+            if (type == DamageType.GENERIC_KILL || type == DamageType.OUT_OF_WORLD)
+            {
+                return new Verdict(Reason.CURSED_COMPONENT, -1L, depth);
+            }
         }
         return Verdict.CLEAN;
     }
