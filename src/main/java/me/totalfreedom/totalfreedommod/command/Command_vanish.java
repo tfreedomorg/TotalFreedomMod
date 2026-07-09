@@ -20,30 +20,10 @@ public class Command_vanish extends FreedomCommand
 
         if (nowVanished)
         {
-            final Component adminMsg = Component.text(player.getName() + " - Vanishing from players", NamedTextColor.AQUA);
-            for (Player p : server.getOnlinePlayers())
-            {
-                if (plugin.al.isAdmin(p))
-                {
-                    p.sendMessage(adminMsg);
-                }
-            }
-            server.getConsoleSender().sendMessage(adminMsg);
-
             msg(ctx.getSender(), "You are now vanished. Players cannot see you, target you with /tp, or find you in TAB.", NamedTextColor.GREEN);
         }
         else
         {
-            final Component adminMsg = Component.text(player.getName() + " - Reappearing to players", NamedTextColor.AQUA);
-            for (Player p : server.getOnlinePlayers())
-            {
-                if (plugin.al.isAdmin(p))
-                {
-                    p.sendMessage(adminMsg);
-                }
-            }
-            server.getConsoleSender().sendMessage(adminMsg);
-
             msg(ctx.getSender(), "You are no longer vanished.", NamedTextColor.YELLOW);
         }
 

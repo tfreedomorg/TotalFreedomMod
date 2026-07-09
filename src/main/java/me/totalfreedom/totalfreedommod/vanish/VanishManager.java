@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -79,13 +80,59 @@ public class VanishManager extends FreedomService
         if (vanish)
         {
             vanishedPlayers.add(player.getUniqueId());
+            setVanishedState(player, true);
+
+            // Construct messages
+            final Component leaveMessage = Component.text("[", NamedTextColor.DARK_GRAY)
+                .append(Component.text("-", NamedTextColor.RED))
+                .append(Component.text("] ", NamedTextColor.DARK_GRAY))
+                .append(Component.text(player.getName() + " has left the game.", NamedTextColor.GRAY).decorate(net.kyori.adventure.text.format.TextDecoration.ITALIC));
+
+            final Component vanishMessage = Component.text(player.getName() + " - Vanishing from players", NamedTextColor.AQUA);
+
+            // Broadcast to online players
+            for (Player p : server.getOnlinePlayers())
+            {
+                if (plugin.al.isAdmin(p))
+                {
+                    p.sendMessage(vanishMessage);
+                }
+                else
+                {
+                    p.sendMessage(leaveMessage);
+                }
+            }
+            // Send to console
+            server.getConsoleSender().sendMessage(vanishMessage);
         }
         else
         {
             vanishedPlayers.remove(player.getUniqueId());
-        }
+            setVanishedState(player, false);
 
-        setVanishedState(player, vanish);
+            // Construct messages
+            final Component joinMessage = Component.text("[", NamedTextColor.DARK_GRAY)
+                .append(Component.text("+", NamedTextColor.DARK_GREEN))
+                .append(Component.text("] ", NamedTextColor.DARK_GRAY))
+                .append(Component.text(player.getName() + " has joined the game.", NamedTextColor.GRAY).decorate(net.kyori.adventure.text.format.TextDecoration.ITALIC));
+
+            final Component reappearMessage = Component.text(player.getName() + " - Reappearing to players", NamedTextColor.AQUA);
+
+            // Broadcast to online players
+            for (Player p : server.getOnlinePlayers())
+            {
+                if (plugin.al.isAdmin(p))
+                {
+                    p.sendMessage(reappearMessage);
+                }
+                else
+                {
+                    p.sendMessage(joinMessage);
+                }
+            }
+            // Send to console
+            server.getConsoleSender().sendMessage(reappearMessage);
+        }
     }
 
     /** Returns an unmodifiable view of currently vanished UUIDs. */
@@ -266,8 +313,8 @@ public class VanishManager extends FreedomService
                 if (vanished != null && vanished.getName().equalsIgnoreCase(arg))
                 {
                     event.setCancelled(true);
-                    sender.sendMessage(net.kyori.adventure.text.Component.text(
-                        "Player not found.", net.kyori.adventure.text.format.NamedTextColor.RED));
+                    sender.sendMessage(Component.text("Error: ", NamedTextColor.WHITE)
+                        .append(Component.text("Player not found.", NamedTextColor.DARK_RED)));
                     return;
                 }
             }
