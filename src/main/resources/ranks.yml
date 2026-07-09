@@ -130,6 +130,7 @@ super_admin:
     - tfm.admin.say
     - tfm.admin.strike
     - tfm.admin.undisguiseall
+    - tfm.admin.vanish
     - tfm.admin.warn
     - tfm.admin.whohas
     - tfm.admin.wildcard

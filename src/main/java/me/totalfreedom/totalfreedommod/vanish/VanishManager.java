@@ -6,8 +6,11 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.command.FreedomCommand;
+import me.totalfreedom.totalfreedommod.util.FUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -19,6 +22,12 @@ import org.bukkit.event.server.TabCompleteEvent;
 
 public class VanishManager extends FreedomService
 {
+    private static final Set<String> PROTECTED_COMPLETIONS = Set.of(
+        "list", "help", "info", "status", "reload", "add", "remove", "delete",
+        "set", "get", "toggle", "enable", "disable", "on", "off", "yes", "no",
+        "true", "false", "all", "clear", "warp", "world", "spawn", "tp", "teleport"
+    );
+
     /** UUIDs of currently vanished players. */
     private final Set<UUID> vanishedPlayers = ConcurrentHashMap.newKeySet();
 
@@ -39,7 +48,7 @@ public class VanishManager extends FreedomService
         // Un-vanish everyone so they appear normally after reload.
         for (UUID uuid : vanishedPlayers)
         {
-            final Player player = server.getPlayer(uuid);
+            final Player player = Bukkit.getPlayer(uuid);
             if (player != null)
             {
                 setVanishedState(player, false);
@@ -83,10 +92,7 @@ public class VanishManager extends FreedomService
             setVanishedState(player, true);
 
             // Construct messages
-            final Component leaveMessage = Component.text("[", NamedTextColor.DARK_GRAY)
-                .append(Component.text("-", NamedTextColor.RED))
-                .append(Component.text("] ", NamedTextColor.DARK_GRAY))
-                .append(Component.text(player.getName() + " has left the game.", NamedTextColor.GRAY).decorate(net.kyori.adventure.text.format.TextDecoration.ITALIC));
+            final Component leaveMessage = getQuitMessage(player);
 
             final Component vanishMessage = Component.text(player.getName() + " - Vanishing from players", NamedTextColor.AQUA);
 
@@ -111,10 +117,7 @@ public class VanishManager extends FreedomService
             setVanishedState(player, false);
 
             // Construct messages
-            final Component joinMessage = Component.text("[", NamedTextColor.DARK_GRAY)
-                .append(Component.text("+", NamedTextColor.DARK_GREEN))
-                .append(Component.text("] ", NamedTextColor.DARK_GRAY))
-                .append(Component.text(player.getName() + " has joined the game.", NamedTextColor.GRAY).decorate(net.kyori.adventure.text.format.TextDecoration.ITALIC));
+            final Component joinMessage = getJoinMessage(player);
 
             final Component reappearMessage = Component.text(player.getName() + " - Reappearing to players", NamedTextColor.AQUA);
 
@@ -206,7 +209,7 @@ public class VanishManager extends FreedomService
         {
             for (UUID uuid : vanishedPlayers)
             {
-                final Player vanished = server.getPlayer(uuid);
+                final Player vanished = Bukkit.getPlayer(uuid);
                 if (vanished != null && !vanished.equals(joiningPlayer))
                 {
                     joiningPlayer.hidePlayer(plugin, vanished);
@@ -259,7 +262,7 @@ public class VanishManager extends FreedomService
         // Check if the destination coincides with a vanished player's location.
         for (UUID uuid : vanishedPlayers)
         {
-            final Player vanished = server.getPlayer(uuid);
+            final Player vanished = Bukkit.getPlayer(uuid);
             if (vanished == null)
             {
                 continue;
@@ -309,12 +312,11 @@ public class VanishManager extends FreedomService
             final String arg = parts[i];
             for (UUID uuid : vanishedPlayers)
             {
-                final Player vanished = server.getPlayer(uuid);
+                final Player vanished = Bukkit.getPlayer(uuid);
                 if (vanished != null && vanished.getName().equalsIgnoreCase(arg))
                 {
                     event.setCancelled(true);
-                    sender.sendMessage(Component.text("Error: ", NamedTextColor.WHITE)
-                        .append(Component.text("Player not found.", NamedTextColor.DARK_RED)));
+                    sender.sendMessage(FreedomCommand.PLAYER_NOT_FOUND);
                     return;
                 }
             }
@@ -342,7 +344,7 @@ public class VanishManager extends FreedomService
         final java.util.Set<String> vanishedNames = new java.util.HashSet<>();
         for (UUID uuid : vanishedPlayers)
         {
-            final Player vanished = server.getPlayer(uuid);
+            final Player vanished = Bukkit.getPlayer(uuid);
             if (vanished != null)
             {
                 vanishedNames.add(vanished.getName().toLowerCase());
@@ -354,9 +356,54 @@ public class VanishManager extends FreedomService
             return;
         }
 
-        // Remove any completion that exactly matches a vanished player's name.
+        // Remove any completion that exactly matches a vanished player's name, unless it is a protected common word.
         event.getCompletions().removeIf(completion ->
-            vanishedNames.contains(completion.toLowerCase()));
+        {
+            final String lower = completion.toLowerCase();
+            return vanishedNames.contains(lower) && !PROTECTED_COMPLETIONS.contains(lower);
+        });
+    }
+
+    private Component getJoinMessage(Player player)
+    {
+        if (plugin.esb.isEssentialsEnabled())
+        {
+            final org.bukkit.configuration.file.FileConfiguration config = plugin.esb.getEssentialsPlugin().getConfig();
+            final String format = config.getString("custom-join-message");
+            if (format != null && !format.isEmpty() && !format.equalsIgnoreCase("none"))
+            {
+                String msgStr = format
+                    .replace("{PLAYER}", player.getDisplayName())
+                    .replace("{USERNAME}", player.getName());
+                return FUtil.colorize(msgStr);
+            }
+        }
+
+        return Component.text("[", NamedTextColor.DARK_GRAY)
+            .append(Component.text("+", NamedTextColor.DARK_GREEN))
+            .append(Component.text("] ", NamedTextColor.DARK_GRAY))
+            .append(Component.text(player.getName() + " has joined the game.", NamedTextColor.GRAY).decorate(net.kyori.adventure.text.format.TextDecoration.ITALIC));
+    }
+
+    private Component getQuitMessage(Player player)
+    {
+        if (plugin.esb.isEssentialsEnabled())
+        {
+            final org.bukkit.configuration.file.FileConfiguration config = plugin.esb.getEssentialsPlugin().getConfig();
+            final String format = config.getString("custom-quit-message");
+            if (format != null && !format.isEmpty() && !format.equalsIgnoreCase("none"))
+            {
+                String msgStr = format
+                    .replace("{PLAYER}", player.getDisplayName())
+                    .replace("{USERNAME}", player.getName());
+                return FUtil.colorize(msgStr);
+            }
+        }
+
+        return Component.text("[", NamedTextColor.DARK_GRAY)
+            .append(Component.text("-", NamedTextColor.RED))
+            .append(Component.text("] ", NamedTextColor.DARK_GRAY))
+            .append(Component.text(player.getName() + " has left the game.", NamedTextColor.GRAY).decorate(net.kyori.adventure.text.format.TextDecoration.ITALIC));
     }
 
     /**
@@ -369,7 +416,7 @@ public class VanishManager extends FreedomService
         {
             return false;
         }
-        if (!event.getTo().getWorld().equals(vanished.getWorld()))
+        if (!event.getTo().getWorld().getUID().equals(vanished.getWorld().getUID()))
         {
             return false;
         }

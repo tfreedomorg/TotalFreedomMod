@@ -1,5 +1,6 @@
 package me.totalfreedom.totalfreedommod;
 
+import java.util.Iterator;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.util.AdventureUtil;
 import me.totalfreedom.totalfreedommod.util.FUtil;
@@ -35,7 +36,7 @@ public class ServerPing extends FreedomService
         final String ip = event.getAddress().getHostAddress().trim();
 
         // Hide vanished players from the player count and hover list
-        final java.util.Iterator<Player> iterator = event.iterator();
+        final Iterator<Player> iterator = event.iterator();
         while (iterator.hasNext())
         {
             final Player p = iterator.next();

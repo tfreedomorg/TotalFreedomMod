@@ -20,13 +20,11 @@ public class Command_vanish extends FreedomCommand
 
         if (nowVanished)
         {
-            msg(ctx.getSender(), "You are now vanished. Players cannot see you, target you with /tp, or find you in TAB.", NamedTextColor.GREEN);
-        }
-        else
-        {
-            msg(ctx.getSender(), "You are no longer vanished.", NamedTextColor.YELLOW);
+            msg(ctx.getSender(), "You are now vanished.", NamedTextColor.GRAY);
+            return true;
         }
 
+        msg(ctx.getSender(), "You are no longer vanished.", NamedTextColor.GRAY);
         return true;
     }
 
