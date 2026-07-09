@@ -6,6 +6,7 @@ import me.totalfreedom.totalfreedommod.util.FUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.server.ServerListPingEvent;
@@ -32,6 +33,17 @@ public class ServerPing extends FreedomService
     public void onServerPing(ServerListPingEvent event)
     {
         final String ip = event.getAddress().getHostAddress().trim();
+
+        // Hide vanished players from the player count and hover list
+        final java.util.Iterator<Player> iterator = event.iterator();
+        while (iterator.hasNext())
+        {
+            final Player p = iterator.next();
+            if (plugin.vm.isVanished(p))
+            {
+                iterator.remove();
+            }
+        }
 
         if (plugin.bm.isIpBanned(ip))
         {

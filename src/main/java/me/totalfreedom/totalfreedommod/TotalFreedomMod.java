@@ -1,6 +1,7 @@
 package me.totalfreedom.totalfreedommod;
 
 import me.totalfreedom.totalfreedommod.fun.Trailer;
+import me.totalfreedom.totalfreedommod.vanish.VanishManager;
 import me.totalfreedom.totalfreedommod.tablist.TabList;
 import me.totalfreedom.totalfreedommod.world.CleanroomChunkGenerator;
 import java.io.File;
@@ -125,6 +126,7 @@ public class TotalFreedomMod extends JavaPlugin
     public SshDaemon sd; // SshDaemon - SSH server for remote console access
     public DiscordBridge db; // DiscordBridge - Built-in Discord chat/console relay
     public TabList tl; // TabList - Customizable tab list header, footer, and player names
+    public VanishManager vm; // VanishManager - Admin vanish system
     //
     // Bridges
     public ServiceManager<TotalFreedomMod> bridges;
@@ -264,6 +266,7 @@ public class TotalFreedomMod extends JavaPlugin
         db = services.registerService(DiscordBridge.class);
 
         tl = services.registerService(TabList.class);
+        vm = services.registerService(VanishManager.class);
         services.start();
 
         // Start bridges
