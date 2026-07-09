@@ -75,8 +75,18 @@ public class Command_list extends FreedomCommand
         final List<Player> players = new ArrayList<>();
         final List<Player> filteredPlayers = new ArrayList<>();
 
+        final boolean showVanished = senderIsConsole || plugin.al.isAdmin(sender);
+        int onlineCount = 0;
+
         for (Player player : server.getOnlinePlayers())
         {
+            if (!showVanished && plugin.vm.isVanished(player))
+            {
+                continue;
+            }
+
+            onlineCount++;
+
             if (listFilter == ListFilter.PLAYERS)
             {
                 if (plugin.al.isAdmin(player))
@@ -120,7 +130,7 @@ public class Command_list extends FreedomCommand
                 .append(Component.text(" -----", NamedTextColor.DARK_GRAY));
 
         Component statistics = Component.text("Online: ", NamedTextColor.GRAY)
-                .append(Component.text(String.valueOf(server.getOnlinePlayers().size()), NamedTextColor.GREEN))
+                .append(Component.text(String.valueOf(onlineCount), NamedTextColor.GREEN))
                 .append(Component.text("/", NamedTextColor.DARK_GRAY))
                 .append(Component.text(String.valueOf(server.getMaxPlayers()), NamedTextColor.GREEN));
 
