@@ -836,8 +836,6 @@ public class AdminList extends FreedomService
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onAdminManagement(AdminManagementEvent event)
     {
-        FLog.info("Debug - Management event called");
-
         plugin.al.updateTables();
         plugin.al.saveAdminAsync(event.getAdmin());
     }
