@@ -3,6 +3,8 @@ package me.totalfreedom.totalfreedommod.freeze;
 import lombok.Getter;
 import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.admin.Admin;
+import me.totalfreedom.totalfreedommod.event.admin.AdminAddEvent;
 import me.totalfreedom.totalfreedommod.util.FUtil;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -79,4 +81,20 @@ public class Freezer extends FreedomService
         event.setTo(loc);
     }
 
+    @EventHandler
+    public void onAdminAdd(AdminAddEvent event)
+    {
+        final Player player = event.getAffectedAdminAsPlayer();
+
+        if (player != null)
+        {
+            final FreezeData fd = plugin.pl.getPlayer(player).getFreezeData();
+
+            if (fd.isFrozen())
+            {
+                fd.setFrozen(false);
+                FUtil.playerMsg(player, "You have been unfrozen.");
+            }
+        }
+    }
 }

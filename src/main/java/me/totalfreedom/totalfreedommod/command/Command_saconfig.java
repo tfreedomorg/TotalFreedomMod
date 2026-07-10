@@ -7,6 +7,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import me.totalfreedom.totalfreedommod.admin.Admin;
+import me.totalfreedom.totalfreedommod.event.admin.AdminManagementEvent;
 import me.totalfreedom.totalfreedommod.player.FPlayer;
 import me.totalfreedom.totalfreedommod.rank.CustomRank;
 import me.totalfreedom.totalfreedommod.rank.Rank;
@@ -87,14 +88,7 @@ public class Command_saconfig extends FreedomCommand
 
         admin.setRank(rank);
         admin.setCustomRankId(custom != null ? custom.getId() : null);
-        plugin.al.updateTables();
-        plugin.al.saveAdminAsync(admin);
-
-        Player player = getPlayer(admin.getName());
-        if (player != null && plugin.rm != null)
-        {
-            plugin.rm.updatePlayerTeam(player);
-        }
+        admin.fireRankUpdateEvent(ctx.getSender(), rank, custom);
 
         msg("Set " + admin.getName() + "'s rank to " + displayName);
         return true;
@@ -164,7 +158,10 @@ public class Command_saconfig extends FreedomCommand
 
             player.setOp(true);
             FUtil.adminAction(sender.getName(), "Adding " + player.getName() + " to the admin list", true);
-            plugin.al.addAdmin(new Admin(player));
+            admin = new Admin(player);
+
+            plugin.al.addAdmin(admin);
+            admin.fireAddEvent(ctx.getSender(), true);
         }
         else // Existing admin
         {
@@ -179,24 +176,7 @@ public class Command_saconfig extends FreedomCommand
 
             admin.setActive(true);
             admin.setLastLogin(new Date());
-
-            plugin.al.updateTables();
-            plugin.al.saveAdminAsync(admin);
-        }
-
-        if (player != null)
-        {
-            if (plugin.rm != null)
-            {
-                plugin.rm.updatePlayerTeam(player);
-            }
-
-            final FPlayer fPlayer = plugin.pl.getPlayer(player);
-            if (fPlayer.getFreezeData().isFrozen())
-            {
-                fPlayer.getFreezeData().setFrozen(false);
-                msg(player.getPlayer(), "You have been unfrozen.");
-            }
+            admin.fireAddEvent(ctx.getSender(), false);
         }
 
         return true;
@@ -219,14 +199,8 @@ public class Command_saconfig extends FreedomCommand
 
         FUtil.adminAction(sender.getName(), "Removing " + admin.getName() + " from the admin list", true);
         admin.setActive(false);
-        plugin.al.updateTables();
-        plugin.al.saveAdminAsync(admin);
 
-        if (player != null && plugin.rm != null)
-        {
-            plugin.rm.updatePlayerTeam(player);
-        }
-
+        admin.fireGenericManagementEvent(ctx.getSender(), AdminManagementEvent.Action.REMOVE);
         return true;
     }
 

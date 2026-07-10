@@ -5,11 +5,18 @@ import com.google.common.collect.Lists;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+
+import me.totalfreedom.totalfreedommod.event.admin.AdminAddEvent;
+import me.totalfreedom.totalfreedommod.event.admin.AdminManagementEvent;
+import me.totalfreedom.totalfreedommod.event.admin.AdminRankUpdateEvent;
+import me.totalfreedom.totalfreedommod.rank.CustomRank;
+import me.totalfreedom.totalfreedommod.rank.Displayable;
 import me.totalfreedom.totalfreedommod.rank.Rank;
 import me.totalfreedom.totalfreedommod.util.ConfigInterfaces.ConfigLoadable;
 import me.totalfreedom.totalfreedommod.util.ConfigInterfaces.ConfigSavable;
 import me.totalfreedom.totalfreedommod.util.ConfigInterfaces.Validatable;
 import me.totalfreedom.totalfreedommod.util.FUtil;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 
@@ -219,5 +226,20 @@ public class Admin implements ConfigLoadable, ConfigSavable, Validatable
                 && rank != null
                 && !ips.isEmpty()
                 && lastLogin != null;
+    }
+
+    public void fireGenericManagementEvent(CommandSender by, AdminManagementEvent.Action action)
+    {
+        new AdminManagementEvent(this, by, action).callEvent();
+    }
+
+    public void fireAddEvent(CommandSender by, boolean newEntry)
+    {
+        new AdminAddEvent(this, by, newEntry).callEvent();
+    }
+
+    public void fireRankUpdateEvent(CommandSender by, Rank rank, CustomRank customRank)
+    {
+        new AdminRankUpdateEvent(this, by, rank, customRank).callEvent();
     }
 }
