@@ -18,6 +18,7 @@ import me.totalfreedom.totalfreedommod.admin.Admin;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.dispatch.RemoteDispatchContext;
 import me.totalfreedom.totalfreedommod.dispatch.RemoteDispatchSession;
+import me.totalfreedom.totalfreedommod.event.admin.AdminManagementEvent;
 import me.totalfreedom.totalfreedommod.player.FPlayer;
 import me.totalfreedom.totalfreedommod.util.AdventureUtil;
 import me.totalfreedom.totalfreedommod.util.FLog;
@@ -875,6 +876,17 @@ public class RankManager extends FreedomService
             {
                 team.removeEntry(event.getPlayer().getName());
             }
+        }
+    }
+
+    @EventHandler
+    public void onAdminManagement(AdminManagementEvent event)
+    {
+        final Player player = event.getAffectedAdminAsPlayer();
+
+        if (player != null)
+        {
+            updatePlayerTeam(player);
         }
     }
 

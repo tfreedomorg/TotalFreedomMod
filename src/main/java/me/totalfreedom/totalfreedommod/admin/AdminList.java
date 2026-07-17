@@ -15,6 +15,7 @@ import lombok.Getter;
 import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.event.admin.AdminManagementEvent;
 import me.totalfreedom.totalfreedommod.rank.Rank;
 import java.nio.charset.StandardCharsets;
 import me.totalfreedom.totalfreedommod.sql.adapter.AdminRepository;
@@ -830,6 +831,13 @@ public class AdminList extends FreedomService
     public void onPlayerQuit(PlayerQuitEvent event)
     {
         onlineAdminPlayers.remove(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onAdminManagement(AdminManagementEvent event)
+    {
+        plugin.al.updateTables();
+        plugin.al.saveAdminAsync(event.getAdmin());
     }
 
     public void deactivateOldEntries(boolean verbose)
