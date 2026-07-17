@@ -55,6 +55,9 @@ public class RankManager extends FreedomService
     // ========================================================================
 
     public static final String RANKS_FILENAME = "ranks.yml";
+    private static final String[] ESSENTIAL_RANKS = {
+            "non_op", "op", "super_admin", "senior_admin"
+    };
 
     /**
      * All custom ranks, keyed by ID.
@@ -127,9 +130,7 @@ public class RankManager extends FreedomService
 
         if (!ranksFile.exists())
         {
-            createDefaultRanks();
-            migrateConfigRanks();
-            return;
+            plugin.saveResource("ranks.yml", false);
         }
 
         ranksConfig = YamlConfiguration.loadConfiguration(ranksFile);
@@ -152,13 +153,9 @@ public class RankManager extends FreedomService
 
     }
 
-    private static final String[] ESSENTIAL_RANKS = {
-            "non_op", "op", "super_admin", "senior_admin"
-    };
-
     private void validateEssentialRanks()
     {
-        boolean modified = false;
+        boolean validated = false;
         for (String rankId : ESSENTIAL_RANKS)
         {
             if (!customRanks.containsKey(rankId))
@@ -167,163 +164,51 @@ public class RankManager extends FreedomService
                 Rank legacyRank = Rank.findRank(rankId);
                 CustomRank custom = CustomRank.fromLegacyRank(legacyRank);
                 customRanks.put(rankId, custom);
-                modified = true;
+                updateRank(custom);
+
+                validated = true;
             }
         }
-        if (modified)
+        if (validated)
         {
-            saveRanks();
             FLog.info("Repaired ranks.yml with missing essential ranks.");
         }
     }
 
-    /**
-     * Create default ranks from the legacy Rank enum.
-     */
-    private void createDefaultRanks()
-    {
-        customRanks.clear();
 
-        for (Rank legacyRank : Rank.values())
-        {
-            CustomRank custom = CustomRank.fromLegacyRank(legacyRank);
-
-            // Add default permissions based on rank type
-            switch (legacyRank)
-            {
-                case SENIOR_ADMIN:
-                case SENIOR_CONSOLE:
-                    custom.addPermission("tfm.manage.ranks");
-                    custom.addPermission("tfm.admin.senior");
-                    // Fall through
-                    custom.addPermission("tfm.admin.telnet");
-                    custom.addPermission("tfm.admin.ban.perm");
-                    // Fall through
-                case SUPER_ADMIN:
-                    custom.addPermission("tfm.admin.ban");
-                    custom.addPermission("tfm.admin.kick");
-                    custom.addPermission("tfm.admin.mute");
-                    custom.addPermission("tfm.admin.freeze");
-                    custom.addPermission("tfm.admin.cage");
-                    custom.addPermission("tfm.fun.smite");
-                    custom.addPermission("tfm.fun.doom");
-                    custom.addPermission("tfm.world.gamerule");
-                    break;
-                case OP:
-                    custom.addPermission("tfm.player.op");
-                    break;
-                default:
-                    break;
-            }
-
-            customRanks.put(custom.getId(), custom);
+    public void updateRank(CustomRank rank) {
+        if (!ranksFile.exists()) {
+            plugin.saveResource(RANKS_FILENAME, false);
         }
 
-        resolveInheritance();
-        saveRanks();
-        FLog.info("Created default ranks configuration.");
-    }
-
-    private void migrateConfigRanks()
-    {
-        applyConfigPrefix("impostor", ConfigEntry.VAULT_PREFIX_IMPOSTOR);
-        applyConfigPrefix("non_op", ConfigEntry.VAULT_PREFIX_NON_OP);
-        applyConfigPrefix("op", ConfigEntry.VAULT_PREFIX_OP);
-        applyConfigPrefix("super_admin", ConfigEntry.VAULT_PREFIX_SUPER_ADMIN);
-        applyConfigPrefix("senior_admin", ConfigEntry.VAULT_PREFIX_SENIOR_ADMIN);
-        applyConfigPrefix("senior_console", ConfigEntry.VAULT_PREFIX_SENIOR_CONSOLE);
-        applyConfigPrefix("developer", ConfigEntry.VAULT_PREFIX_DEVELOPER);
-        applyConfigPrefix("owner", ConfigEntry.VAULT_PREFIX_OWNER);
-
-        List<String> owners = ConfigEntry.SERVER_OWNERS.getStringList();
-        if (owners != null && !owners.isEmpty())
-        {
-            int found = 0;
-            for (String ownerName : owners)
-            {
-                if (ownerName != null && !ownerName.trim().isEmpty())
-                {
-                    if (plugin.al.getEntryByName(ownerName.trim()) != null)
-                    {
-                        found++;
-                    }
-                }
-            }
-            if (found > 0)
-            {
-                FLog.info("Found " + found + " owner(s) from config.yml. They will display with the owner rank.");
-            }
+        ranksConfig = YamlConfiguration.loadConfiguration(ranksFile);
+        ConfigurationSection section = ranksConfig.getConfigurationSection(rank.getId());
+        if (section == null) {
+            section = ranksConfig.createSection(rank.getId());
         }
-
-        saveRanks();
-        removeConfigRanks();
-        FLog.info("Migrated rank configuration from config.yml to ranks.yml.");
-    }
-
-    private void applyConfigPrefix(String rankId, ConfigEntry entry)
-    {
-        String prefix = entry.getString();
-        if (prefix != null && !prefix.isEmpty())
-        {
-            CustomRank rank = getCustomRank(rankId);
-            if (rank != null)
-            {
-                rank.setPrefix(prefix);
-            }
+        rank.saveTo(section);
+        try {
+            ranksConfig.save(ranksFile);
+        } catch (IOException ex) {
+            FLog.severe("Could not save " + RANKS_FILENAME + ": " + ex.getMessage());
         }
     }
 
-    private void removeConfigRanks()
-    {
-        File configFile = new File(plugin.getDataFolder(), "config.yml");
-        if (!configFile.exists())
-        {
-            return;
+    public void deleteRank(String rankId) {
+        if (!ranksFile.exists()) {
+            plugin.saveResource(RANKS_FILENAME, false);
         }
+        ranksConfig = YamlConfiguration.loadConfiguration(ranksFile);
+        if (!ranksConfig.isConfigurationSection(rankId)) return;
 
-        try
-        {
-            YamlConfiguration config = YamlConfiguration.loadConfiguration(configFile);
-            boolean modified = false;
-
-            if (config.contains("server.owners"))
-            {
-                config.set("server.owners", null);
-                modified = true;
-            }
-
-            String[] prefixKeys = {
-                    "chat.prefix.impostor", "chat.prefix.non_op", "chat.prefix.op",
-                    "chat.prefix.super_admin", "chat.prefix.senior_admin",
-                    "chat.prefix.senior_console",
-                    "chat.prefix.developer", "chat.prefix.owner"
-            };
-
-            for (String key : prefixKeys)
-            {
-                if (config.contains(key))
-                {
-                    config.set(key, null);
-                    modified = true;
-                }
-            }
-
-            ConfigurationSection prefixSection = config.getConfigurationSection("chat.prefix");
-            if (prefixSection != null && prefixSection.getKeys(false).isEmpty())
-            {
-                config.set("chat.prefix", null);
-            }
-
-            if (modified)
-            {
-                config.save(configFile);
-            }
-        }
-        catch (IOException ex)
-        {
-            FLog.warning("Could not update config.yml: " + ex.getMessage());
+        ranksConfig.set(rankId, null);
+        try {
+            ranksConfig.save(ranksFile);
+        } catch (IOException ex) {
+            FLog.severe("Could not save " + RANKS_FILENAME + ": " + ex.getMessage());
         }
     }
+
 
     /**
      * Save custom ranks to ranks.yml.
@@ -335,13 +220,8 @@ public class RankManager extends FreedomService
             ranksFile = new File(plugin.getDataFolder(), RANKS_FILENAME);
         }
 
-        ranksConfig = new YamlConfiguration();
-
-        for (CustomRank rank : customRanks.values())
-        {
-            ConfigurationSection section = ranksConfig.createSection(rank.getId());
-            rank.saveTo(section);
-        }
+        ranksConfig = YamlConfiguration.loadConfiguration(ranksFile);
+        customRanks.values().forEach(this::updateRank);
 
         try
         {
@@ -508,7 +388,7 @@ public class RankManager extends FreedomService
     {
         customRanks.put(rank.getId(), rank);
         resolveInheritance();
-        saveRanks();
+        updateRank(rank);
         updateAllPlayerTeams();
     }
 
@@ -520,7 +400,7 @@ public class RankManager extends FreedomService
         CustomRank removed = customRanks.remove(id.toLowerCase());
         if (removed != null)
         {
-            saveRanks();
+            deleteRank(removed.getId());
             updateAllPlayerTeams();
             return true;
         }

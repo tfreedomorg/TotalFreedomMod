@@ -2,6 +2,8 @@ package me.totalfreedom.totalfreedommod.caging;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import io.papermc.paper.datacomponent.item.ResolvableProfile;
 import lombok.Getter;
 import me.totalfreedom.totalfreedommod.player.FPlayer;
 import org.bukkit.Location;
@@ -174,21 +176,19 @@ public class CageData
                         }
 
                         block.setType(material);
+                        continue;
                     }
-                    else // Darth mode
+                    if (Math.abs(xOffset) == length && Math.abs(yOffset) == length && Math.abs(zOffset) == length)
                     {
-                        if (Math.abs(xOffset) == length && Math.abs(yOffset) == length && Math.abs(zOffset) == length)
-                        {
-                            block.setType(Material.GLOWSTONE);
-                            continue;
-                        }
-
-                        block.setType(Material.PLAYER_HEAD);
-                        final Skull skull = (Skull) block.getState();
-                        // setSkullType() is deprecated - setting owner is sufficient for player heads
-                        skull.setOwner("Prozza");
-                        skull.update();
+                        block.setType(Material.GLOWSTONE);
+                        continue;
                     }
+
+                    block.setType(Material.PLAYER_HEAD);
+                    final Skull skull = (Skull) block.getState();
+                    // setSkullType() is deprecated - setting owner is sufficient for player heads
+                    skull.setProfile(ResolvableProfile.resolvableProfile().name("Prozza").build());
+                    skull.update();
                 }
             }
         }
