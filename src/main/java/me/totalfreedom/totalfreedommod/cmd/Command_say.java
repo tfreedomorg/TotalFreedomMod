@@ -1,5 +1,7 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
+import java.util.List;
+
 import org.bukkit.command.CommandSender;
 
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
@@ -15,6 +17,12 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 @Permission(permission = "tfm.admin.say", level = Rank.SUPER_ADMIN)
 public class Command_say extends FCommand
 {
+    @Completer(value = "", position = 0)
+    public List<String> completeMessage(CommandSender sender, String partial)
+    {
+        return NameCandidates.onlineTyped(server(), partial);
+    }
+    
     @Callback
     public void say(CommandSender sender, @Greedy String message)
     {

@@ -26,6 +26,12 @@ public class Command_banname extends FCommand
         banNameWithReason(sender, name, null);
     }
 
+    @Completer(value = "", position = 1)
+    public List<String> completeReason(CommandSender sender, String partial)
+    {
+        return NameCandidates.onlineTyped(server(), partial);
+    }
+
     @Callback
     public void banNameWithReason(CommandSender sender, String name, @Greedy String reason)
     {

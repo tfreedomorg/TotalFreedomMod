@@ -1,5 +1,7 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
+import java.util.List;
+
 import me.totalfreedom.totalfreedommod.admin.Admin;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
 import org.bukkit.OfflinePlayer;
@@ -48,6 +50,18 @@ public class Command_report extends FCommand
         {
             msg(player, "<green>Thank you, your report has been successfully logged.");
         }
+    }
+
+    @Completer(value = "", position = 0)
+    public List<String> completeTarget(Player sender, String partial)
+    {
+        return NameCandidates.online(server(), partial);
+    }
+
+    @Completer(value = "", position = 1)
+    public List<String> completeReason(Player sender, String partial)
+    {
+        return NameCandidates.onlineTyped(server(), partial);
     }
 
     @Callback

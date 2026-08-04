@@ -83,6 +83,12 @@ public class Command_stfu extends FCommand
         mutePlayerWithReason(sender, player, null);
     }
 
+    @Completer(value = "", position = 1)
+    public List<String> completeReason(CommandSender sender, String partial)
+    {
+        return NameCandidates.onlineTyped(server(), partial);
+    }
+
     @Callback
     public void mutePlayerWithReason(CommandSender sender, Player player, @Greedy String reason)
     {

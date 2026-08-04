@@ -1,5 +1,7 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
+import java.util.List;
+
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.rank.Rank;
@@ -16,6 +18,12 @@ public class Command_kick extends FCommand
     public void kickNoReason(CommandSender sender, Player player, @Switch("s") boolean silent)
     {
         kick(sender, player, null, silent);
+    }
+
+    @Completer(value = "", position = 1)
+    public List<String> completeReason(CommandSender sender, String partial)
+    {
+        return NameCandidates.onlineTyped(server(), partial);
     }
 
     @Callback

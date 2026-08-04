@@ -1,7 +1,10 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
+import java.util.List;
+
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Callback;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Command;
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Completer;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Greedy;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Permission;
 import me.totalfreedom.totalfreedommod.rank.Rank;
@@ -13,6 +16,12 @@ import org.bukkit.entity.Player;
 @Permission(permission = "tfm.admin.gchat", level = Rank.SUPER_ADMIN)
 public class Command_gchat extends FCommand
 {
+    @Completer(value = "", position = 1)
+    public List<String> completeMessage(CommandSender sender, String partial)
+    {
+        return NameCandidates.onlineTyped(server(), partial);
+    }
+
     @Callback
     public void sendMessageAsSomeoneElse(CommandSender sender, Player player, @Greedy String message)
     {

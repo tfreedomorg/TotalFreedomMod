@@ -1,6 +1,9 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -22,6 +25,12 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 @Permission(permission = "tfm.manage.ranks", level = Rank.SENIOR_ADMIN)
 public class Command_rankconfig extends FCommand
 {
+    private static final List<String> COLOR_NAMES = Stream.concat(
+            NamedTextColor.NAMES.keys().stream(),
+            Stream.of("purple", "orange", "grey", "dark_grey", "cyan", "dark_cyan", "pink", "magenta"))
+        .sorted()
+        .toList();
+        
     @Callback
     public void menu(CommandSender sender)
     {
@@ -177,6 +186,51 @@ public class Command_rankconfig extends FCommand
     public List<String> completeSetRank(CommandSender sender, String partial)
     {
         return rankIdCandidates(partial);
+    }
+
+    @Completer(value = "set", position = 2, scope = Completer.Scope.ARGUMENT)
+    public List<String> completeSetValue(CommandSender sender, String partial, List<String> priorArgs)
+    {
+        final Property property = parseProperty(priorArgs.get(1));
+        if (property == null)
+        {
+            return List.of();
+        }
+
+        return switch (property)
+        {
+            case COLOR -> FuzzyMatch.filter(COLOR_NAMES, partial);
+            case ADMIN, CONSOLE -> FuzzyMatch.filter(List.of("true", "false"), partial);
+            case INHERIT -> FuzzyMatch.filter(inheritCandidates(priorArgs.get(0)), partial);
+            case REMPERM -> FuzzyMatch.filter(heldPermissions(priorArgs.get(0)), partial);
+            default -> List.of();
+        };
+    }
+
+    private List<String> inheritCandidates(String rankId)
+    {
+        final List<String> candidates = new ArrayList<>(List.of("none"));
+        plugin().rm.getCustomRanksSorted()
+                   .stream()
+                   .map(CustomRank::getId)
+                   .filter(id -> !id.equalsIgnoreCase(rankId.trim()))
+                   .forEach(candidates::add);
+
+        return candidates;
+    }
+
+    private List<String> heldPermissions(String rankId)
+    {
+        final CustomRank rank = plugin().rm.getCustomRank(rankId.trim().toLowerCase());
+        return rank == null ? List.of() : rank.getPermissions().stream().sorted().toList();
+    }
+
+    private static Property parseProperty(String typed)
+    {
+        return Arrays.stream(Property.values())
+                     .filter(property -> property.name().equalsIgnoreCase(typed.trim()))
+                     .findFirst()
+                     .orElse(null);
     }
 
     @Callback

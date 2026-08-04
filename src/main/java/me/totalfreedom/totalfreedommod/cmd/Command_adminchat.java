@@ -1,5 +1,7 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
+import java.util.List;
+
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
 import me.totalfreedom.totalfreedommod.player.FPlayer;
 import me.totalfreedom.totalfreedommod.rank.Rank;
@@ -26,6 +28,12 @@ public class Command_adminchat extends FCommand
         msg(sender, "<gray>Toggled Admin Chat <mode:on:off>.", Formatter.booleanChoice("mode", mode));
     }
 
+    @Completer(value = "", position = 0)
+    public List<String> completeMessage(CommandSender sender, String partial)
+    {
+        return NameCandidates.onlineTyped(server(), partial);
+    }
+    
     @Callback
     public void sendMessage(CommandSender sender, @Greedy String message)
     {

@@ -25,6 +25,12 @@ public class Command_wildcard extends FCommand
             "crash"
     );
 
+    @Completer(value = "", position = 0, scope = Completer.Scope.ARGUMENT_TO_WORD)
+    public List<String> completeCommand(CommandSender sender, String partial)
+    {
+        return CommandCandidates.inner(server(), sender, partial);
+    }
+
     @Callback
     public void wildcard(CommandSender sender, @Greedy String command)
     {

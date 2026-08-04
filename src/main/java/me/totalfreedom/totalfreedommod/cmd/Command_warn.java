@@ -1,7 +1,10 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
+import java.util.List;
+
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Callback;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Command;
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Completer;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Greedy;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Permission;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
@@ -15,6 +18,12 @@ import org.bukkit.entity.Player;
 @Permission(level = Rank.SUPER_ADMIN, permission = "tfm.admin.warn")
 public class Command_warn extends FCommand
 {
+    @Completer(value = "", position = 1)
+    public List<String> completeReason(CommandSender sender, String partial)
+    {
+        return NameCandidates.onlineTyped(server(), partial);
+    }
+
     @Callback
     public void warnPlayer(CommandSender sender, Player player, @Greedy String reason)
     {
