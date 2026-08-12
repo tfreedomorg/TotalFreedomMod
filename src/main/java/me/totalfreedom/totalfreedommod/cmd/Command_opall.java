@@ -13,6 +13,11 @@ public class Command_opall extends FCommand
     @Callback
     public void opall(CommandSender sender, @Switch("c") boolean creative, @Switch("s") boolean survival)
     {
+        if ((creative || survival) && !isAdmin(sender))
+        {
+            throw new CommandFailException("<gray>Only admins may change everyone's gamemode with -c or -s.");
+        }
+
         if (creative && survival)
         {
             throw new CommandFailException("<gray>Cannot use both -c and -s at the same time.");

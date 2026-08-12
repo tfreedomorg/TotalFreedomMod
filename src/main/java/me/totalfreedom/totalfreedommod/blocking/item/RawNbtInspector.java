@@ -103,7 +103,7 @@ final class RawNbtInspector
             }
 
             Class<?> typedEntityData = Class.forName("net.minecraft.world.item.component.TypedEntityData");
-            for (String methodName : new String[]{"tag", "getUnsafe"})
+            for (String methodName : new String[]{"copyTagWithEntityId", "tag", "getUnsafe"})
             {
                 try
                 {

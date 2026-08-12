@@ -5,6 +5,7 @@ import io.papermc.paper.event.block.BlockPreDispenseEvent;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 import me.totalfreedom.totalfreedommod.FreedomService;
@@ -18,12 +19,16 @@ import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FTask;
 import me.totalfreedom.totalfreedommod.util.FUtil;
 import net.kyori.adventure.text.format.NamedTextColor;
+
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.bukkit.Chunk;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -41,6 +46,7 @@ import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.inventory.InventoryPickupItemEvent;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
@@ -568,15 +574,24 @@ public class ItemValidator extends FreedomService
     private boolean escalateResolvedContainer(Inventory top, ItemScanner.Verdict verdict,
             ContainerSweepPolicy.Action action, String context)
     {
-        InventoryHolder holder = resolveEntityHolder(top);
-        if (holder != null)
+        // Must precede every world resolution below. A player-backed view reports the
+        // viewer's own position from Inventory#getLocation(), so resolving it to a block
+        // targets whatever the player happens to be standing in. The payload still has to
+        // come out, so it is stripped from the view itself instead.
+        if (isPlayerBackedInventory(top))
         {
-            return escalateHolder(holder, top, action, verdict, context);
+            return clearPlayerCraftingGrid(top, context, verdict);
         }
-        Block block = blockFromInventoryLocation(top);
-        if (block != null)
+
+        final Optional<InventoryHolder> holder = resolveEntityHolder(top);
+        if (holder.isPresent())
         {
-            return escalateBlockContainer(block, top, action, verdict, context);
+            return escalateHolder(holder.get(), top, action, verdict, context);
+        }
+        final Optional<Block> block = blockFromInventoryLocation(top);
+        if (block.isPresent())
+        {
+            return escalateBlockContainer(block.get(), top, action, verdict, context);
         }
         if (action == ContainerSweepPolicy.Action.CLEAR_CONTAINER)
         {
@@ -607,13 +622,22 @@ public class ItemValidator extends FreedomService
         return sanitizeContainerInventory(inv, holder, context);
     }
 
+    /**
+     * Filters a container's slots in place, escalating on the first hang-class hit.
+     *
+     * <p>{@code holder} may be {@code null} for a view opened by a player. Resolving the
+     * holder there would mean calling {@link Inventory#getHolder()}, which re-deserializes
+     * the very block-entity NBT this class exists to defend against; the backing container
+     * is resolved from the inventory's location instead.
+     */
     private boolean sanitizeContainerInventory(Inventory inv, InventoryHolder holder, String context)
     {
-        if (!isWorldContainerHolder(holder) || inv == null)
+        if (inv == null || (holder != null && !isWorldContainerHolder(holder)))
         {
             return false;
         }
-        String sample = context + " @ " + describeHolder(holder);
+        String sample = context + " @ "
+                + (holder != null ? describeHolder(holder) : describeLocation(inv));
 
         ItemStack[] contents;
         try
@@ -622,8 +646,13 @@ public class ItemValidator extends FreedomService
         }
         catch (Throwable t)
         {
+            // A null holder would fall through destroyHolder without acting, so an
+            // unreadable player-opened container has to resolve its own backing block.
             ItemScanner.Verdict v = uninspectableVerdict();
-            return escalateHolder(holder, null, containerSweepPolicy.actionFor(v.reason()), v, sample);
+            ContainerSweepPolicy.Action action = containerSweepPolicy.actionFor(v.reason());
+            return holder != null
+                    ? escalateHolder(holder, null, action, v, sample)
+                    : escalateResolvedContainer(inv, v, action, sample);
         }
 
         long containerDeadline = System.nanoTime() + CONTAINER_SCAN_BUDGET_NANOS;
@@ -651,7 +680,9 @@ public class ItemValidator extends FreedomService
             ContainerSweepPolicy.Action action = containerSweepPolicy.actionFor(v.reason());
             if (action != ContainerSweepPolicy.Action.FILTER_SLOT)
             {
-                return escalateHolder(holder, inv, action, v, sample);
+                return holder != null
+                        ? escalateHolder(holder, inv, action, v, sample)
+                        : escalateResolvedContainer(inv, v, action, sample);
             }
             contents[i] = null;
             purged = true;
@@ -711,14 +742,50 @@ public class ItemValidator extends FreedomService
         return new ItemScanner.Verdict(ItemScanner.Reason.UNINSPECTABLE_NBT, -1L, 0);
     }
 
+    /**
+     * Strips the cursed slots out of a player-backed view (the 2x2 crafting grid and its
+     * result slot, or the player inventory) rather than escalating to the world. A creative
+     * client can write a cursed stack straight into those slots, and every subsequent click
+     * re-reports it, so the stack has to be physically removed or the source keeps firing.
+     * Clearing happens before the caller closes the view, otherwise the grid contents would
+     * be dropped into the world as item entities on close.
+     *
+     * @return always {@code true}; the verdict was already cursed, so the interaction is
+     *         handled even when the offending stack lost a race and is no longer present
+     */
+    private boolean clearPlayerCraftingGrid(final Inventory view, final String context,
+            final ItemScanner.Verdict verdict)
+    {
+        if (!cleanInventory(view, CHUNK_ITEM_SCAN_BUDGET_NANOS, context + " [player view purged]"))
+        {
+            recordDetection(verdict, context + " [player view already clean]");
+        }
+
+        view.getViewers()
+            .stream()
+            .filter(Player.class::isInstance)
+            .map(Player.class::cast)
+            .forEach(Player::updateInventory);
+
+        return true;
+    }
+
     private void destroyContainerBlock(Block block, String context, ItemScanner.Verdict verdict)
     {
+        // Fail closed on anything that is not a live container. Destroying air succeeds
+        // silently and still logs, which is what turned a single bad resolution into a
+        // warning per event for as long as the client kept firing.
+        if (!isContainerBlock(block))
+            return;
+
         try
         {
             block.setType(Material.AIR, false);
         }
-        catch (Throwable ignored)
+        catch (Throwable th) // because we ignored this, we don't see why the itemvalidator spams the logs.
         {
+            FLog.severe(ExceptionUtils.getRootCauseMessage(th));
+            return; // Returning here so it doesn't enter a recursive loop of spamming logs with nonsense. Instead, we will spam the logs with actual errors.
         }
         recordDetection(verdict, context + " [block destroyed]");
         FLog.warning("[ItemValidator] Destroyed container block at " + FUtil.formatLocation(block.getLocation())
@@ -753,6 +820,80 @@ public class ItemValidator extends FreedomService
         return holder != null && !(holder instanceof Player);
     }
 
+    /**
+     * Confirms a resolved block still carries a container block entity before it is
+     * destroyed. Reads the live state rather than a snapshot, since snapshotting
+     * re-deserializes the block-entity NBT this class exists to defend against.
+     */
+    private static boolean isContainerBlock(Block block)
+    {
+        if (block == null || block.getType().isAir())
+        {
+            return false;
+        }
+
+        try
+        {
+            return block.getState(false) instanceof InventoryHolder;
+        }
+        catch (Throwable ignored) {}
+
+        return false;
+    }
+
+    /**
+     * Identifies views that have no backing container block, so escalation must never
+     * resolve them to a location. CRAFTING (the player's own 2x2 grid) and PLAYER both
+     * report the viewer's position, which is why destroying "their" block hit whatever
+     * the player was standing in. WORKBENCH does map to a real block, but a crafting
+     * table holds no inventory and must not be destroyed either.
+     *
+     * <p>Deliberately keyed on {@link Inventory#getType()} rather than
+     * {@link Inventory#getHolder()}: the holder lookup re-deserializes block-entity NBT
+     * and can hang the server on an exploit chest, which is the hazard this whole class
+     * is built to avoid.
+     */
+    private static boolean isPlayerBackedInventory(Inventory inv)
+    {
+        if (inv == null)
+        {
+            return false;
+        }
+
+        final InventoryType type = inv.getType();
+        return type == InventoryType.CRAFTING
+                || type == InventoryType.PLAYER
+                || type == InventoryType.WORKBENCH;
+    }
+
+    /**
+     * Decides whether an opened view is a world container that escalation may act on,
+     * without consulting {@link Inventory#getHolder()}. That call re-deserializes
+     * block-entity NBT and can hang the server on exactly the exploit chest this handler
+     * is meant to intercept.
+     *
+     * <p>A view qualifies only when its location resolves to a live container block or to
+     * a nearby non-player entity holder. Testing the resolution instead of enumerating
+     * inventory types is what keeps player-anchored views out: an ender chest, a villager
+     * trade window and the creative menu all report a position, but none of them resolve
+     * to a container, so none of them can be escalated against the world.
+     */
+    private static boolean isWorldContainerView(Inventory inv)
+    {
+        if (inv == null || isPlayerBackedInventory(inv))
+        {
+            return false;
+        }
+
+        final Location loc = inv.getLocation();
+        if (loc == null || loc.getWorld() == null)
+        {
+            return false;
+        }
+
+        return isContainerBlock(loc.getBlock()) || resolveEntityHolder(inv).isPresent();
+    }
+
     private static String describeHolder(InventoryHolder holder)
     {
         if (holder instanceof BlockState state)
@@ -776,35 +917,35 @@ public class ItemValidator extends FreedomService
      * an open inventory without calling {@link Inventory#getHolder()}, which would
      * re-load block-entity NBT for placed chests.
      */
-    private static InventoryHolder resolveEntityHolder(Inventory inv)
+    private static Optional<InventoryHolder> resolveEntityHolder(Inventory inv)
     {
         if (inv == null)
         {
-            return null;
+            return Optional.empty();
         }
-        org.bukkit.Location loc = inv.getLocation();
+
+        final Location loc = inv.getLocation();
         if (loc == null || loc.getWorld() == null)
         {
-            return null;
+            return Optional.empty();
         }
+
         try
         {
-            for (Entity entity : loc.getWorld().getNearbyEntities(loc, 1.0, 1.0, 1.0))
-            {
-                if (!(entity instanceof InventoryHolder holder) || holder instanceof Player)
-                {
-                    continue;
-                }
-                if (holder.getInventory() == inv)
-                {
-                    return holder;
-                }
-            }
+            // Players are excluded deliberately. A player standing inside the search box
+            // would otherwise be escalated as the container holder and removed outright.
+            return loc.getWorld()
+                      .getNearbyEntities(loc, 1.0, 1.0, 1.0)
+                      .stream()
+                      .filter(InventoryHolder.class::isInstance)
+                      .map(InventoryHolder.class::cast)
+                      .filter(holder -> !(holder instanceof Player))
+                      .filter(holder -> holder.getInventory() == inv)
+                      .findFirst();
         }
-        catch (Throwable ignored)
-        {
-        }
-        return null;
+        catch (Throwable ignored) {}
+
+        return Optional.empty();
     }
 
     private void recordDetection(ItemScanner.Verdict v, String context)
@@ -937,8 +1078,7 @@ public class ItemValidator extends FreedomService
             return;
         }
         Inventory top = event.getInventory();
-        InventoryHolder holder = top.getHolder();
-        if (isWorldContainerHolder(holder))
+        if (isWorldContainerView(top))
         {
             String context = event.getPlayer().getName() + " opened " + describeLocation(top);
             if (probeOpenContainer(top, context))
@@ -954,7 +1094,7 @@ public class ItemValidator extends FreedomService
                 }
                 event.setCancelled(true);
                 recordDetection(v, context);
-                sanitizeInventoryHolder(holder, context);
+                sanitizeContainerInventory(top, null, context);
             }
             if (event.getPlayer() instanceof Player p)
             {
@@ -1029,7 +1169,7 @@ public class ItemValidator extends FreedomService
         if (probeOpenContainer(top, "click by " + actor))
         {
             event.setCancelled(true);
-            closeContainerView(event.getWhoClicked());
+            closeContainerView(event.getWhoClicked(), top);
             return;
         }
 
@@ -1049,7 +1189,7 @@ public class ItemValidator extends FreedomService
             if (action != ContainerSweepPolicy.Action.FILTER_SLOT)
             {
                 escalateResolvedContainer(top, hang, action, "click by " + actor);
-                closeContainerView(event.getWhoClicked());
+                closeContainerView(event.getWhoClicked(), top);
                 return;
             }
         }
@@ -1105,7 +1245,7 @@ public class ItemValidator extends FreedomService
         if (probeOpenContainer(top, "drag by " + actor))
         {
             event.setCancelled(true);
-            closeContainerView(event.getWhoClicked());
+            closeContainerView(event.getWhoClicked(), top);
             return;
         }
 
@@ -1133,7 +1273,7 @@ public class ItemValidator extends FreedomService
             if (action != ContainerSweepPolicy.Action.FILTER_SLOT)
             {
                 escalateResolvedContainer(top, v, action, "drag by " + actor);
-                closeContainerView(event.getWhoClicked());
+                closeContainerView(event.getWhoClicked(), top);
                 return;
             }
         }
@@ -1275,6 +1415,73 @@ public class ItemValidator extends FreedomService
         recordDetection(v, "dispense at " + FUtil.formatLocation(event.getBlock().getLocation()));
     }
 
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onCursedEntityDataUse(PlayerInteractEvent event)
+    {
+        if (!enabled())
+        {
+            return;
+        }
+        final Action action = event.getAction();
+        if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK)
+        {
+            return;
+        }
+        final ItemStack item = event.getItem();
+        // Only entity/bucket data can carry a spoofed entity id
+        if (item == null || !RawNbtInspector.hasEntityOrBucketData(item))
+        {
+            return;
+        }
+        final ItemScanner.Verdict verdict = scanWithBudget(item, CLICK_SCAN_BUDGET_NANOS);
+        if (!verdict.isCursed())
+        {
+            return;
+        }
+        event.setCancelled(true);
+        clearHand(event.getPlayer(), event.getHand());
+        recordDetection(verdict, "use by " + event.getPlayer().getName());
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onCursedEntityDataUseOnEntity(PlayerInteractEntityEvent event)
+    {
+        if (!enabled())
+        {
+            return;
+        }
+        final Player player = event.getPlayer();
+        final EquipmentSlot hand = event.getHand();
+        final ItemStack item = hand == EquipmentSlot.OFF_HAND
+                               ? player.getInventory().getItemInOffHand()
+                               : player.getInventory().getItemInMainHand();
+        if (item == null || !RawNbtInspector.hasEntityOrBucketData(item))
+        {
+            return;
+        }
+        final ItemScanner.Verdict verdict = scanWithBudget(item, CLICK_SCAN_BUDGET_NANOS);
+        if (!verdict.isCursed())
+        {
+            return;
+        }
+        event.setCancelled(true);
+        clearHand(player, hand);
+        recordDetection(verdict, "use-on-entity by " + player.getName());
+    }
+
+    private void clearHand(Player player, EquipmentSlot hand)
+    {
+        if (hand == EquipmentSlot.OFF_HAND)
+        {
+            player.getInventory().setItemInOffHand(null);
+        }
+        else
+        {
+            player.getInventory().setItemInMainHand(null);
+        }
+        player.updateInventory();
+        FUtil.playerMsg(player, "A cursed item was removed.", NamedTextColor.RED);
+    }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onSpoofedOwnerInteract(PlayerInteractEvent event)
@@ -1513,18 +1720,26 @@ public class ItemValidator extends FreedomService
         return FUtil.formatLocation(inv.getLocation());
     }
 
-    private static Block blockFromInventoryLocation(Inventory inv)
+    /**
+     * Resolves the block backing an open container. Player-backed views are rejected by
+     * {@link #isPlayerBackedInventory(Inventory)} before this is reached, so the holder is
+     * deliberately never consulted here: {@link Inventory#getHolder()} re-deserializes
+     * block-entity NBT and can hang the server on an exploit chest.
+     */
+    private static Optional<Block> blockFromInventoryLocation(Inventory inv)
     {
         if (inv == null)
         {
-            return null;
+            return Optional.empty();
         }
-        org.bukkit.Location loc = inv.getLocation();
+
+        final Location loc = inv.getLocation();
         if (loc == null || loc.getWorld() == null)
         {
-            return null;
+            return Optional.empty();
         }
-        return loc.getBlock();
+
+        return Optional.of(loc.getBlock());
     }
 
     private static ItemScanner.Verdict hangClassVerdict(ItemScanner.Verdict a, ItemScanner.Verdict b)
@@ -1540,13 +1755,19 @@ public class ItemValidator extends FreedomService
         return null;
     }
 
-    private static void closeContainerView(org.bukkit.entity.HumanEntity viewer)
+    private static void closeContainerView(HumanEntity viewer, Inventory top)
     {
         if (!(viewer instanceof Player p))
         {
             return;
         }
+
         p.closeInventory();
-        FUtil.playerMsg(p, "That container was removed because it contained invalid data.", NamedTextColor.GRAY);
+
+        // A player-backed view has no container to remove; only its cursed slots were
+        // stripped, so reporting a removal would be misleading.
+        FUtil.playerMsg(p, isPlayerBackedInventory(top)
+                ? "A cursed item was removed."
+                : "That container was removed because it contained invalid data.", NamedTextColor.GRAY);
     }
 }

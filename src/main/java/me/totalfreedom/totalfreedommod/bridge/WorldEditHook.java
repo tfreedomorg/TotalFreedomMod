@@ -75,7 +75,7 @@ public final class WorldEditHook implements Listener
     private static final Pattern HASH_TOKEN = Pattern.compile("#[a-z0-9_]+", Pattern.CASE_INSENSITIVE);
 
     private static final Pattern CATEGORY_TOKEN =
-        Pattern.compile("##\\*?([a-z0-9_.]+(?::[a-z0-9_.]+)?)", Pattern.CASE_INSENSITIVE);
+            Pattern.compile("#{1,2}\\*?([a-z0-9_.]+(?::[a-z0-9_.]+)?)", Pattern.CASE_INSENSITIVE);
 
     private static final String[] CLIPBOARD_PATTERNS = {"#clipboard", "#copy", "#fullcopy"};
 
