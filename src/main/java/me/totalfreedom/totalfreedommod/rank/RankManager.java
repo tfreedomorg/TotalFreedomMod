@@ -52,6 +52,29 @@ import org.bukkit.scoreboard.Team;
 
 public class RankManager extends FreedomService
 {
+    private static final int CURRENT_RANKS_SCHEMA_VERSION = 2;
+    private static final Set<String> ADMIN_BLOCK_PERMISSIONS = Set.of(
+            "tfm.admin.block.inspect",
+            "tfm.admin.block.modify");
+    private static final String PLAYER_BLOCK_PERMISSION = "tfm.player.block";
+    private static final String RANKS_SCHEMA_VERSION_KEY = "schema_version";
+    private static final Set<String> PLAYER_BLOCK_DEFAULT_RANKS = Set.of(
+            "non_op",
+            "op",
+            "super_admin",
+            "senior_admin",
+            "senior_console",
+            "developer",
+            "owner",
+            "executive");
+    private static final Set<String> ADMIN_BLOCK_DEFAULT_RANKS = Set.of(
+            "super_admin",
+            "senior_admin",
+            "senior_console",
+            "developer",
+            "owner",
+            "executive");
+
     public static final String RANKS_FILENAME = "ranks.yml";
 
     /**
@@ -68,6 +91,8 @@ public class RankManager extends FreedomService
      * YAML configuration for ranks.
      */
     private YamlConfiguration ranksConfig;
+
+    private int ranksSchemaVersion;
 
     /**
      * Chat input handler for interactive menus.
@@ -137,6 +162,7 @@ public class RankManager extends FreedomService
         }
 
         ranksConfig = YamlConfiguration.loadConfiguration(ranksFile);
+        ranksSchemaVersion = ranksConfig.getInt(RANKS_SCHEMA_VERSION_KEY, 0);
         customRanks.clear();
 
         for (String key : ranksConfig.getKeys(false))
@@ -150,6 +176,7 @@ public class RankManager extends FreedomService
         }
 
         validateEssentialRanks();
+        migrateRanksSchema();
         resolveInheritance();
         updateAllPlayerTeams();
         FLog.info("Loaded " + customRanks.size() + " custom ranks.");
@@ -169,7 +196,7 @@ public class RankManager extends FreedomService
             {
                 FLog.warning("Essential rank '" + rankId + "' missing from ranks.yml, recreating...");
                 Rank legacyRank = Rank.findRank(rankId);
-                CustomRank custom = CustomRank.fromLegacyRank(legacyRank);
+                CustomRank custom = createDefaultRank(legacyRank);
                 customRanks.put(rankId, custom);
                 modified = true;
             }
@@ -187,45 +214,101 @@ public class RankManager extends FreedomService
     private void createDefaultRanks()
     {
         customRanks.clear();
+        ranksSchemaVersion = CURRENT_RANKS_SCHEMA_VERSION;
 
         for (Rank legacyRank : Rank.values())
         {
-            CustomRank custom = CustomRank.fromLegacyRank(legacyRank);
-
-            // Add default permissions based on rank type
-            switch (legacyRank)
-            {
-                case SENIOR_ADMIN:
-                case SENIOR_CONSOLE:
-                    custom.addPermission("tfm.manage.ranks");
-                    custom.addPermission("tfm.admin.senior");
-                    // Fall through
-                    custom.addPermission("tfm.admin.telnet");
-                    custom.addPermission("tfm.admin.ban.perm");
-                    // Fall through
-                case SUPER_ADMIN:
-                    custom.addPermission("tfm.admin.ban");
-                    custom.addPermission("tfm.admin.kick");
-                    custom.addPermission("tfm.admin.mute");
-                    custom.addPermission("tfm.admin.freeze");
-                    custom.addPermission("tfm.admin.cage");
-                    custom.addPermission("tfm.fun.smite");
-                    custom.addPermission("tfm.fun.doom");
-                    custom.addPermission("tfm.world.gamerule");
-                    break;
-                case OP:
-                    custom.addPermission("tfm.player.op");
-                    break;
-                default:
-                    break;
-            }
-
+            CustomRank custom = createDefaultRank(legacyRank);
             customRanks.put(custom.getId(), custom);
         }
 
         resolveInheritance();
         saveRanks();
         FLog.info("Created default ranks configuration.");
+    }
+
+    private CustomRank createDefaultRank(final Rank legacyRank)
+    {
+        final CustomRank custom = CustomRank.fromLegacyRank(legacyRank);
+
+        switch (legacyRank)
+        {
+            case SENIOR_ADMIN, SENIOR_CONSOLE ->
+            {
+                custom.addPermission("tfm.manage.ranks");
+                custom.addPermission("tfm.admin.senior");
+                custom.addPermission("tfm.admin.telnet");
+                custom.addPermission("tfm.admin.ban.perm");
+                addSuperAdminPermissions(custom);
+            }
+            case SUPER_ADMIN -> addSuperAdminPermissions(custom);
+            case OP -> custom.addPermission("tfm.player.op");
+            case NON_OP -> custom.addPermission(PLAYER_BLOCK_PERMISSION);
+            default -> {}
+        }
+
+        custom.setInheritFrom(switch (legacyRank)
+        {
+            case OP -> "non_op";
+            case SUPER_ADMIN -> "op";
+            case SENIOR_ADMIN -> "super_admin";
+            case SENIOR_CONSOLE -> "senior_admin";
+            default -> null;
+        });
+        return custom;
+    }
+
+    private void addSuperAdminPermissions(final CustomRank rank)
+    {
+        Stream.of(
+                "tfm.admin.ban",
+                "tfm.admin.kick",
+                "tfm.admin.mute",
+                "tfm.admin.freeze",
+                "tfm.admin.cage",
+                "tfm.admin.block.inspect",
+                "tfm.admin.block.modify",
+                "tfm.fun.smite",
+                "tfm.fun.doom",
+                "tfm.world.gamerule")
+                .forEach(rank::addPermission);
+    }
+
+    private void migrateRanksSchema()
+    {
+        if (ranksSchemaVersion >= CURRENT_RANKS_SCHEMA_VERSION)
+            return;
+
+        if (ranksSchemaVersion < 1)
+        {
+            addMissingDefaultPermissions(
+                    PLAYER_BLOCK_DEFAULT_RANKS,
+                    Set.of(PLAYER_BLOCK_PERMISSION));
+        }
+
+        if (ranksSchemaVersion < 2)
+        {
+            addMissingDefaultPermissions(
+                    ADMIN_BLOCK_DEFAULT_RANKS,
+                    ADMIN_BLOCK_PERMISSIONS);
+        }
+
+        ranksSchemaVersion = CURRENT_RANKS_SCHEMA_VERSION;
+        saveRanks();
+        FLog.info("Migrated ranks.yml to schema version " + CURRENT_RANKS_SCHEMA_VERSION + ".");
+    }
+
+    private void addMissingDefaultPermissions(
+            final Set<String> rankIds,
+            final Set<String> permissions)
+    {
+        rankIds.stream()
+                .map(customRanks::get)
+                .filter(java.util.Objects::nonNull)
+                .filter(rank -> !rank.getPermissions().contains("*"))
+                .forEach(rank -> permissions.stream()
+                        .filter(permission -> !rank.getPermissions().contains(permission))
+                        .forEach(rank::addPermission));
     }
 
     private void migrateConfigRanks()
@@ -340,6 +423,7 @@ public class RankManager extends FreedomService
         }
 
         ranksConfig = new YamlConfiguration();
+        ranksConfig.set(RANKS_SCHEMA_VERSION_KEY, ranksSchemaVersion);
 
         for (CustomRank rank : customRanks.values())
         {
@@ -617,15 +701,10 @@ public class RankManager extends FreedomService
             return checkLegacyPermission(admin.getRank(), permission);
         }
 
-        // Non-admins: check if they have a custom rank assigned (for future expansion)
-        // For now, non-admins only have basic player permissions
-        CustomRank opRank = getCustomRank("op");
-        if (player.isOp() && opRank != null)
-        {
-            return hasCustomRankPermission(opRank, permission);
-        }
-
-        return false;
+        // Resolve ordinary players through the same identity-aware legacy rank path used by
+        // the rest of the rank system, so admin impostors cannot inherit player permissions.
+        final CustomRank playerRank = getCustomRankForLegacy(getRank(player));
+        return playerRank != null && hasCustomRankPermission(playerRank, permission);
     }
 
     private boolean hasCustomRankPermission(CustomRank rank, String permission)

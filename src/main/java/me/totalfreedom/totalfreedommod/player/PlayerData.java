@@ -213,6 +213,8 @@ public class PlayerData implements ConfigLoadable, ConfigSavable, Validatable
             player.displayName(hasCustomNickname() ? getDisplayedNickname() :
                     Component.text(player.getName(), player.isOp() ? NamedTextColor.RED : NamedTextColor.WHITE));
         final TotalFreedomMod plugin = PluginProvider.get();
+        if (player != null && plugin != null && plugin.pbe != null)
+            plugin.pbe.refreshPlayerIdentity(player);
         if (plugin != null && plugin.pl != null)
             plugin.pl.saveData(this);
     }

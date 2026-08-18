@@ -30,6 +30,7 @@ import me.totalfreedom.totalfreedommod.blocking.spawner.SpawnerValidator;
 import me.totalfreedom.totalfreedommod.bridge.CoreProtectBridge;
 import me.totalfreedom.totalfreedommod.bridge.EssentialsBridge;
 import me.totalfreedom.totalfreedommod.bridge.LibsDisguisesBridge;
+import me.totalfreedom.totalfreedommod.bridge.SimpleVoiceChatBridge;
 import me.totalfreedom.totalfreedommod.bridge.WorldEditBridge;
 import me.totalfreedom.totalfreedommod.caging.Cager;
 import me.totalfreedom.totalfreedommod.cmd.CommandLoader;
@@ -44,6 +45,8 @@ import me.totalfreedom.totalfreedommod.fun.MP44;
 import me.totalfreedom.totalfreedommod.httpd.HTTPDaemon;
 import me.totalfreedom.totalfreedommod.ssh.SshDaemon;
 import me.totalfreedom.totalfreedommod.player.FPlayer;
+import me.totalfreedom.totalfreedommod.player.PlayerBlockEnforcer;
+import me.totalfreedom.totalfreedommod.player.PlayerBlockList;
 import me.totalfreedom.totalfreedommod.player.PlayerList;
 import me.totalfreedom.totalfreedommod.rank.ConsoleSenderRegistry;
 import me.totalfreedom.totalfreedommod.rank.RankManager;
@@ -95,6 +98,8 @@ public class TotalFreedomMod extends JavaPlugin
     public AntiDrop adr; // AntiDrop - Throttles item drop flooding
     public AntiSpam as; // AntiSpam - Prevents chat spam
     public PlayerList pl; // PlayerList - Manages player data and lists
+    public PlayerBlockList pbl; // PlayerBlockList - Manages persistent per-player blocks
+    public PlayerBlockEnforcer pbe; // PlayerBlockEnforcer - Applies player block relationships
     public JoinLeaveMessages jlm; // JoinLeaveMessages - Personal join/leave message filtering
     public Announcer an; // Announcer - Handles server announcements
     public ChatManager cm; // ChatManager - Manages chat formatting and admin chat
@@ -132,6 +137,7 @@ public class TotalFreedomMod extends JavaPlugin
     public ServiceManager<TotalFreedomMod> bridges;
     public CoreProtectBridge cpb;
     public EssentialsBridge esb; // EssentialsBridge - Bridge to Essentials plugin
+    public SimpleVoiceChatBridge svcb; // SimpleVoiceChatBridge - Filters blocked players from voice chat
     public LibsDisguisesBridge ldb; // LibsDisguisesBridge - Bridge to LibsDisguises plugin
     public WorldEditBridge web; // WorldEditBridge - Bridge to WorldEdit plugin
 
@@ -227,6 +233,8 @@ public class TotalFreedomMod extends JavaPlugin
         as = services.registerService(AntiSpam.class);
 
         pl = services.registerService(PlayerList.class);
+        pbl = services.registerService(PlayerBlockList.class);
+        pbe = services.registerService(PlayerBlockEnforcer.class);
         jlm = services.registerService(JoinLeaveMessages.class);
         an = services.registerService(Announcer.class);
         cm = services.registerService(ChatManager.class);
@@ -280,6 +288,7 @@ public class TotalFreedomMod extends JavaPlugin
         bridges = new ServiceManager<>(this);
         cpb = bridges.registerService(CoreProtectBridge.class);
         esb = bridges.registerService(EssentialsBridge.class);
+        svcb = bridges.registerService(SimpleVoiceChatBridge.class);
         ldb = bridges.registerService(LibsDisguisesBridge.class);
         web = bridges.registerService(WorldEditBridge.class);
         bridges.start();
