@@ -294,7 +294,10 @@ public abstract class AbstractDiscordChatRelay extends ListenerAdapter
     {
         Bukkit.getScheduler().runTask(plugin, () ->
         {
-            Component mentionedContent = ChatMentionUtil.highlightAndPing(plugin, discordContent, false);
+            // Visual highlighting only: Discord authorship is not verified against a Minecraft
+            // account, so an unverified Discord member must not be able to trigger an in-game
+            // mention sound by typing a player's name.
+            Component mentionedContent = ChatMentionUtil.highlight(discordContent, false);
             Component component = buildDiscordMessage(
                     template,
                     displayName,
