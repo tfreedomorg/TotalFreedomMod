@@ -67,6 +67,12 @@ public class ServiceManager<T extends TotalFreedomMod>
             {
                 service.onStart();
             }
+            catch (FatalServiceStartupException ex)
+            {
+                FLog.severe("Fatal service startup failure: " + service.getClass().getName());
+                FLog.severe(ex);
+                throw ex;
+            }
             catch (Exception ex)
             {
                 FLog.severe("Failed to start service: " + service.getClass().getName());
