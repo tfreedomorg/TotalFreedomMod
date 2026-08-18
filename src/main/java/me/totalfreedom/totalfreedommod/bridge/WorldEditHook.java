@@ -41,6 +41,7 @@ import java.util.regex.Pattern;
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import me.totalfreedom.totalfreedommod.blocking.sweep.SweepContext;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.player.PlayerBlockEnforcer;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FTask;
 import me.totalfreedom.totalfreedommod.util.FUtil;
@@ -1752,10 +1753,14 @@ public final class WorldEditHook implements Listener
 
         private final com.sk89q.worldedit.entity.Player wePlayer;
         private final com.sk89q.worldedit.world.World weWorld;
+        private final Object revealBoundsLock = new Object();
+        private final AtomicBoolean revealScheduled = new AtomicBoolean();
         private boolean checked = false;
         private boolean denied = false;
         private BlockVector3 minPos;
         private BlockVector3 maxPos;
+        private final Map<PlayerBlockEnforcer.BlockActionBucket, Long> successfulEditRegions =
+                new HashMap<>();
 
         ProtectedAreaExtent(Extent parent,
                             com.sk89q.worldedit.entity.Player wePlayer,
@@ -1803,7 +1808,73 @@ public final class WorldEditHook implements Listener
             {
                 return false;
             }
-            return super.setBlock(pos, block);
+            final boolean changed = super.setBlock(pos, block);
+            if (changed)
+                trackSuccessfulEdit(pos);
+            return changed;
+        }
+
+        private void trackSuccessfulEdit(final BlockVector3 position)
+        {
+            boolean scheduleReveal = false;
+            synchronized (revealBoundsLock)
+            {
+                final PlayerBlockEnforcer.BlockActionBucket spatialBucket =
+                        new PlayerBlockEnforcer.BlockActionBucket(
+                        position.x() >> 2,
+                        position.y() >> 2,
+                        position.z() >> 2);
+                final int bit = (position.x() & 3)
+                        | ((position.z() & 3) << 2)
+                        | ((position.y() & 3) << 4);
+                successfulEditRegions.merge(
+                        spatialBucket,
+                        1L << bit,
+                        (first, second) -> first | second);
+                scheduleReveal = revealScheduled.compareAndSet(false, true);
+            }
+
+            if (!scheduleReveal)
+                return;
+
+            try
+            {
+                Bukkit.getScheduler().runTask(
+                        plugin,
+                        FTask.guard("WorldEditHook/playerBlockReveal", this::flushPlayerBlockReveal));
+            }
+            catch (RuntimeException ex)
+            {
+                synchronized (revealBoundsLock)
+                {
+                    successfulEditRegions.clear();
+                    revealScheduled.set(false);
+                }
+                if (plugin.isEnabled())
+                    FLog.warning(String.format(
+                            "Could not schedule player-block WorldEdit reveal: %s",
+                            ex.getMessage()));
+            }
+        }
+
+        private void flushPlayerBlockReveal()
+        {
+            final Map<PlayerBlockEnforcer.BlockActionBucket, Long> editedRegions;
+            synchronized (revealBoundsLock)
+            {
+                editedRegions = Map.copyOf(successfulEditRegions);
+                successfulEditRegions.clear();
+                revealScheduled.set(false);
+            }
+
+            final World world = Bukkit.getWorld(weWorld.getName());
+            if (editedRegions.isEmpty() || world == null || plugin.pbe == null)
+                return;
+
+            plugin.pbe.revealWorldEditAction(
+                    wePlayer.getUniqueId(),
+                    world,
+                    editedRegions);
         }
 
         private boolean shouldDeny()
