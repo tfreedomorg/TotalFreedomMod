@@ -36,6 +36,13 @@ repositories {
         name = "playpro"
         url = "https://maven.playpro.com/"
     }
+    maven {
+        name = "maxhenkel"
+        url = "https://maven.maxhenkel.de/repository/public"
+        content {
+            includeGroup "de.maxhenkel.voicechat"
+        }
+    }
 }
 
 dependencies {
@@ -59,12 +66,26 @@ dependencies {
     compileOnly 'com.github.retrooper:packetevents-spigot:2.12.1'
 
     compileOnly "net.coreprotect:coreprotect:22.4"
+
+    compileOnly 'de.maxhenkel.voicechat:voicechat-api:2.6.20'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.13.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.13.4'
+}
+
+configurations {
+    testCompileOnly.extendsFrom compileOnly
+    testRuntimeOnly.extendsFrom compileOnly
 }
 
 configurations.all {
     resolutionStrategy {
         force 'io.papermc.paper:paper-api:26.1.2.build.61-stable'
     }
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
 }
 
 tasks.withType(JavaCompile) {
