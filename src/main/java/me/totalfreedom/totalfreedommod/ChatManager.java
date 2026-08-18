@@ -107,7 +107,11 @@ public class ChatManager extends FreedomService
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerChatMentionPing(AsyncChatEvent event)
     {
-        ChatMentionUtil.pingMentions(plugin, event.message(), plugin.al.isAdminSync(event.getPlayer()));
+        ChatMentionUtil.pingMentions(
+                plugin,
+                event.message(),
+                plugin.al.isAdminSync(event.getPlayer()),
+                event.viewers()::contains);
     }
 
     private void handleChatEvent(AsyncChatEvent event) {

@@ -9,6 +9,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import net.kyori.adventure.text.Component;
@@ -60,6 +61,12 @@ public final class ChatMentionUtil
 
     public static void pingMentions(TotalFreedomMod plugin, Component message, boolean allowEveryone)
     {
+        pingMentions(plugin, message, allowEveryone, player -> true);
+    }
+
+    public static void pingMentions(TotalFreedomMod plugin, Component message, boolean allowEveryone,
+                                    Predicate<Player> recipientFilter)
+    {
         if (message == null)
         {
             return;
@@ -85,14 +92,17 @@ public final class ChatMentionUtil
                         {
                             for (Player player : context.onlinePlayers)
                             {
-                                pingedPlayers.add(player.getUniqueId());
+                                if (recipientFilter.test(player))
+                                {
+                                    pingedPlayers.add(player.getUniqueId());
+                                }
                             }
                         }
                         return text;
                     }
 
                     Player mentionedPlayer = context.playersByName.get(mentionedName.toLowerCase(Locale.ROOT));
-                    if (mentionedPlayer != null)
+                    if (mentionedPlayer != null && recipientFilter.test(mentionedPlayer))
                     {
                         pingedPlayers.add(mentionedPlayer.getUniqueId());
                     }

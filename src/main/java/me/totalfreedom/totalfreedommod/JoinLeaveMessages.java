@@ -62,7 +62,14 @@ public class JoinLeaveMessages extends FreedomService
         for (final Player viewer : server.getOnlinePlayers())
         {
             final boolean isSubject = viewer.getUniqueId().equals(subject.getUniqueId());
-            if (isSubject || subjectIsAdmin || plugin.pl.getPlayer(viewer).joinLeaveMessagesEnabled())
+            final boolean acceptsJoinLeaveMessage = isSubject
+                    || subjectIsAdmin
+                    || plugin.pl.getPlayer(viewer).joinLeaveMessagesEnabled();
+            final boolean hasBlockedSubject = !isSubject
+                    && !subjectIsAdmin
+                    && plugin.pbe.isBlocked(viewer.getUniqueId(), subject.getUniqueId());
+
+            if (acceptsJoinLeaveMessage && !hasBlockedSubject)
             {
                 FUtil.playerMsg(viewer, message);
             }
