@@ -68,7 +68,7 @@ public class Command_whitelist extends FCommand
     @Completer(value = "add", position = 0)
     public List<String> completeAdd(CommandSender sender, String partial)
     {
-        return NameCandidates.online(server(), partial);
+        return NameCandidates.online(server(), sender, partial);
     }
 
     /**
@@ -78,7 +78,7 @@ public class Command_whitelist extends FCommand
     @Completer(value = "remove", position = 0)
     public List<String> completeRemove(CommandSender sender, String partial)
     {
-        return NameCandidates.whitelisted(partial);
+        return NameCandidates.whitelisted(sender, partial);
     }
 
     @Callback

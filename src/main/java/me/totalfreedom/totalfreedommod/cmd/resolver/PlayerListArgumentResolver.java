@@ -1,6 +1,7 @@
 package me.totalfreedom.totalfreedommod.cmd.resolver;
 
 import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
@@ -9,7 +10,7 @@ import java.util.UUID;
 
 public class PlayerListArgumentResolver implements AbstractArgumentResolver<List<Player>>
 {
-    private List<Player> resolveDefault(String arg)
+    private List<Player> resolveDefault(final CommandSender sender, final String arg)
     {
         final String[] candidates = arg.split(",");
         final List<Player> results = new ArrayList<>();
@@ -32,7 +33,7 @@ public class PlayerListArgumentResolver implements AbstractArgumentResolver<List
                 player = Bukkit.getPlayer(candidate);
             }
 
-            if (player == null)
+            if (player == null || !PlayerVisibilityPolicy.canExpose(sender, player, false))
                 throw new ArgumentResolutionException("Player not found: " + candidate);
 
             results.add(player);
@@ -54,16 +55,29 @@ public class PlayerListArgumentResolver implements AbstractArgumentResolver<List
     @Override
     public List<String> suggestions()
     {
-        return Bukkit.getOnlinePlayers().stream()
-                     .map(Player::getName)
-                     .sorted()
-                     .toList();
+        return suggestions(Bukkit.getConsoleSender());
+    }
+
+    @Override
+    public List<String> suggestions(final CommandSender sender)
+    {
+        return Bukkit.getOnlinePlayers()
+                .stream()
+                .filter(player -> PlayerVisibilityPolicy.canExpose(sender, player, false))
+                .map(Player::getName)
+                .sorted()
+                .toList();
     }
 
     @Override
     public List<Player> resolve(String arg, String strategy)
     {
-        return resolveDefault(arg);
+        return resolveDefault(Bukkit.getConsoleSender(), arg);
     }
-    
+
+    @Override
+    public List<Player> resolve(final CommandSender sender, final String arg, final String strategy)
+    {
+        return resolveDefault(sender, arg);
+    }
 }

@@ -31,6 +31,7 @@ public class Command_radar extends FCommand
                                                  .getPlayers()
                                                  .stream()
                                                  .filter(player -> !player.equals(sender))
+                                                 .filter(sender::canSee)
                                                  .filter(player -> player.getLocation().distance(center) <= radius)
                                                  .sorted(Comparator.comparingDouble(player -> player.getLocation().distance(center)))
                                                  .toList();

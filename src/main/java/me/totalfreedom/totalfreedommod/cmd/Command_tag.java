@@ -150,7 +150,7 @@ public class Command_tag extends FCommand
     @Completer(value = "clear", position = 0)
     public List<String> completeClearTarget(CommandSender sender, String partial)
     {
-        return NameCandidates.online(server(), partial);
+        return NameCandidates.online(server(), sender, partial);
     }
 
     @Callback

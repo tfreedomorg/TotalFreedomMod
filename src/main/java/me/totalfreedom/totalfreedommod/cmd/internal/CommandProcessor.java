@@ -27,6 +27,7 @@ import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Subcommand;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Switch;
 import me.totalfreedom.totalfreedommod.cmd.resolver.AbstractArgumentResolver;
 import me.totalfreedom.totalfreedommod.cmd.resolver.ArgumentResolutionException;
+import me.totalfreedom.totalfreedommod.cmd.resolver.PlayerVisibilityPolicy;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -46,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
@@ -448,7 +450,7 @@ public final class CommandProcessor
     {
         return (ctx, builder) ->
         {
-            CommandSender sender = ctx.getSource().getSender();
+            CommandSender sender = PermissionGate.resolveSender(ctx.getSource().getSender());
             if (!completerMethod.getParameterTypes()[0].isInstance(sender))
             {
                 return builder.buildFuture();
@@ -481,7 +483,7 @@ public final class CommandProcessor
      * @param declaredType the parameter's type, consulted only for the enum fallback
      */
     private SuggestionProvider<CommandSourceStack> buildCandidateSuggestionProvider(
-        Supplier<List<String>> candidates, Class<?> declaredType)
+        Function<CommandSender, List<String>> candidates, Class<?> declaredType)
     {
         List<String> enumNames = declaredType != null && declaredType.isEnum()
                 ? Arrays.stream(declaredType.getEnumConstants())
@@ -490,7 +492,8 @@ public final class CommandProcessor
                 : List.of();
 
         return (ctx, builder) -> {
-            List<String> values = candidates != null ? candidates.get() : List.of();
+            final CommandSender sender = PermissionGate.resolveSender(ctx.getSource().getSender());
+            List<String> values = candidates != null ? candidates.apply(sender) : List.of();
             if (values.isEmpty())
             {
                 values = enumNames;
@@ -512,12 +515,12 @@ public final class CommandProcessor
      *
      * @return a candidate supplier, or {@code null} when the parameter has no custom resolver
      */
-    private static Supplier<List<String>> candidatesFor(Parameter param)
+    private static Function<CommandSender, List<String>> candidatesFor(Parameter param)
     {
         Supplier<List<String>> byType = ResolverRegistry.suggestionsFor(param.getType());
         if (byType != null)
         {
-            return byType;
+            return sender -> byType.get();
         }
 
         if (!isCustomResolved(param))
@@ -538,10 +541,12 @@ public final class CommandProcessor
     private SuggestionProvider<CommandSourceStack> buildPlayerSuggestionProvider()
     {
         return (ctx, builder) -> {
+            final CommandSender sender = PermissionGate.resolveSender(ctx.getSource().getSender());
             // Single-target selectors only: these nodes are built with ArgumentTypes.player(), not
             // players(), so @a is rejected at resolve time and must not be offered.
             List<String> names = new ArrayList<>(List.of("@p", "@r", "@s"));
             plugin.getServer().getOnlinePlayers().stream()
+                    .filter(player -> PlayerVisibilityPolicy.canExpose(sender, player, false))
                     .map(Player::getName)
                     .sorted()
                     .forEach(names::add);
@@ -694,7 +699,7 @@ public final class CommandProcessor
                         }
 
                         Method completer = completers.get(new CompleterKey(subPath, position));
-                        Supplier<List<String>> candidates = candidatesFor(param);
+                        Function<CommandSender, List<String>> candidates = candidatesFor(param);
                         if (completer != null) {
                             arg.suggests(buildSuggestionProvider(completer));
                         } else if (candidates != null || type.isEnum()) {
@@ -785,7 +790,7 @@ public final class CommandProcessor
                         Resolve ann = params[i].getAnnotation(Resolve.class);
                         String strategy = ann != null ? ann.strategy() : "";
                         String raw = ctx.getArgument(paramName, String.class);
-                        invokeArgs[i] = resolver.resolve(raw, strategy);
+                        invokeArgs[i] = resolver.resolve(sender, raw, strategy);
                     }
                     else if (ArgumentResolver.isPlayerArgType(type))
                     {
@@ -796,7 +801,13 @@ public final class CommandProcessor
                             sender.sendMessage(Component.text("Player not found.", NamedTextColor.GRAY));
                             return 0;
                         }
-                        invokeArgs[i] = players.get(0);
+                        final Player selectedPlayer = players.get(0);
+                        if (!PlayerVisibilityPolicy.canExpose(sender, selectedPlayer, false))
+                        {
+                            sender.sendMessage(Component.text("Player not found.", NamedTextColor.GRAY));
+                            return 0;
+                        }
+                        invokeArgs[i] = selectedPlayer;
                     }
                     else if (type.isEnum())
                     {

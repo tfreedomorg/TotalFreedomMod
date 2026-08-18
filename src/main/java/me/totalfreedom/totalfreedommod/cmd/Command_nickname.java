@@ -11,7 +11,9 @@ import org.bukkit.entity.Player;
 
 import me.totalfreedom.totalfreedommod.PluginProvider;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.player.PlayerData;
+import me.totalfreedom.totalfreedommod.player.PlayerIdentityNormalizer;
 import me.totalfreedom.totalfreedommod.rank.CustomRank;
 import me.totalfreedom.totalfreedommod.rank.Rank;
 import me.totalfreedom.totalfreedommod.util.AdventureUtil;
@@ -94,6 +96,12 @@ public class Command_nickname extends FCommand
         if (!isAdmin && containsForbidden(rawNickname))
         {
             msg(sender, "<gray>That tag contains a forbidden word.");
+            return;
+        }
+
+        if (conflictsWithProtectedIdentity(player, plainNickname))
+        {
+            msg(sender, "<gray>That nickname is already used by another player or protected staff account.");
             return;
         }
 
@@ -256,6 +264,40 @@ public class Command_nickname extends FCommand
                              .map(this::cleanComponent)
                              .toList()
                     );
+    }
+
+    private boolean conflictsWithProtectedIdentity(final Player player, final String nickname)
+    {
+        final String candidate = comparableIdentity(nickname);
+        final boolean onlineCollision = server().getOnlinePlayers()
+                .stream()
+                .filter(other -> !other.getUniqueId().equals(player.getUniqueId()))
+                .flatMap(other -> Stream.of(
+                        other.getName(),
+                        AdventureUtil.componentToPlainText(other.displayName())))
+                .map(this::comparableIdentity)
+                .anyMatch(candidate::equals);
+        if (onlineCollision)
+            return true;
+
+        // Protected staff may style their own canonical account name. Other players and other
+        // protected identities remain unavailable as nicknames.
+        if (candidate.equals(comparableIdentity(player.getName())))
+            return false;
+
+        return Stream.concat(
+                        Stream.concat(
+                                ConfigEntry.SERVER_OWNERS.getStringList().stream(),
+                                FUtil.DEVELOPERS.stream()),
+                        plugin().al.getActiveAdmins().stream().map(admin -> admin.getName()))
+                .filter(java.util.Objects::nonNull)
+                .map(this::comparableIdentity)
+                .anyMatch(candidate::equals);
+    }
+
+    private String comparableIdentity(final String identity)
+    {
+        return PlayerIdentityNormalizer.comparable(identity);
     }
 
     public static boolean containsForbidden(String plainText)

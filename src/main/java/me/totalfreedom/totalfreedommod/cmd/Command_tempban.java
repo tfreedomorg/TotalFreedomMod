@@ -76,7 +76,7 @@ public class Command_tempban extends FCommand
     @Completer(value = "", position = 0)
     public List<String> completeTarget(CommandSender sender, String partial)
     {
-        return NameCandidates.online(server(), partial);
+        return NameCandidates.online(server(), sender, partial);
     }
 
     /**

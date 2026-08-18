@@ -60,6 +60,9 @@ public class Command_list extends FCommand
 
         for (Player player : server().getOnlinePlayers())
         {
+            if (sender instanceof Player viewer && !viewer.canSee(player))
+                continue;
+
             if (filter == ListFilter.PLAYERS)
             {
                 if (plugin().al.isAdmin(player))
@@ -103,7 +106,7 @@ public class Command_list extends FCommand
         msg(
             sender,
             "<gray>Online: <green><online><dark_gray>/<green><max>",
-            Formatter.number("online", server().getOnlinePlayers().size()),
+            Formatter.number("online", visiblePlayerCount(sender)),
             Formatter.number("max", server().getMaxPlayers())
         );
 
@@ -148,6 +151,17 @@ public class Command_list extends FCommand
             MessageUtils.component("title", titleComponent),
             MessageUtils.joinedComponents("names", segments)
         );
+    }
+
+    private long visiblePlayerCount(final CommandSender sender)
+    {
+        if (!(sender instanceof Player viewer))
+            return server().getOnlinePlayers().size();
+
+        return server().getOnlinePlayers()
+                .stream()
+                .filter(viewer::canSee)
+                .count();
     }
 
     private String getHeader(ListFilter filter)

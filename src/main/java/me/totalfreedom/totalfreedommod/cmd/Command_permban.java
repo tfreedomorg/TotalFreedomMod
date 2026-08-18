@@ -44,7 +44,7 @@ public class Command_permban extends FCommand
     @Completer(value = "add", position = 0)
     public List<String> completeAdd(CommandSender sender, String partial)
     {
-        return NameCandidates.online(server(), partial);
+        return NameCandidates.online(server(), sender, partial);
     }
 
     @Completer(value = "remove", position = 0)

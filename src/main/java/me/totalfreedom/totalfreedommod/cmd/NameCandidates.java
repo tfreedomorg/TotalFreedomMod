@@ -5,10 +5,12 @@ import java.util.List;
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import me.totalfreedom.totalfreedommod.banning.Ban;
 import me.totalfreedom.totalfreedommod.cmd.internal.FuzzyMatch;
+import me.totalfreedom.totalfreedommod.cmd.resolver.PlayerVisibilityPolicy;
 
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Server;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 /**
@@ -27,11 +29,15 @@ final class NameCandidates
     {
     }
 
-    static List<String> online(Server server, String partial)
+    static List<String> online(
+            final Server server,
+            final CommandSender sender,
+            final String partial)
     {
         return FuzzyMatch.filter(
                 server.getOnlinePlayers()
                       .stream()
+                      .filter(player -> PlayerVisibilityPolicy.canExpose(sender, player, false))
                       .map(Player::getName)
                       .sorted()
                       .toList(),
@@ -61,11 +67,12 @@ final class NameCandidates
                 partial);
     }
 
-    static List<String> whitelisted(String partial)
+    static List<String> whitelisted(final CommandSender sender, final String partial)
     {
         return FuzzyMatch.filter(
                 Bukkit.getWhitelistedPlayers()
                       .stream()
+                      .filter(player -> PlayerVisibilityPolicy.canExpose(sender, player, false))
                       .map(OfflinePlayer::getName)
                       .filter(name -> name != null)
                       .sorted()

@@ -63,6 +63,7 @@ non_op:
     - tfm.player.spawn
     - tfm.player.list
     - tfm.player.joinmessages
+    - tfm.player.block
     - tfm.world.flatlands
     - tfm.server.info
 
@@ -106,6 +107,8 @@ super_admin:
     - tfm.admin.ban
     - tfm.admin.baninfo
     - tfm.admin.banlist
+    - tfm.admin.block.inspect
+    - tfm.admin.block.modify
     - tfm.admin.blockcmd
     - tfm.admin.blockredstone
     - tfm.admin.cage

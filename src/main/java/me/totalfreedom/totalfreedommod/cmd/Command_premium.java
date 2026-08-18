@@ -29,7 +29,7 @@ public class Command_premium extends FCommand
     @Completer(value = "", position = 0)
     public List<String> completeUsername(CommandSender sender, String partial)
     {
-        return NameCandidates.online(server(), partial);
+        return NameCandidates.online(server(), sender, partial);
     }
 
     @Callback

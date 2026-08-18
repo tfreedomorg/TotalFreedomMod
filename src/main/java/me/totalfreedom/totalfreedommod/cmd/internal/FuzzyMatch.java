@@ -3,6 +3,7 @@ package me.totalfreedom.totalfreedommod.cmd.internal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.PriorityQueue;
 
 public class FuzzyMatch
 {
@@ -30,6 +31,45 @@ public class FuzzyMatch
         scored.sort(Comparator.comparingInt(Scored::score));
 
         return scored.stream().map(Scored::candidate).toList();
+    }
+
+    /**
+     * Returns only the strongest matches while keeping work and retained results bounded for
+     * candidate sources that may intentionally be unlimited.
+     */
+    public static List<String> filter(List<String> candidates, String query, int limit)
+    {
+        if (limit < 1)
+            return List.of();
+        if (query.isEmpty())
+            return candidates.stream().limit(limit).toList();
+
+        final Comparator<Scored> strongestFirst = Comparator
+                .comparingInt(Scored::score)
+                .thenComparing(Scored::candidate, String.CASE_INSENSITIVE_ORDER);
+        final PriorityQueue<Scored> strongest = new PriorityQueue<>(limit, strongestFirst.reversed());
+        for (final String candidate : candidates)
+        {
+            final Integer candidateScore = score(candidate, query);
+            if (candidateScore == null)
+                continue;
+
+            final Scored scoredCandidate = new Scored(candidate, candidateScore);
+            if (strongest.size() < limit)
+            {
+                strongest.add(scoredCandidate);
+            }
+            else if (strongestFirst.compare(scoredCandidate, strongest.peek()) < 0)
+            {
+                strongest.poll();
+                strongest.add(scoredCandidate);
+            }
+        }
+
+        return strongest.stream()
+                .sorted(strongestFirst)
+                .map(Scored::candidate)
+                .toList();
     }
 
     private static Integer score(String candidate, String query)

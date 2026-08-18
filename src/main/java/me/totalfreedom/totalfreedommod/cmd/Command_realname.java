@@ -4,6 +4,7 @@ import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Callback;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Command;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Greedy;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Permission;
+import me.totalfreedom.totalfreedommod.cmd.resolver.PlayerVisibilityPolicy;
 import me.totalfreedom.totalfreedommod.player.PlayerData;
 import me.totalfreedom.totalfreedommod.rank.Rank;
 import me.totalfreedom.totalfreedommod.util.AdventureUtil;
@@ -20,6 +21,7 @@ public class Command_realname extends FCommand
     {
         final boolean foundOne = server().getOnlinePlayers()
                 .stream()
+                .filter(player -> PlayerVisibilityPolicy.canExpose(sender, player, false))
                 .reduce(false, (found, player) ->
                     {
                         final PlayerData data = plugin().pl.getData(player);
