@@ -687,13 +687,13 @@ discord:
     reload: '***TotalFreedomMod has been reloaded.***'
     say: '{message}'
     ban: |-
-      ***{sender} - Banning {player}***
+      ***{sender} - Banning {player} for {time}***
       Reason: {reason}
     kick: |-
       ***{sender} - Kicking {player}***
       Reason: {reason}
     tban: |-
-      ***{sender} - Tempbanning {player} for 5 minutes***
+      ***{sender} - Tempbanning {player} for {time}***
       Reason: {reason}
     warn: |-
       ***{sender} - Warning {player}***

@@ -30,9 +30,15 @@ public class Module_players extends HTTPDModule
         final JsonArray senioradmins = new JsonArray();
         final JsonArray developers = new JsonArray();
 
-        // All online players
+        // All online players, excluding anyone vanished - this endpoint has no authenticated
+        // viewer to check a bypass permission against.
         for (Player player : Bukkit.getOnlinePlayers())
         {
+            if (plugin.vs.isVanished(player))
+            {
+                continue;
+            }
+
             players.add(player.getName());
             if (plugin.al.isAdmin(player) && !plugin.al.isAdminImpostor(player))
             {

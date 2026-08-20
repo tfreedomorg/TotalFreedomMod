@@ -49,10 +49,7 @@ public class Command_invis extends FCommand
                                                                     player.displayName()
                                                                           .colorIfAbsent(NamedTextColor.WHITE)
                                                                           .hoverEvent(HoverEvent.showText(Component.text(player.getName())))
-                                                                          .clickEvent(ClickEvent.clickEvent(
-                                                                                                            ClickEvent.Action.RUN_COMMAND, 
-                                                                                                            ClickEvent.Payload.string("/tp" + (plugin().esb.isEssentialsEnabled() ? "o " : " ") + player.getName())
-                                                                                                        ))
+                                                                          .clickEvent(ClickEvent.runCommand("/tp" + (plugin().esb.isEssentialsEnabled() ? "o " : " ") + player.getName()))
                                                     )
                                                 .toList();
 

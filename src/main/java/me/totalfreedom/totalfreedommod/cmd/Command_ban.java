@@ -11,7 +11,6 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
 import me.totalfreedom.totalfreedommod.banning.Ban;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.player.PlayerData;
 import me.totalfreedom.totalfreedommod.util.FUtil;
 
@@ -84,7 +83,7 @@ public class Command_ban extends FCommand
                     Formatter.booleanChoice("include_reason", reason != null && !reason.isEmpty()),
                     Placeholder.unparsed("reason", reason != null ? reason : ""));
 
-            plugin().db.sendActionMessage(sender.getName(), name, reason, ConfigEntry.DISCORD_PLAYER_BAN_MESSAGE);
+            plugin().db.sendBanMessage(sender.getName(), name, reason);
         }
 
         if (!noRollback)

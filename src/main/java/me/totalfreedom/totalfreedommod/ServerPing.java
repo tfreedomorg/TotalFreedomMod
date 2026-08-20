@@ -33,6 +33,8 @@ public class ServerPing extends FreedomService
     @EventHandler(priority = EventPriority.HIGH)
     public void onServerPing(ServerListPingEvent event)
     {
+        plugin.vs.filterServerPing(event);
+
         final String ip = event.getAddress().getHostAddress().trim();
 
         if (plugin.bm.isIpBanned(ip))

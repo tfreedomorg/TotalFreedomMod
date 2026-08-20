@@ -13,6 +13,8 @@ import org.bukkit.plugin.Plugin;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.audience.ForwardingAudience;
 import net.kyori.adventure.audience.MessageType;
+import net.kyori.adventure.chat.ChatType;
+import net.kyori.adventure.chat.SignedMessage;
 import net.kyori.adventure.identity.Identity;
 import net.kyori.adventure.text.Component;
 
@@ -60,16 +62,22 @@ public final class AttributedConsoleSender implements CommandSender, ForwardingA
         return delegate;
     }
 
-    /**
-     * Both {@link CommandSender} and {@link ForwardingAudience.Single} supply a default for this
-     * method, so it has to be disambiguated explicitly. Everything else on {@link Audience} routes
-     * through {@link #audience()}.
-     */
     @Override
-    @SuppressWarnings("deprecation")
-    public void sendMessage(final Identity source, final Component message, final MessageType type)
+    public void sendMessage(final Component message)
     {
-        delegate.sendMessage(source, message, type);
+        delegate.sendMessage(message);
+    }
+
+    @Override
+    public void sendMessage(final Component message, final ChatType.Bound boundChatType)
+    {
+        delegate.sendMessage(message, boundChatType);
+    }
+
+    @Override
+    public void sendMessage(final SignedMessage signedMessage, final ChatType.Bound boundChatType)
+    {
+        delegate.sendMessage(signedMessage, boundChatType);
     }
 
     @Override

@@ -98,6 +98,8 @@
       "tfm.admin.gchat",
       "tfm.admin.gcmd",
       "tfm.admin.invis",
+      "tfm.admin.vanish",
+      "tfm.vanish.see",
       "tfm.admin.kick",
       "tfm.admin.mute",
       "tfm.admin.myadmin",
@@ -135,7 +137,8 @@
       "tfm.manage.*",
       "tfm.admin.ban.perm",
       "tfm.admin.banlist.purge",
-      "tfm.ssh.totp"
+      "tfm.ssh.totp",
+      "tfm.vanish.bypass"
     ]
   }
 }

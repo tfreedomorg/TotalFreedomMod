@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
@@ -126,6 +127,7 @@ public final class CommandProcessor
 
     private static final Map<String, CommandProcessor> commands = new ConcurrentHashMap<>();
     private static final AtomicBoolean hooked = new AtomicBoolean(false);
+    private static final Set<String> claimed = ConcurrentHashMap.newKeySet();
 
     /**
      * Creates a processor for {@code command}; the first call also registers the
@@ -148,13 +150,17 @@ public final class CommandProcessor
         if (hooked.compareAndSet(false, true))
         {
             plugin.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event ->
-                commands.values().forEach(p -> p.registerWith(event.registrar())));
+            {
+                claimed.clear();
+                commands.values().forEach(p -> p.registerWith(event.registrar()));
+            });
         }
     }
 
     public static void reset()
     {
         commands.clear();
+        claimed.clear();
     }
 
     private final FCommand command;
@@ -181,12 +187,60 @@ public final class CommandProcessor
     {
         try
         {
-            registrar.register(buildNode().build(), description, aliases);
+            // Build node before evicting; a failure here must not leave the label evicted and unregistered
+            var node = buildNode().build();
+
+            evictConflicts(registrar);
+
+            Set<String> registered = registrar.register(node, description, aliases);
+
+            if (!registered.contains(commandName))
+            {
+                FLog.severe(String.format("/%s was rejected by the command registrar; another plugin already owns that label.",
+                    commandName));
+                return;
+            }
+
+            claimed.add(commandName);
+            aliases.stream().filter(registered::contains).forEach(claimed::add);
+
+            List<String> lost = aliases.stream().filter(alias -> !registered.contains(alias)).toList();
+            if (!lost.isEmpty())
+            {
+                FLog.warning(String.format("/%s registered, but these aliases are owned by other plugins: %s",
+                    commandName, String.join(", ", lost)));
+            }
+
             FLog.info(String.format("Registered /%s (aliases: %s)", commandName, String.join(", ", aliases)));
         }
         catch (Exception e)
         {
             FLog.severe(String.format("Failed to register /%s: \n%s", commandName, ExceptionUtils.getRootCauseMessage(e)));
+        }
+    }
+
+    private void evictConflicts(Commands registrar)
+    {
+        evict(registrar, commandName);
+        aliases.forEach(alias -> evict(registrar, alias));
+    }
+
+    private void evict(Commands registrar, String label)
+    {
+        if (claimed.contains(label))
+            return;
+
+        String owner = RootNodeEvictor.owner(registrar, label);
+        if (owner == null)
+            return;
+
+        if (RootNodeEvictor.evict(registrar, label))
+        {
+            FLog.debug(String.format("Evicted /%s from the dispatcher root (was %s)", label, owner));
+        }
+        else
+        {
+            FLog.warning(String.format("Could not evict /%s from the dispatcher root (owned by %s)", label, owner));
         }
     }
 

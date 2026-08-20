@@ -55,16 +55,16 @@ dependencies {
     compileOnly 'net.milkbowl.vault:VaultUnlockedAPI:2.16'
     
     // paper
-    compileOnly 'io.papermc.paper:paper-api:26.1.2.build.61-stable'
-    compileOnly 'net.kyori:adventure-text-serializer-ansi:4.17.0'
+    compileOnly 'io.papermc.paper:paper-api:26.2.build.111-stable'
+    compileOnly 'net.kyori:adventure-text-serializer-ansi:5.2.0'
 
     // plugins
-    compileOnly('com.sk89q.worldedit:worldedit-bukkit:7.3.10') { transitive = false }
-    compileOnly('com.sk89q.worldedit:worldedit-core:7.3.10') { transitive = false }
-    compileOnly "net.coreprotect:coreprotect:22.4"
+    compileOnly('com.sk89q.worldedit:worldedit-bukkit:7.4.5') { transitive = false }
+    compileOnly('com.sk89q.worldedit:worldedit-core:7.4.5') { transitive = false }
+    compileOnly "net.coreprotect:coreprotect:24.0"
 
     // packets
-    compileOnly 'com.github.retrooper:packetevents-spigot:2.12.1'
+    compileOnly 'com.github.retrooper:packetevents-spigot:2.13.0'
 
     // discord stuff
     compileOnly 'com.discord4j:discord4j-core:3.3.2'
@@ -87,7 +87,7 @@ dependencies {
 // ... is this really necessary???
 configurations.all {
     resolutionStrategy {
-        force 'io.papermc.paper:paper-api:26.1.2.build.61-stable'
+        force 'io.papermc.paper:paper-api:26.2.build.111-stable'
     }
 }
 

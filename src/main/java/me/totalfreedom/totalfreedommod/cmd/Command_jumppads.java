@@ -11,12 +11,12 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
 import me.totalfreedom.totalfreedommod.fun.Jumppads;
 
-@Permission(source = SourceType.BOTH, permission = "tfm.fun.jumppads")
-@Command(name = "jumppads", description = "Manage jumppads", usage = "/<command> <<on | off> | info | mode <mode> | strength <strength>>", aliases = "launchpads,jp")
+@Permission(level = Rank.SUPER_ADMIN, source = SourceType.BOTH, permission = "tfm.fun.jumppads")
+@Command(name = "jumppads", description = "Manage jumppads", usage = "/<command> <<on | off> | info | mode <mode> | strength <strength>>", aliases = {"launchpads", "jp"})
 public class Command_jumppads extends FCommand
 {
     @Callback
-    public void setEnabled(CommandSender sender, Boolean status)
+    public void setEnabled(CommandSender sender, @Resolve("Boolean") boolean status)
     {
         adminAction(sender, "<aqua><choice:Enabling:Disabling> Jumppads", Formatter.booleanChoice("choice", status));
         plugin().jp.setMode(status ? Jumppads.JumpPadMode.NORMAL : Jumppads.JumpPadMode.OFF);
@@ -39,8 +39,8 @@ public class Command_jumppads extends FCommand
         msg(
             sender, 
             """
-                <gray>The current Jumppads mode is <white><mode><gray>.
-                <gray>Possible modes: <modes>
+            <gray>The current Jumppads mode is <white><mode><gray>.
+            <gray>Possible modes: <modes>
             """,
             Placeholder.unparsed("mode", plugin().jp.getMode().name()),
             MessageUtils.joinedList("modes", Stream.of(Jumppads.JumpPadMode.values())
@@ -61,7 +61,7 @@ public class Command_jumppads extends FCommand
 
         adminAction(
                     sender, 
-                    "<green><status:Setting:Enabling and setting> Jumppads to <mode>.", 
+                    "<aqua><status:Setting:Enabling and setting> Jumppads to <mode>.", 
                     Formatter.booleanChoice("status", plugin().jp.getMode().isOn()), 
                     Placeholder.unparsed("mode", mode.getLabel()));
 
@@ -77,9 +77,9 @@ public class Command_jumppads extends FCommand
         msg(
             sender,
             """
-                <blue>Jumppads: <jump:Enabled:Disabled>
-                <blue>Sideways: <sideways:Enabled:Disabled>
-                <blue>Strength: <strength>
+            <blue>Jumppads: <jump:Enabled:Disabled>
+            <blue>Sideways: <sideways:Enabled:Disabled>
+            <blue>Strength: <strength>
             """,
             Formatter.booleanChoice("jump", mode.isOn()),
             Formatter.booleanChoice("sideways", mode == Jumppads.JumpPadMode.NORMAL_AND_SIDEWAYS),

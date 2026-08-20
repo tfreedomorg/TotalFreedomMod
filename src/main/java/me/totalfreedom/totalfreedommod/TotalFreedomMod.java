@@ -41,6 +41,7 @@ import me.totalfreedom.totalfreedommod.rank.RankManager;
 import me.totalfreedom.totalfreedommod.sql.FreedomDatabase;
 import me.totalfreedom.totalfreedommod.ssh.SshDaemon;
 import me.totalfreedom.totalfreedommod.tablist.TabList;
+import me.totalfreedom.totalfreedommod.vanish.VanishService;
 import me.totalfreedom.totalfreedommod.title.TitleManager;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FUtil;
@@ -120,6 +121,7 @@ public class TotalFreedomMod extends JavaPlugin
     public SshDaemon sd; // SshDaemon - SSH server for remote console access
     public DiscordBridge db; // DiscordBridge - Built-in Discord chat/console relay
     public TabList tl; // TabList - Customizable tab list header, footer, and player names
+    public VanishService vs; // VanishService - Single source of truth for vanish state and visibility
     //
     // Bridges
     public ServiceManager<TotalFreedomMod> bridges;
@@ -272,6 +274,7 @@ public class TotalFreedomMod extends JavaPlugin
         db = services.registerService(DiscordBridge.class);
 
         tl = services.registerService(TabList.class);
+        vs = services.registerService(VanishService.class); // must register after jlm; see VanishService#onPlayerQuit
         services.start();
 
         // Start bridges

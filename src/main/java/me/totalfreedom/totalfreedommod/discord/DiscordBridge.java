@@ -323,9 +323,13 @@ public class DiscordBridge extends FreedomService
         {
             final Player player = event.getPlayer();
             Component rendered;
+
             try
             {
-                rendered = event.renderer().render(player, player.name(), event.message(), Audience.empty());
+                rendered = event.renderer().render(player, 
+                                                   player.displayName(), // there has to be a way to display both without it being spammy 
+                                                   event.message(), 
+                                                   Audience.empty());
             }
             catch (Exception ex)
             {
@@ -348,6 +352,24 @@ public class DiscordBridge extends FreedomService
         getConfiguredMessage(configEntry).ifPresent(template -> sendToPublicRelay(template.replace("{sender}", Optional.ofNullable(senderName).orElse("CONSOLE"))
                                                                                           .replace("{player}", Optional.ofNullable(playerName).orElse("null"))
                                                                                           .replace("{reason}", configured(reason).orElse("No reason provided."))));
+    }
+    
+    public void sendBanMessage(String senderName, String playerName, String reason)
+    {
+        getConfiguredMessage(ConfigEntry.DISCORD_PLAYER_BAN_MESSAGE).ifPresent(template -> 
+                sendToPublicRelay(template.replace("{sender}", Optional.ofNullable(senderName).orElse("CONSOLE"))
+                                          .replace("{player}", Optional.ofNullable(playerName).orElse("null"))
+                                          .replace("{reason}", configured(reason).orElse("No reason provided"))
+                                          .replace("{time}", "24 hours")));
+    }
+    
+    public void sendTBanMessage(String senderName, String playerName, String reason, String time)
+    {
+        getConfiguredMessage(ConfigEntry.DISCORD_PLAYER_TBAN_MESSAGE).ifPresent(template -> 
+                sendToPublicRelay(template.replace("{sender}", Optional.ofNullable(senderName).orElse("CONSOLE"))
+                                          .replace("{player}", Optional.ofNullable(playerName).orElse("null"))
+                                          .replace("{reason}", configured(reason).orElse("No reason provided"))
+                                          .replace("{time}", Optional.ofNullable("{time}").orElse("5 minutes"))));
     }
 
     public void relayAdminchatMessage(CommandSender sender, Component tag, Component message)

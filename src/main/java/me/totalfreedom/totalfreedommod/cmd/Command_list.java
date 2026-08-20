@@ -57,8 +57,9 @@ public class Command_list extends FCommand
         final List<Player> admList = new ArrayList<>();
         final List<Player> players = new ArrayList<>();
         final List<Player> filteredPlayers = new ArrayList<>();
+        final List<Player> visiblePlayers = plugin().vs.visiblePlayersFor(sender);
 
-        for (Player player : server().getOnlinePlayers())
+        for (Player player : visiblePlayers)
         {
             if (filter == ListFilter.PLAYERS)
             {
@@ -103,7 +104,7 @@ public class Command_list extends FCommand
         msg(
             sender,
             "<gray>Online: <green><online><dark_gray>/<green><max>",
-            Formatter.number("online", server().getOnlinePlayers().size()),
+            Formatter.number("online", visiblePlayers.size()),
             Formatter.number("max", server().getMaxPlayers())
         );
 

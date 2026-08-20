@@ -40,6 +40,7 @@ final class RawNbtInspector
     private static final Object BLOCK_ENTITY_DATA_TYPE;
     private static final Object ENTITY_DATA_TYPE;
     private static final Object BUCKET_ENTITY_DATA_TYPE;
+    private static final Class<?> CUSTOM_DATA_CLASS;
     private static final Field CUSTOM_DATA_TAG_FIELD;
     private static final Method TYPED_ENTITY_TAG_METHOD;
     private static final Field TYPED_ENTITY_TAG_FIELD;
@@ -57,6 +58,7 @@ final class RawNbtInspector
         Object blockEntityDataType = null;
         Object entityDataType = null;
         Object bucketEntityDataType = null;
+        Class<?> customDataClass = null;
         Field customDataTagField = null;
         Method typedEntityTagMethod = null;
         Field typedEntityTagField = null;
@@ -92,8 +94,8 @@ final class RawNbtInspector
             entityDataType = dataComponents.getField("ENTITY_DATA").get(null);
             bucketEntityDataType = dataComponents.getField("BUCKET_ENTITY_DATA").get(null);
 
-            Class<?> customData = Class.forName("net.minecraft.world.item.component.CustomData");
-            for (Field f : customData.getDeclaredFields())
+            customDataClass = Class.forName("net.minecraft.world.item.component.CustomData");
+            for (Field f : customDataClass.getDeclaredFields())
             {
                 if (f.getType().getName().equals(COMPOUND_TAG))
                 {
@@ -154,6 +156,7 @@ final class RawNbtInspector
         BLOCK_ENTITY_DATA_TYPE = blockEntityDataType;
         ENTITY_DATA_TYPE = entityDataType;
         BUCKET_ENTITY_DATA_TYPE = bucketEntityDataType;
+        CUSTOM_DATA_CLASS = customDataClass;
         CUSTOM_DATA_TAG_FIELD = customDataTagField;
         TYPED_ENTITY_TAG_METHOD = typedEntityTagMethod;
         TYPED_ENTITY_TAG_FIELD = typedEntityTagField;
@@ -345,6 +348,12 @@ final class RawNbtInspector
         if (typedEntityData == null)
         {
             return null;
+        }
+        // Need this so every fish bucket isn't UNINSPECTABLE_NBT; every entity-bucket item carries
+        // an empty CustomData, which the TypedEntityData accessor throws on
+        if (CUSTOM_DATA_CLASS != null && CUSTOM_DATA_CLASS.isInstance(typedEntityData))
+        {
+            return CUSTOM_DATA_TAG_FIELD != null ? CUSTOM_DATA_TAG_FIELD.get(typedEntityData) : null;
         }
         if (TYPED_ENTITY_TAG_METHOD != null)
         {
