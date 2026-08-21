@@ -29,14 +29,11 @@
     "environment": "normal",
     "generateStructures": false,
     "keepSpawnLoaded": false,
-    "weatherDisabled": true,
-    "blocking": {
-      "spawners": false,
-      "spawnerPlace": false,
-      "portalCreate": false,
-      "pistons": false,
-      "entitySpamMax": 750
+    "access": {
+      "permission": "tfm.world.adminworld"
     },
+    "roExempt": true,
+    "weatherDisabled": true,
     "vanilla": {
       "surface": false,
       "caves": false,

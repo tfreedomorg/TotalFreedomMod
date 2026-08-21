@@ -946,12 +946,48 @@ public final class ProfileParser
         final Optional<Boolean> generateStructures = requireBoolean(node.get(), "generateStructures", path, errors);
         final Optional<Boolean> keepSpawnLoaded = requireBoolean(node.get(), "keepSpawnLoaded", path, errors);
         final Optional<Long> seed = optionalLong(node.get(), "seed", path, errors);
+        final boolean hasAccess = hasKey(node.get(), "access");
+        final Optional<WorldSettings.Access> access = hasAccess ? parseAccess(node.get(), path, errors) : Optional.empty();
+        final boolean roExempt = optionalBoolean(node.get(), "roExempt", path, errors).orElse(false);
+        final boolean weatherDisabled = optionalBoolean(node.get(), "weatherDisabled", path, errors).orElse(false);
+        final boolean hasBlocking = hasKey(node.get(), "blocking");
+        final Optional<WorldSettings.Blocking> blocking = hasBlocking ? parseBlocking(node.get(), path, errors) : Optional.of(WorldSettings.Blocking.NONE);
         final Optional<WorldSettings.VanillaFlags> vanilla = parseVanillaFlags(node.get(), path, errors);
 
-        if (environment.isEmpty() || generateStructures.isEmpty() || keepSpawnLoaded.isEmpty() || vanilla.isEmpty())
+        if (environment.isEmpty() || generateStructures.isEmpty() || keepSpawnLoaded.isEmpty()
+                                   || (hasAccess && access.isEmpty()) || (hasBlocking && blocking.isEmpty()) || vanilla.isEmpty())
             return Optional.empty();
 
-        return Optional.of(new WorldSettings(environment.get(), generateStructures.get(), keepSpawnLoaded.get(), seed, vanilla.get()));
+        return Optional.of(new WorldSettings(environment.get(), generateStructures.get(), keepSpawnLoaded.get(), seed, access,
+                                             roExempt, weatherDisabled, blocking.get(), vanilla.get()));
+    }
+
+    private static Optional<WorldSettings.Access> parseAccess(final JsonObject worldNode, final String parentPath, final List<ProfileError> errors)
+    {
+        final Optional<JsonObject> node = requireObject(worldNode, "access", parentPath, errors);
+        if (node.isEmpty())
+            return Optional.empty();
+
+        final String path = childPath(parentPath, "access");
+        final Optional<String> permission = requireString(node.get(), "permission", path, errors);
+
+        return permission.map(WorldSettings.Access::new);
+    }
+
+    private static Optional<WorldSettings.Blocking> parseBlocking(final JsonObject worldNode, final String parentPath, final List<ProfileError> errors)
+    {
+        final Optional<JsonObject> node = requireObject(worldNode, "blocking", parentPath, errors);
+        if (node.isEmpty())
+            return Optional.empty();
+
+        final String path = childPath(parentPath, "blocking");
+        final boolean spawners = optionalBoolean(node.get(), "spawners", path, errors).orElse(false);
+        final boolean spawnerPlace = optionalBoolean(node.get(), "spawnerPlace", path, errors).orElse(false);
+        final boolean portalCreate = optionalBoolean(node.get(), "portalCreate", path, errors).orElse(false);
+        final boolean pistons = optionalBoolean(node.get(), "pistons", path, errors).orElse(false);
+        final Optional<Integer> entitySpamMax = optionalInt(node.get(), "entitySpamMax", path, errors);
+
+        return Optional.of(new WorldSettings.Blocking(spawners, spawnerPlace, portalCreate, pistons, entitySpamMax));
     }
 
     private static Optional<WorldSettings.VanillaFlags> parseVanillaFlags(final JsonObject worldNode, final String parentPath,
@@ -1119,6 +1155,11 @@ public final class ProfileParser
     private static Optional<Long> optionalLong(final JsonObject obj, final String key, final String path, final List<ProfileError> errors)
     {
         return presentField(obj, key, path, false, errors).flatMap(e -> asLong(e, key, path, errors));
+    }
+
+    private static Optional<Boolean> optionalBoolean(final JsonObject obj, final String key, final String path, final List<ProfileError> errors)
+    {
+        return presentField(obj, key, path, false, errors).flatMap(e -> asBoolean(e, key, path, errors));
     }
 
     private static Optional<Double> requireDouble(final JsonObject obj, final String key, final String path, final List<ProfileError> errors)

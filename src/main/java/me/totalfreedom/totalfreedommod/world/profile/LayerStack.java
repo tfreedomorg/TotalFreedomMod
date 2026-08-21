@@ -10,7 +10,7 @@ import org.bukkit.block.data.BlockData;
 /**
  * Block layers for a flat world, bottom to top, starting at the world's minY.
  * <p>
- * Takes the same syntax as flatlands.generate_params in the config.
+ * Takes the same syntax the old CleanroomGenerator flat-layer strings used.
  * <p>
  * A class rather than a record because the layers are arrays. A record would hand out its backing
  * arrays through the generated accessors, and anything holding the profile could then rewrite a

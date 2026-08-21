@@ -46,7 +46,6 @@ import me.totalfreedom.totalfreedommod.title.TitleManager;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FUtil;
 import me.totalfreedom.totalfreedommod.util.MethodTimer;
-import me.totalfreedom.totalfreedommod.world.CleanroomChunkGenerator;
 import me.totalfreedom.totalfreedommod.world.GenerationService;
 import me.totalfreedom.totalfreedommod.world.WorldManager;
 
@@ -292,21 +291,6 @@ public class TotalFreedomMod extends JavaPlugin
     @Override
     public ChunkGenerator getDefaultWorldGenerator(String worldName, String id)
     {
-        if ("flatlands".equals(worldName))
-        {
-            String params;
-            if (config != null)
-            {
-                params = ConfigEntry.FLATLANDS_GENERATE_PARAMS.getString();
-            }
-            else
-            {
-                saveDefaultConfig();
-                params = getConfig().getString("flatlands.generate_params", "16|stone|32|dirt|1|grass_block");
-            }
-            return new CleanroomChunkGenerator(params);
-        }
-
         if (gs != null)
         {
             final Optional<ChunkGenerator> generator = gs.generatorFor(worldName);

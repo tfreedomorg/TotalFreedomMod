@@ -32,7 +32,7 @@
       "tfm.player.spawn",
       "tfm.player.list",
       "tfm.player.joinmessages",
-      "tfm.world.flatlands",
+      "tfm.world.tp",
       "tfm.server.info"
     ]
   },
