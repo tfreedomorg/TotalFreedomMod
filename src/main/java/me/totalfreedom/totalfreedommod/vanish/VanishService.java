@@ -1,13 +1,11 @@
 package me.totalfreedom.totalfreedommod.vanish;
 
-import me.totalfreedom.api.FreedomAPI;
-import me.totalfreedom.api.vanish.IVanishService;
-
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import com.destroystokyo.paper.event.server.PaperServerListPingEvent;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -22,9 +20,10 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.server.ServerListPingEvent;
 
-import com.destroystokyo.paper.event.server.PaperServerListPingEvent;
-
+import me.totalfreedom.api.FreedomAPI;
+import me.totalfreedom.api.vanish.IVanishService;
 import me.totalfreedom.totalfreedommod.FreedomService;
+import me.totalfreedom.totalfreedommod.player.PlayerBlockList;
 
 /**
  * Single source of truth for vanish state.
@@ -141,24 +140,14 @@ public class VanishService extends FreedomService implements IVanishService
     /**
      * Pushes {@code subject}'s current vanish state to every online viewer's client.
      */
-    private void applyVisibility(Player subject)
+    private void applyVisibility(final Player subject)
     {
-        for (Player viewer : server.getOnlinePlayers())
-        {
-            if (viewer.getUniqueId().equals(subject.getUniqueId()))
-            {
-                continue;
-            }
-
-            if (canSee(viewer, subject))
-            {
-                viewer.showPlayer(plugin, subject);
-            }
-            else
-            {
-                viewer.hidePlayer(plugin, subject);
-            }
-        }
+        server.getOnlinePlayers()
+                .stream()
+                .filter(viewer -> !viewer.getUniqueId().equals(subject.getUniqueId()))
+                .forEach(viewer -> plugin.services()
+                        .require(PlayerBlockList.class)
+                        .refreshVisibility(viewer, subject));
     }
 
     /**
