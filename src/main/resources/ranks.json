@@ -26,6 +26,7 @@
       "default"
     ],
     "permissions": [
+      "tfm.player.block",
       "tfm.player.localspawn",
       "tfm.player.radar",
       "tfm.player.rank",
