@@ -28,12 +28,14 @@
   "world": {
     "environment": "normal",
     "generateStructures": false,
-    "keepSpawnLoaded": false,
     "access": {
       "permission": "tfm.world.adminworld"
     },
     "roExempt": true,
     "weatherDisabled": true,
+    "blocking": {
+      "monsters": true
+    },
     "vanilla": {
       "surface": false,
       "caves": false,

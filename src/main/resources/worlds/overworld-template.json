@@ -119,7 +119,6 @@
   "world": {
     "environment": "normal",
     "generateStructures": false,
-    "keepSpawnLoaded": false,
     "vanilla": {
       "surface": false,
       "caves": false,

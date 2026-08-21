@@ -246,6 +246,21 @@ public class EventBlocker extends FreedomService
         }
     }
 
+    /** Reads {@code blocking.monsters} live on every natural spawn attempt rather than pushing it onto the world once at creation, so editing a profile takes effect on the very next spawn with nothing to reload. */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onCreatureSpawn(CreatureSpawnEvent event)
+    {
+        if (event.getSpawnReason() != CreatureSpawnEvent.SpawnReason.NATURAL)
+        {
+            return;
+        }
+
+        if (event.getEntity() instanceof Monster && plugin.gs.blocking(event.getEntity().getWorld().getName()).monsters())
+        {
+            event.setCancelled(true);
+        }
+    }
+
     @EventHandler(priority = EventPriority.HIGH)
     public void onPortalCreate(PortalCreateEvent event)
     {

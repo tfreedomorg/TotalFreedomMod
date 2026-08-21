@@ -944,7 +944,6 @@ public final class ProfileParser
         final Optional<World.Environment> environment =
             requireEnum(node.get(), "environment", path, errors, "environment", World.Environment::valueOf);
         final Optional<Boolean> generateStructures = requireBoolean(node.get(), "generateStructures", path, errors);
-        final Optional<Boolean> keepSpawnLoaded = requireBoolean(node.get(), "keepSpawnLoaded", path, errors);
         final Optional<Long> seed = optionalLong(node.get(), "seed", path, errors);
         final boolean hasAccess = hasKey(node.get(), "access");
         final Optional<WorldSettings.Access> access = hasAccess ? parseAccess(node.get(), path, errors) : Optional.empty();
@@ -954,11 +953,11 @@ public final class ProfileParser
         final Optional<WorldSettings.Blocking> blocking = hasBlocking ? parseBlocking(node.get(), path, errors) : Optional.of(WorldSettings.Blocking.NONE);
         final Optional<WorldSettings.VanillaFlags> vanilla = parseVanillaFlags(node.get(), path, errors);
 
-        if (environment.isEmpty() || generateStructures.isEmpty() || keepSpawnLoaded.isEmpty()
+        if (environment.isEmpty() || generateStructures.isEmpty()
                                    || (hasAccess && access.isEmpty()) || (hasBlocking && blocking.isEmpty()) || vanilla.isEmpty())
             return Optional.empty();
 
-        return Optional.of(new WorldSettings(environment.get(), generateStructures.get(), keepSpawnLoaded.get(), seed, access,
+        return Optional.of(new WorldSettings(environment.get(), generateStructures.get(), seed, access,
                                              roExempt, weatherDisabled, blocking.get(), vanilla.get()));
     }
 
@@ -985,9 +984,10 @@ public final class ProfileParser
         final boolean spawnerPlace = optionalBoolean(node.get(), "spawnerPlace", path, errors).orElse(false);
         final boolean portalCreate = optionalBoolean(node.get(), "portalCreate", path, errors).orElse(false);
         final boolean pistons = optionalBoolean(node.get(), "pistons", path, errors).orElse(false);
+        final boolean monsters = optionalBoolean(node.get(), "monsters", path, errors).orElse(false);
         final Optional<Integer> entitySpamMax = optionalInt(node.get(), "entitySpamMax", path, errors);
 
-        return Optional.of(new WorldSettings.Blocking(spawners, spawnerPlace, portalCreate, pistons, entitySpamMax));
+        return Optional.of(new WorldSettings.Blocking(spawners, spawnerPlace, portalCreate, pistons, monsters, entitySpamMax));
     }
 
     private static Optional<WorldSettings.VanillaFlags> parseVanillaFlags(final JsonObject worldNode, final String parentPath,

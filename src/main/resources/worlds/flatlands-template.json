@@ -28,13 +28,13 @@
   "world": {
     "environment": "normal",
     "generateStructures": false,
-    "keepSpawnLoaded": false,
     "weatherDisabled": true,
     "blocking": {
       "spawners": false,
       "spawnerPlace": false,
       "portalCreate": false,
       "pistons": false,
+      "monsters": true,
       "entitySpamMax": 750
     },
     "vanilla": {
