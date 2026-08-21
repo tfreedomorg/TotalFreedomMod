@@ -2,6 +2,13 @@ package me.totalfreedom.totalfreedommod.cmd;
 
 import java.util.List;
 
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
+
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
 import me.totalfreedom.totalfreedommod.cmd.internal.FuzzyMatch;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Callback;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Command;
@@ -9,17 +16,10 @@ import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Completer;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Permission;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Subcommand;
 import me.totalfreedom.totalfreedommod.player.FPlayer;
-import me.totalfreedom.totalfreedommod.rank.Rank;
 import me.totalfreedom.totalfreedommod.util.FTask;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitTask;
 
 @Command(name = "lockup", description = "Block target's minecraft input. This is evil, and I never should have wrote it.", usage = "/<command> <all | purge | <<partialname> on | off>>")
-@Permission(level = Rank.SENIOR_ADMIN, source = SourceType.ONLY_CONSOLE, permission = "tfm.admin.senior.lockup")
+@Permission(source = SourceType.ONLY_CONSOLE, permission = "tfm.admin.senior.lockup")
 public class Command_lockup extends FCommand
 {
     @Callback
@@ -28,7 +28,10 @@ public class Command_lockup extends FCommand
     {
         adminAction(sender, "<red>Locking up all players");
 
-        server().getOnlinePlayers().forEach(this::startLockup);
+        server().getOnlinePlayers()
+                .stream()
+                .filter(player -> !isAdmin(player))
+                .forEach(this::startLockup);
 
         msg(sender, "<gray>Locked up all players.");
     }
@@ -69,6 +72,9 @@ public class Command_lockup extends FCommand
 
         if (state.equalsIgnoreCase("on"))
         {
+            if (isProtectedAdmin(sender, player))
+                return;
+
             adminAction(sender, "<red>Locking up <player>", Placeholder.unparsed("player", player.getName()));
             startLockup(player);
             msg(sender, "<gray>Locked up <player>.", Placeholder.unparsed("player", player.getName()));
@@ -110,13 +116,9 @@ public class Command_lockup extends FCommand
                 FTask.run("Command_lockup/lockup", () ->
                 {
                     if (player.isOnline())
-                    {
                         player.openInventory(player.getInventory());
-                    }
                     else
-                    {
                         cancelLockup(playerdata);
-                    }
                 });
             }
         }.runTaskTimer(plugin(), 0L, 5L));

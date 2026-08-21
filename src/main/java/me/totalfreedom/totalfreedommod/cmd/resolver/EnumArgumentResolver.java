@@ -1,12 +1,12 @@
 package me.totalfreedom.totalfreedommod.cmd.resolver;
 
-import com.google.common.base.Enums;
-import com.google.common.base.Optional;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.function.Function;
+
+import com.google.common.base.Enums;
+import com.google.common.base.Optional;
 
 public class EnumArgumentResolver implements AbstractParameterizedArgumentResolver<Enum<?>>
 {

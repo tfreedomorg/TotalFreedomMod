@@ -1,15 +1,17 @@
 package me.totalfreedom.totalfreedommod.cmd.resolver;
 
-import com.google.common.net.InetAddresses;
-import me.totalfreedom.totalfreedommod.PluginProvider;
-import me.totalfreedom.totalfreedommod.cmd.internal.ResolverRegistry;
-import me.totalfreedom.totalfreedommod.player.PlayerData;
-import org.bukkit.entity.Player;
-
 import java.net.InetAddress;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
+import org.bukkit.entity.Player;
+
+import me.totalfreedom.totalfreedommod.PluginProvider;
+import me.totalfreedom.totalfreedommod.cmd.internal.ResolverRegistry;
+import me.totalfreedom.totalfreedommod.player.PlayerData;
+
+import com.google.common.net.InetAddresses;
 
 public class InetAddressListResolver implements AbstractParameterizedArgumentResolver<List<InetAddress>>
 {

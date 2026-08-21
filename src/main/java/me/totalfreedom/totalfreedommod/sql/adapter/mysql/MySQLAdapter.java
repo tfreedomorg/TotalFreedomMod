@@ -1,17 +1,15 @@
 package me.totalfreedom.totalfreedommod.sql.adapter.mysql;
 
+import java.sql.SQLException;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import me.totalfreedom.totalfreedommod.sql.ConnectionHandler;
 import me.totalfreedom.totalfreedommod.sql.StatementHandler;
-import me.totalfreedom.totalfreedommod.sql.adapter.AdminRepository;
-import me.totalfreedom.totalfreedommod.sql.adapter.BanRepository;
-import me.totalfreedom.totalfreedommod.sql.adapter.DatabaseAdapter;
-import me.totalfreedom.totalfreedommod.sql.adapter.DiscordLinkRepository;
-import me.totalfreedom.totalfreedommod.sql.adapter.PermbanRepository;
-import me.totalfreedom.totalfreedommod.sql.adapter.StrikeRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.*;
+import me.totalfreedom.totalfreedommod.sql.adapter.generic.*;
 import me.totalfreedom.totalfreedommod.util.FLog;
-
-import java.sql.SQLException;
 
 /**
  * MySQL-specific database adapter.
@@ -25,11 +23,17 @@ import java.sql.SQLException;
  */
 public class MySQLAdapter extends DatabaseAdapter
 {
-    private MySQLAdminRepository adminRepository;
-    private MySQLBanRepository banRepository;
-    private MySQLPermbanRepository permbanRepository;
-    private MySQLStrikeRepository strikeRepository;
-    private MySQLDiscordLinkRepository discordLinkRepository;
+    private AdminRepository adminRepository;
+    private BanRepository banRepository;
+    private PermbanRepository permbanRepository;
+    private StrikeRepository strikeRepository;
+    private DiscordLinkRepository discordLinkRepository;
+    private RankRepository rankRepository;
+    private TitleRepository titleRepository;
+    private ProtectedAreaRepository protectedAreaRepository;
+    private SavedFlagRepository savedFlagRepository;
+    private PlayerRepository playerRepository;
+    private MigrationRepository migrationRepository;
 
     public MySQLAdapter(TotalFreedomMod plugin, ConnectionHandler connectionHandler, StatementHandler statementHandler)
     {
@@ -71,9 +75,27 @@ public class MySQLAdapter extends DatabaseAdapter
     }
 
     @Override
+    public String jsonType()
+    {
+        return "JSON";
+    }
+
+    @Override
+    public String jsonParamPlaceholder()
+    {
+        return "?";
+    }
+
+    @Override
     public String insertIgnoreSyntax()
     {
         return "INSERT IGNORE";
+    }
+
+    @Override
+    public String insertIgnoreSuffix()
+    {
+        return "";
     }
 
     @Override
@@ -89,10 +111,31 @@ public class MySQLAdapter extends DatabaseAdapter
     }
 
     @Override
-    public String caseInsensitiveLike()
+    public String timestampParamPlaceholder()
     {
-        // MySQL is case-insensitive by default with utf8_general_ci collation
-        return "LIKE";
+        return "?";
+    }
+
+    @Override
+    public String caseInsensitiveEquals(String columnRef, String paramPlaceholder)
+    {
+        return String.format("LOWER(%s) = LOWER(%s)", columnRef, paramPlaceholder);
+    }
+
+    @Override
+    public String compareToNow(String columnRef, String operator)
+    {
+        return String.format("%s %s NOW()", columnRef, operator);
+    }
+
+    // MySQL's ON DUPLICATE KEY UPDATE infers the conflicting row from whatever key was violated.
+    @Override
+    public String upsertClause(String conflictColumn, String... updateColumns)
+    {
+        String assignments = Stream.of(updateColumns)
+                                   .map(col -> String.format("%s = VALUES(%s)", col, col))
+                                   .collect(Collectors.joining(", "));
+        return String.format("ON DUPLICATE KEY UPDATE %s", assignments);
     }
 
     // ============================================
@@ -113,6 +156,14 @@ public class MySQLAdapter extends DatabaseAdapter
         createPermbanIpsTable();
         createStrikesTable();
         createDiscordLinksTable();
+        createRanksTable();
+        createRankPermissionsTable();
+        createTitlesTable();
+        createTitlePermissionsTable();
+        createProtectedAreasTable();
+        createSavedFlagsTable();
+        createPlayersTable();
+        createPlayerIpsTable();
 
         FLog.info("[MySQL] Database migrations complete.");
     }
@@ -140,11 +191,17 @@ public class MySQLAdapter extends DatabaseAdapter
                 `active` TINYINT(1) DEFAULT 1,
                 `last_login` DATETIME,
                 `login_message` TEXT,
+                `custom_rank` VARCHAR(64),
+                `updated_at` DATETIME NOT NULL DEFAULT NOW(),
                 INDEX `idx_admins_username` (`username`),
                 INDEX `idx_admins_active` (`active`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """;
         statementHandler.executeUpdate(sql);
+
+        // Migration for tables created before custom_rank/updated_at existed.
+        addColumnIfMissing("admins", "custom_rank", "VARCHAR(64)");
+        addColumnIfMissing("admins", "updated_at", "DATETIME NOT NULL DEFAULT NOW()");
     }
 
     private void createAdminIpsTable() throws SQLException
@@ -173,12 +230,14 @@ public class MySQLAdapter extends DatabaseAdapter
                 `banned_by_uuid` VARCHAR(36),
                 `reason` TEXT,
                 `expire_at` DATETIME,
+                `updated_at` DATETIME NOT NULL DEFAULT NOW(),
                 INDEX `idx_bans_uuid` (`uuid`),
                 INDEX `idx_bans_username` (`username`),
                 INDEX `idx_bans_expire` (`expire_at`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """;
         statementHandler.executeUpdate(sql);
+        addColumnIfMissing("bans", "updated_at", "DATETIME NOT NULL DEFAULT NOW()");
     }
 
     private void createBanIpsTable() throws SQLException
@@ -202,13 +261,15 @@ public class MySQLAdapter extends DatabaseAdapter
             CREATE TABLE IF NOT EXISTS `permbans` (
                 `id` INT AUTO_INCREMENT PRIMARY KEY,
                 `uuid` VARCHAR(36),
-                `username` VARCHAR(16),
+                `username` VARCHAR(16) NOT NULL,
                 `reason` TEXT,
+                `updated_at` DATETIME NOT NULL DEFAULT NOW(),
                 INDEX `idx_permbans_uuid` (`uuid`),
                 INDEX `idx_permbans_username` (`username`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """;
         statementHandler.executeUpdate(sql);
+        addColumnIfMissing("permbans", "updated_at", "DATETIME NOT NULL DEFAULT NOW()");
     }
 
     private void createPermbanIpsTable() throws SQLException
@@ -234,10 +295,12 @@ public class MySQLAdapter extends DatabaseAdapter
                 `strike_count` INT NOT NULL DEFAULT 0,
                 `last_strike_unix` BIGINT NOT NULL DEFAULT 0,
                 `last_username` VARCHAR(16),
-                `created_at` DATETIME DEFAULT NOW()
+                `created_at` DATETIME DEFAULT NOW(),
+                `updated_at` DATETIME NOT NULL DEFAULT NOW()
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """;
         statementHandler.executeUpdate(sql);
+        addColumnIfMissing("strikes", "updated_at", "DATETIME NOT NULL DEFAULT NOW()");
     }
 
     private void createDiscordLinksTable() throws SQLException
@@ -247,10 +310,176 @@ public class MySQLAdapter extends DatabaseAdapter
                 `id` INT AUTO_INCREMENT PRIMARY KEY,
                 `admin_uuid` VARCHAR(36) NOT NULL UNIQUE,
                 `discord_user_id` VARCHAR(32) NOT NULL UNIQUE,
-                `linked_at` DATETIME NOT NULL DEFAULT NOW()
+                `linked_at` DATETIME NOT NULL DEFAULT NOW(),
+                `updated_at` DATETIME NOT NULL DEFAULT NOW()
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """;
         statementHandler.executeUpdate(sql);
+        addColumnIfMissing("discord_links", "updated_at", "DATETIME NOT NULL DEFAULT NOW()");
+    }
+
+    private void createRanksTable() throws SQLException
+    {
+        String sql = """
+            CREATE TABLE IF NOT EXISTS `ranks` (
+                `id` VARCHAR(64) PRIMARY KEY,
+                `name` VARCHAR(64) NOT NULL,
+                `determiner` VARCHAR(8) NOT NULL DEFAULT 'a',
+                `abbreviation` VARCHAR(16),
+                `level` INT NOT NULL DEFAULT 0,
+                `color` VARCHAR(32) NOT NULL DEFAULT 'white',
+                `admin` TINYINT(1) NOT NULL DEFAULT 0,
+                `prefix` VARCHAR(64),
+                `inherit_from` VARCHAR(64),
+                `roles` VARCHAR(255),
+                `updated_at` DATETIME NOT NULL DEFAULT NOW(),
+                INDEX `idx_ranks_level` (`level`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """;
+        statementHandler.executeUpdate(sql);
+        addColumnIfMissing("ranks", "updated_at", "DATETIME NOT NULL DEFAULT NOW()");
+        addColumnIfMissing("ranks", "roles", "VARCHAR(255)");
+    }
+
+    private void createRankPermissionsTable() throws SQLException
+    {
+        String sql = """
+            CREATE TABLE IF NOT EXISTS `rank_permissions` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `rank_id` VARCHAR(64) NOT NULL,
+                `permission` VARCHAR(128) NOT NULL,
+                UNIQUE KEY `uk_rank_permission` (`rank_id`, `permission`),
+                FOREIGN KEY (`rank_id`) REFERENCES `ranks`(`id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """;
+        statementHandler.executeUpdate(sql);
+    }
+
+    private void createTitlesTable() throws SQLException
+    {
+        String sql = """
+            CREATE TABLE IF NOT EXISTS `titles` (
+                `id` VARCHAR(64) PRIMARY KEY,
+                `name` VARCHAR(64) NOT NULL,
+                `determiner` VARCHAR(8) NOT NULL DEFAULT 'a',
+                `abbreviation` VARCHAR(16),
+                `color` VARCHAR(32) NOT NULL DEFAULT 'white',
+                `prefix` VARCHAR(64),
+                `weight` INT NOT NULL DEFAULT 0,
+                `announce` TINYINT(1) NOT NULL DEFAULT 1,
+                `updated_at` DATETIME NOT NULL DEFAULT NOW()
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """;
+        statementHandler.executeUpdate(sql);
+    }
+
+    private void createTitlePermissionsTable() throws SQLException
+    {
+        String sql = """
+            CREATE TABLE IF NOT EXISTS `title_permissions` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `title_id` VARCHAR(64) NOT NULL,
+                `permission` VARCHAR(128) NOT NULL,
+                UNIQUE KEY `uk_title_permission` (`title_id`, `permission`),
+                FOREIGN KEY (`title_id`) REFERENCES `titles`(`id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """;
+        statementHandler.executeUpdate(sql);
+    }
+
+    private void createProtectedAreasTable() throws SQLException
+    {
+        String sql = """
+            CREATE TABLE IF NOT EXISTS `protected_areas` (
+                `uuid` VARCHAR(36) PRIMARY KEY,
+                `name` VARCHAR(64) NOT NULL,
+                `min_x` INT NOT NULL,
+                `min_y` INT NOT NULL,
+                `min_z` INT NOT NULL,
+                `max_x` INT NOT NULL,
+                `max_y` INT NOT NULL,
+                `max_z` INT NOT NULL,
+                `world_uuid` VARCHAR(36) NOT NULL,
+                `updated_at` DATETIME NOT NULL DEFAULT NOW(),
+                INDEX `idx_protected_areas_name` (`name`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """;
+        statementHandler.executeUpdate(sql);
+        addColumnIfMissing("protected_areas", "updated_at", "DATETIME NOT NULL DEFAULT NOW()");
+    }
+
+    private void createSavedFlagsTable() throws SQLException
+    {
+        String sql = """
+            CREATE TABLE IF NOT EXISTS `saved_flags` (
+                `flag_name` VARCHAR(64) PRIMARY KEY,
+                `enabled` TINYINT(1) NOT NULL DEFAULT 0,
+                `updated_at` DATETIME NOT NULL DEFAULT NOW()
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """;
+        statementHandler.executeUpdate(sql);
+        addColumnIfMissing("saved_flags", "updated_at", "DATETIME NOT NULL DEFAULT NOW()");
+    }
+
+    private void createPlayersTable() throws SQLException
+    {
+        String sql = """
+            CREATE TABLE IF NOT EXISTS `players` (
+                `username` VARCHAR(16) PRIMARY KEY,
+                `first_join_unix` BIGINT NOT NULL DEFAULT 0,
+                `last_join_unix` BIGINT NOT NULL DEFAULT 0,
+                `potion_spy_mode` VARCHAR(16) NOT NULL DEFAULT 'off',
+                `command_spy_mode` VARCHAR(16) NOT NULL DEFAULT 'off',
+                `sign_spy_mode` VARCHAR(16) NOT NULL DEFAULT 'off',
+                `book_spy_mode` VARCHAR(16) NOT NULL DEFAULT 'off',
+                `muted` TINYINT(1) NOT NULL DEFAULT 0,
+                `frozen` TINYINT(1) NOT NULL DEFAULT 0,
+                `commands_blocked` TINYINT(1) NOT NULL DEFAULT 0,
+                `join_leave_messages` TINYINT(1) NOT NULL DEFAULT 1,
+                `strikes` INT NOT NULL DEFAULT 0,
+                `saved_tag` TEXT,
+                `nickname` TEXT,
+                `updated_at` DATETIME NOT NULL DEFAULT NOW()
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """;
+        statementHandler.executeUpdate(sql);
+        addColumnIfMissing("players", "updated_at", "DATETIME NOT NULL DEFAULT NOW()");
+        addColumnIfMissing("players", "titles", "TEXT");
+        addColumnIfMissing("players", "potion_spy_mode", "VARCHAR(16) NOT NULL DEFAULT 'off'");
+        addColumnIfMissing("players", "sign_spy_mode", "VARCHAR(16) NOT NULL DEFAULT 'off'");
+        addColumnIfMissing("players", "book_spy_mode", "VARCHAR(16) NOT NULL DEFAULT 'off'");
+        addColumnIfMissing("players", "join_leave_messages", "TINYINT(1) NOT NULL DEFAULT 1");
+    }
+
+    private void createPlayerIpsTable() throws SQLException
+    {
+        String sql = """
+            CREATE TABLE IF NOT EXISTS `player_ips` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `username` VARCHAR(16) NOT NULL,
+                `ip` VARCHAR(45) NOT NULL,
+                UNIQUE KEY `uk_player_ip` (`username`, `ip`),
+                FOREIGN KEY (`username`) REFERENCES `players`(`username`) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """;
+        statementHandler.executeUpdate(sql);
+    }
+
+    /**
+     * Add a column to a table created before that column existed. Ignores the error
+     * when the column is already present (MySQL has no ADD COLUMN IF NOT EXISTS
+     * before 8.0.29, so this stays a try/catch like the rest of this file's migrations).
+     */
+    private void addColumnIfMissing(String table, String column, String definition)
+    {
+        try
+        {
+            statementHandler.executeUpdate(String.format("ALTER TABLE `%s` ADD COLUMN `%s` %s", table, column, definition));
+        }
+        catch (SQLException ignored)
+        {
+            // Column already exists.
+        }
     }
 
     // ============================================
@@ -262,7 +491,7 @@ public class MySQLAdapter extends DatabaseAdapter
     {
         if (adminRepository == null)
         {
-            adminRepository = new MySQLAdminRepository(plugin, statementHandler);
+            adminRepository = new GenericAdminRepository(statementHandler, this);
         }
         return adminRepository;
     }
@@ -272,7 +501,7 @@ public class MySQLAdapter extends DatabaseAdapter
     {
         if (banRepository == null)
         {
-            banRepository = new MySQLBanRepository(plugin, statementHandler);
+            banRepository = new GenericBanRepository(statementHandler, this);
         }
         return banRepository;
     }
@@ -282,7 +511,7 @@ public class MySQLAdapter extends DatabaseAdapter
     {
         if (permbanRepository == null)
         {
-            permbanRepository = new MySQLPermbanRepository(plugin, statementHandler);
+            permbanRepository = new GenericPermbanRepository(statementHandler, this);
         }
         return permbanRepository;
     }
@@ -292,7 +521,7 @@ public class MySQLAdapter extends DatabaseAdapter
     {
         if (strikeRepository == null)
         {
-            strikeRepository = new MySQLStrikeRepository(plugin, statementHandler);
+            strikeRepository = new GenericStrikeRepository(statementHandler, this);
         }
         return strikeRepository;
     }
@@ -302,8 +531,68 @@ public class MySQLAdapter extends DatabaseAdapter
     {
         if (discordLinkRepository == null)
         {
-            discordLinkRepository = new MySQLDiscordLinkRepository(plugin, statementHandler);
+            discordLinkRepository = new GenericDiscordLinkRepository(statementHandler, this);
         }
         return discordLinkRepository;
+    }
+
+    @Override
+    public TitleRepository getTitleRepository()
+    {
+        if (titleRepository == null)
+        {
+            titleRepository = new GenericTitleRepository(statementHandler, this);
+        }
+        return titleRepository;
+    }
+
+    @Override
+    public RankRepository getRankRepository()
+    {
+        if (rankRepository == null)
+        {
+            rankRepository = new GenericRankRepository(statementHandler, this);
+        }
+        return rankRepository;
+    }
+
+    @Override
+    public ProtectedAreaRepository getProtectedAreaRepository()
+    {
+        if (protectedAreaRepository == null)
+        {
+            protectedAreaRepository = new GenericProtectedAreaRepository(statementHandler, this);
+        }
+        return protectedAreaRepository;
+    }
+
+    @Override
+    public SavedFlagRepository getSavedFlagRepository()
+    {
+        if (savedFlagRepository == null)
+        {
+            savedFlagRepository = new GenericSavedFlagRepository(statementHandler, this);
+        }
+        return savedFlagRepository;
+    }
+
+    @Override
+    public PlayerRepository getPlayerRepository()
+    {
+        if (playerRepository == null)
+        {
+            playerRepository = new GenericPlayerRepository(statementHandler, this);
+        }
+        return playerRepository;
+    }
+
+    @Override
+    public MigrationRepository getMigrationRepository()
+    {
+        if (migrationRepository == null)
+        {
+            migrationRepository = new GenericMigrationRepository(statementHandler, this);
+        }
+        return migrationRepository;
     }
 }

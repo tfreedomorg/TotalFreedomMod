@@ -1,27 +1,14 @@
 package me.totalfreedom.totalfreedommod.discord;
 
-import java.awt.Color;
-import java.util.Collections;
+import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.util.AdventureUtil;
-import me.totalfreedom.totalfreedommod.util.ChatMentionUtil;
-import me.totalfreedom.totalfreedommod.util.FLog;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
@@ -29,22 +16,42 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
-import org.bukkit.Bukkit;
-import org.jetbrains.annotations.NotNull;
+
+import discord4j.common.util.Snowflake;
+import discord4j.core.GatewayDiscordClient;
+import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.object.entity.Attachment;
+import discord4j.core.object.entity.Member;
+import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.Role;
+import discord4j.core.object.entity.User;
+import discord4j.core.spec.MessageCreateSpec;
+import discord4j.rest.util.AllowedMentions;
+import discord4j.rest.util.Color;
+import reactor.core.publisher.Mono;
+
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.util.AdventureUtil;
+import me.totalfreedom.totalfreedommod.util.ChatMentionUtil;
+import me.totalfreedom.totalfreedommod.util.FLog;
 
 /**
  * Bidirectional chat relay for the chat channel chosen by the extending subclass.
  */
-public abstract class AbstractDiscordChatRelay extends ListenerAdapter
+public abstract class AbstractDiscordChatRelay
 {
     protected static final int DISCORD_MAX_MESSAGE_LENGTH = 1900;
     protected static final int MINECRAFT_MAX_MESSAGE_LENGTH = 200;
 
-    private static final Pattern URL_PATTERN = Pattern.compile(
-            "(?i)\\b(?:https?://|www\\.)[-a-z0-9+&@#/%?=~_|!:,.;]*[-a-z0-9+&@#/%=~_|]");
+    private static final int NO_ROLE_COLOR = Role.DEFAULT_COLOR.getRGB();
+    private static final String DEFAULT_CHAT_FORMAT = "&9[Discord] &r{user}{reply}&7: &f{message}";
+
     private static final Pattern TEMPLATE_PLACEHOLDER = Pattern.compile("\\{(user|role|rolecolor|message|reply)}");
     private static final Pattern MEDIA_EXTENSION = Pattern.compile(
-            "(?i)\\.(?:png|jpe?g|gif|webp|bmp|tiff?|svg|mp4|m4v|mov|webm|avi|mkv|mp3|wav|ogg|oga|m4a|flac)(?:$|[?#])");
+        "(?i)\\.(?:png|jpe?g|gif|webp|bmp|tiff?|svg|mp4|m4v|mov|webm|avi|mkv|mp3|wav|ogg|oga|m4a|flac)(?:$|[?#])");
+    private static final Pattern URL_PATTERN = Pattern.compile(
+        "(?i)\\b(?:https?://|www\\.)[-a-z0-9+&@#/%?=~_|!:,.;]*[-a-z0-9+&@#/%=~_|]");
+
     private static final NamedTextColor[] MINECRAFT_COLORS = {
             NamedTextColor.BLACK,
             NamedTextColor.DARK_BLUE,
@@ -65,173 +72,204 @@ public abstract class AbstractDiscordChatRelay extends ListenerAdapter
     };
 
     /**
-     * Resolved per send rather than captured at construction, so a reconnect that produces new
-     * channel handles does not leave this relay writing into a dead session's objects.
+     * Resolved per send rather than captured at construction, so a reconnect that produces a new
+     * session does not leave this relay writing into a dead connection.
      */
-    private final Supplier<Optional<TextChannel>> channelSupplier;
-    private final String channelFormat;
-    private final String chatFormat;
+    private final Supplier<Optional<Snowflake>> channelSupplier;
+    private final Optional<String> channelFormat;
+    private final Optional<String> chatFormat;
     private final Consumer<Component> chatAction;
     private final TotalFreedomMod plugin;
     private final DiscordBridge bridge;
 
-    public AbstractDiscordChatRelay(Supplier<Optional<TextChannel>> channelSupplier, String channelFormat, String chatFormat, Consumer<Component> chatAction, TotalFreedomMod plugin, DiscordBridge bridge)
+    public AbstractDiscordChatRelay(Supplier<Optional<Snowflake>> channelSupplier, String channelFormat, String chatFormat, Consumer<Component> chatAction, TotalFreedomMod plugin, DiscordBridge bridge)
     {
         this.channelSupplier = channelSupplier;
-        this.channelFormat = channelFormat;
-        this.chatFormat = chatFormat;
+        this.channelFormat = configured(channelFormat);
+        this.chatFormat = configured(chatFormat);
         this.chatAction = chatAction;
         this.plugin = plugin;
         this.bridge = bridge;
     }
 
+    private static Optional<String> configured(final String value)
+    {
+        return Optional.ofNullable(value).filter(text -> !text.isBlank());
+    }
+
+    /**
+     * Every message is handled inside its own {@code onErrorResume}. 
+     * An error reaching the outer {@link reactor.core.publisher.Flux} terminates it, and a
+     * terminated event stream is a relay that has silently stopped while the gateway stays up. 
+     * Recovering per message means one malformed message costs one message.
+     */
+    public Mono<Void> bind(final GatewayDiscordClient gateway)
+    {
+        return gateway.on(MessageCreateEvent.class)
+                .filter(this::isRelayable)
+                .flatMap(event -> handleMessage(event)
+                        .onErrorResume(thrown ->
+                        {
+                            FLog.warning(String.format("[Discord] Dropped an inbound message: %s",
+                                    DiscordConnection.describeFailure(thrown)));
+                            return Mono.empty();
+                        }))
+                .then();
+    }
+
     public void sendMessageToDiscord(Component rendered)
     {
-        String body = DiscordMarkdown.render(rendered);
-        if (body.isBlank())
-        {
-            return;
-        }
+        configured(DiscordMarkdown.render(rendered))
+                .map(body -> channelFormat
+                        .map(format -> format.replace("{message}", body))
+                        .orElse(body))
+                .map(AbstractDiscordChatRelay::truncateForDiscord)
+                .ifPresent(body -> sendToRelayChannel(body, "forward chat to Discord"));
+    }
 
-        if (channelFormat != null && !channelFormat.isBlank())
-        {
-            body = channelFormat.replace("{message}", body);
-        }
-
-        if (body.length() > DISCORD_MAX_MESSAGE_LENGTH)
-        {
-            body = body.substring(0, DISCORD_MAX_MESSAGE_LENGTH) + "…";
-        }
-
-        sendToRelayChannel(body, "forward chat to Discord");
+    private static String truncateForDiscord(final String body)
+    {
+        return body.length() > DISCORD_MAX_MESSAGE_LENGTH
+                ? body.substring(0, DISCORD_MAX_MESSAGE_LENGTH) + "…"
+                : body;
     }
 
     public void sendSystemMessageToDiscord(String message)
     {
-        if (message == null || message.isBlank())
-        {
-            return;
-        }
-
-        sendToRelayChannel(sanitizeForDiscord(message), "send system message to Discord");
+        configured(message).ifPresent(text ->
+                sendToRelayChannel(sanitizeForDiscord(text), "send system message to Discord"));
     }
 
     /**
-     * Blocking send used on shutdown, where a queued message would be dropped when the client
-     * stops. Targets this relay's own channel: it previously hardcoded the public channel, so an
-     * adminchat relay calling it would have posted into public chat.
+     * Blocking send used on shutdown, where a queued message would be dropped when the connection
+     * goes away.
+     * <p>
+     * This is the one place the bridge blocks deliberately.
      */
-    public void sendSystemMessageToDiscordNow(String message, long timeout, TimeUnit unit)
+    public void sendSystemMessageNow(String message, Duration timeout)
     {
-        if (message == null || message.isBlank())
+        configured(message).ifPresent(text ->
         {
-            return;
-        }
-
-        Optional<TextChannel> target = channelSupplier.get();
-        if (target.isEmpty())
-        {
-            return;
-        }
-
-        try
-        {
-            target.get().sendMessage(sanitizeForDiscord(message))
-                    .setAllowedMentions(Collections.emptyList())
-                    .submit().get(timeout, unit);
-        }
-        catch (InterruptedException ex)
-        {
-            Thread.currentThread().interrupt();
-            FLog.warning("[Discord] Interrupted while sending system message to Discord.");
-        }
-        catch (Exception ex)
-        {
-            FLog.warning("[Discord] Failed to send system message to Discord: " + ex.getMessage());
-        }
+            try
+            {
+                createMessage(sanitizeForDiscord(text)).block(timeout);
+            }
+            catch (Exception ex)
+            {
+                FLog.warning("[Discord] Failed to send system message to Discord: " + ex.getMessage());
+            }
+        });
     }
 
-    @Override
-    public void onMessageReceived(@NotNull MessageReceivedEvent event)
+    private boolean isRelayable(final MessageCreateEvent event)
     {
-        if (event.getAuthor().isBot() || event.getAuthor().isSystem())
-        {
-            return;
-        }
-        if (!event.isFromGuild())
-        {
-            return;
-        }
+        if (event.getGuildId().isEmpty())
+            return false;
 
-        Optional<TextChannel> target = channelSupplier.get();
-        if (target.isEmpty() || !event.getChannel().getId().equals(target.get().getId()))
-        {
-            return;
-        }
+        final Optional<User> author = event.getMessage().getAuthor();
+        if (author.isEmpty() || author.get().isBot())
+            return false;
 
-        Message discordMessage = event.getMessage();
-        String content = discordMessage.getContentDisplay();
-        List<Message.Attachment> attachments = discordMessage.getAttachments();
+        final Optional<Snowflake> target = channelSupplier.get();
+        return target.isPresent() && target.get().equals(event.getMessage().getChannelId());
+    }
+
+    private Mono<Void> handleMessage(final MessageCreateEvent event)
+    {
+        final Message discordMessage = event.getMessage();
+        final String content = discordMessage.getContent();
+        final List<Attachment> attachments = List.copyOf(discordMessage.getAttachments());
         if (content.isBlank() && attachments.isEmpty())
-        {
-            return;
-        }
+            return Mono.empty();
 
-        String template = chatFormat;
-        if (template == null || template.isBlank())
-        {
-            template = "&9[Discord] &r{user}{reply}&7: &f{message}";
-        }
+        final String finalTemplate = chatFormat.orElse(DEFAULT_CHAT_FORMAT);
+        final Optional<Member> member = event.getMember();
+        final String displayName = resolveDisplayName(member, discordMessage.getAuthor());
+        final String truncatedContent = content.length() > MINECRAFT_MAX_MESSAGE_LENGTH
+                                        ? content.substring(0, MINECRAFT_MAX_MESSAGE_LENGTH)
+                                        : content;
+        final Component discordContent = buildDiscordContent(truncatedContent, attachments);
 
-        User author = event.getAuthor();
-        String displayName = resolveDisplayName(event.getMember(), author);
-        DiscordRole role = resolveRole(event.getMember());
-        String truncatedContent = content.length() > MINECRAFT_MAX_MESSAGE_LENGTH
-                ? content.substring(0, MINECRAFT_MAX_MESSAGE_LENGTH)
-                : content;
-        Component discordContent = buildDiscordContent(truncatedContent, attachments);
-        String finalTemplate = template;
-        Message referencedMessage = discordMessage.getReferencedMessage();
-
-        if (referencedMessage == null)
-        {
-            relayToMinecraft(finalTemplate, displayName, role, discordContent, "");
-            return;
-        }
-
-        Member referencedMember = referencedMessage.getMember();
-        if (referencedMember == null)
-        {
-            referencedMember = event.getGuild().getMemberById(referencedMessage.getAuthor().getIdLong());
-        }
-
-        if (referencedMember != null)
-        {
-            relayToMinecraft(
-                    finalTemplate,
-                    displayName,
-                    role,
-                    discordContent,
-                    resolveDisplayName(referencedMember, referencedMessage.getAuthor()));
-            return;
-        }
-
-        event.getGuild().retrieveMemberById(referencedMessage.getAuthor().getIdLong()).queue(
-                member -> relayToMinecraft(
-                        finalTemplate,
-                        displayName,
-                        role,
-                        discordContent,
-                        resolveDisplayName(member, referencedMessage.getAuthor())),
-                failure -> relayToMinecraft(
-                        finalTemplate,
-                        displayName,
-                        role,
-                        discordContent,
-                        referencedMessage.getAuthor().getName()));
+        return Mono.zip(resolveRole(member), resolveReplyName(discordMessage))
+                   .flatMap(resolved -> relayToMinecraft(finalTemplate,
+                                                         displayName,
+                                                         resolved.getT1(),
+                                                         discordContent,
+                                                         resolved.getT2()));
     }
 
-    private static Component buildDiscordContent(String content, List<Message.Attachment> attachments)
+    /**
+     * Function to thread hop to main thread 
+     */
+    private Mono<Void> relayToMinecraft(String template, String displayName, DiscordRole role, Component discordContent, Optional<String> replyName)
+    {
+        return Mono.fromRunnable(() ->
+                    {
+                        Component mentionedContent = ChatMentionUtil.highlightAndPing(plugin, discordContent, false);
+                        Component component = buildDiscordMessage(
+                                template,
+                                displayName,
+                                role,
+                                mentionedContent,
+                                replyName);
+                        chatAction.accept(component);
+                    })
+                   .subscribeOn(bridge.mainThread())
+                   .then();
+    }
+
+    /**
+     * The display name of whoever wrote the message being replied to, absent when this message is
+     * not a reply or the referenced author cannot be resolved.
+     */
+    private static Mono<Optional<String>> resolveReplyName(final Message message)
+    {
+        return message.getReferencedMessage()
+                      .map(referenced -> referenced.getAuthorAsMember()
+                                             .map(Member::getDisplayName)
+                                             .switchIfEmpty(Mono.justOrEmpty(referenced.getAuthor().map(User::getUsername)))
+                                             .map(Optional::of)
+                                             .defaultIfEmpty(Optional.<String>empty()))
+                      .orElseGet(() -> Mono.just(Optional.empty()));
+    }
+
+    private static Mono<DiscordRole> resolveRole(final Optional<Member> member)
+    {
+        return member.map(present -> present.getRoles()
+                                            .collectList()
+                                            .map(AbstractDiscordChatRelay::pickRole))
+                     .orElseGet(() -> Mono.just(defaultRole()))
+                     .onErrorReturn(defaultRole());
+    }
+
+    private static DiscordRole defaultRole()
+    {
+        return new DiscordRole("everyone", NamedTextColor.GRAY);
+    }
+
+    private static DiscordRole pickRole(final List<Role> roles)
+    {
+        if (roles.isEmpty())
+            return defaultRole();
+
+        final Role selectedRole = roles.stream()
+                                       .filter(role -> colorOf(role).isPresent())
+                                       .findFirst()
+                                       .orElseGet(() -> roles.get(0));
+
+        final NamedTextColor minecraftColor = colorOf(selectedRole).map(color -> closestMinecraftColor(color.getRGB() & 0xFFFFFF))
+                                                                   .orElse(NamedTextColor.GRAY);
+
+        return new DiscordRole(selectedRole.getName(), minecraftColor);
+    }
+
+    private static Optional<Color> colorOf(final Role role)
+    {
+        return Optional.ofNullable(role.getPrimaryColor())
+                       .filter(color -> color.getRGB() != NO_ROLE_COLOR);
+    }
+
+    private static Component buildDiscordContent(String content, List<Attachment> attachments)
     {
         Component result = Component.empty();
         Matcher matcher = URL_PATTERN.matcher(content);
@@ -240,9 +278,7 @@ public abstract class AbstractDiscordChatRelay extends ListenerAdapter
         while (matcher.find())
         {
             if (matcher.start() > last)
-            {
                 result = result.append(Component.text(content.substring(last, matcher.start())));
-            }
 
             String displayedUrl = matcher.group();
             String href = displayedUrl.regionMatches(true, 0, "http", 0, 4)
@@ -253,16 +289,13 @@ public abstract class AbstractDiscordChatRelay extends ListenerAdapter
         }
 
         if (last < content.length())
-        {
             result = result.append(Component.text(content.substring(last)));
-        }
 
-        for (Message.Attachment attachment : attachments)
+        for (Attachment attachment : attachments)
         {
             if (!AdventureUtil.componentToPlainText(result).isBlank())
-            {
                 result = result.append(Component.space());
-            }
+            
             result = result.append(maskedLink(attachment.getUrl(), true));
         }
 
@@ -272,8 +305,8 @@ public abstract class AbstractDiscordChatRelay extends ListenerAdapter
     private static Component maskedLink(String url, boolean media)
     {
         return Component.text(media ? "[Media]" : "[Link]", NamedTextColor.YELLOW)
-                .clickEvent(ClickEvent.openUrl(url))
-                .hoverEvent(HoverEvent.showText(Component.text(url)));
+                        .clickEvent(ClickEvent.openUrl(url))
+                        .hoverEvent(HoverEvent.showText(Component.text(url)));
     }
 
     private static boolean isMediaUrl(String url)
@@ -281,56 +314,11 @@ public abstract class AbstractDiscordChatRelay extends ListenerAdapter
         return MEDIA_EXTENSION.matcher(url).find();
     }
 
-    private static String resolveDisplayName(Member member, User user)
+    private static String resolveDisplayName(Optional<Member> member, Optional<User> user)
     {
-        if (member != null && member.getNickname() != null && !member.getNickname().isBlank())
-        {
-            return member.getNickname();
-        }
-        return user.getName();
-    }
-
-    private void relayToMinecraft(String template, String displayName, DiscordRole role, Component discordContent, String replyName)
-    {
-        Bukkit.getScheduler().runTask(plugin, () ->
-        {
-            Component mentionedContent = ChatMentionUtil.highlightAndPing(plugin, discordContent, false);
-            Component component = buildDiscordMessage(
-                    template,
-                    displayName,
-                    role,
-                    mentionedContent,
-                    replyName);
-            chatAction.accept(component);
-        });
-    }
-
-    private static DiscordRole resolveRole(Member member)
-    {
-        if (member == null || member.getRoles().isEmpty())
-        {
-            return new DiscordRole("everyone", NamedTextColor.GRAY);
-        }
-
-        Role selectedRole = null;
-        for (Role role : member.getRoles())
-        {
-            if (role.getColor() != null)
-            {
-                selectedRole = role;
-                break;
-            }
-        }
-        if (selectedRole == null)
-        {
-            selectedRole = member.getRoles().get(0);
-        }
-
-        Color discordColor = selectedRole.getColor();
-        NamedTextColor minecraftColor = discordColor == null
-                ? NamedTextColor.GRAY
-                : closestMinecraftColor(discordColor.getRGB() & 0xFFFFFF);
-        return new DiscordRole(selectedRole.getName(), minecraftColor);
+        return member.map(Member::getDisplayName)
+                     .or(() -> user.map(User::getUsername))
+                     .orElse("unknown");
     }
 
     private static NamedTextColor closestMinecraftColor(int rgb)
@@ -364,15 +352,16 @@ public abstract class AbstractDiscordChatRelay extends ListenerAdapter
         return closest;
     }
 
-    private static Component buildDiscordMessage(String template, String user, DiscordRole role, Component message, String replyName)
+    private static Component buildDiscordMessage(String template, String user, DiscordRole role, Component message, Optional<String> replyName)
     {
         Matcher matcher = TEMPLATE_PLACEHOLDER.matcher(template);
         LegacyStyleState styleState = new LegacyStyleState();
         Component result = Component.empty();
-        Component reply = replyName == null || replyName.isBlank()
-                ? Component.empty()
-                : Component.text(" \u21aa Replying to ", NamedTextColor.GRAY)
-                        .append(Component.text(replyName, NamedTextColor.AQUA));
+        Component reply = replyName.filter(name -> !name.isBlank())
+                                   .map(name -> Component.text(" ↪ Replying to ", NamedTextColor.GRAY)
+                                                         .append(Component.text(name, NamedTextColor.AQUA)))
+                                   .map(Component.class::cast)
+                                   .orElseGet(Component::empty);
         boolean hasReplyPlaceholder = template.contains("{reply}");
         boolean hasMessagePlaceholder = false;
         int last = 0;
@@ -387,9 +376,8 @@ public abstract class AbstractDiscordChatRelay extends ListenerAdapter
                 case "user":
                     result = result.append(Component.text(user).style(styleState.style()));
                     if (!hasReplyPlaceholder)
-                    {
                         result = result.append(reply);
-                    }
+
                     break;
                 case "role":
                     result = result.append(Component.text(role.name).style(styleState.style()));
@@ -413,18 +401,15 @@ public abstract class AbstractDiscordChatRelay extends ListenerAdapter
 
         result = result.append(styledLiteral(template.substring(last), styleState));
         if (!hasMessagePlaceholder)
-        {
             result = result.append(Component.text().style(styleState.style()).append(message).build());
-        }
+
         return result;
     }
 
     private static Component styledLiteral(String literal, LegacyStyleState state)
     {
         if (literal.isEmpty())
-        {
             return Component.empty();
-        }
 
         Component component = Component.text().style(state.style()).append(AdventureUtil.format(literal)).build();
         state.consume(literal);
@@ -436,36 +421,38 @@ public abstract class AbstractDiscordChatRelay extends ListenerAdapter
         return input.replace("`", "'");
     }
 
-    private void failRelayChannelSend(final String failureDescription, final Throwable err)
+    private void failRelayChannelSend(final String failureDescription, final Optional<Throwable> err)
     {
-        FLog.warning("[Discord] Failed to " + failureDescription + (err != null ? ": " + err.getMessage() : ""));
+        FLog.warning(String.format("[Discord] Failed to %s: %s", 
+                                   failureDescription,
+                                   err.map(thrown -> ": " + thrown.getMessage()).orElse("")));
     }
 
+    /**
+     * Build the send for {@code body} against whichever channel this relay currently points at.
+     */
+    private Mono<Message> createMessage(final String body)
+    {
+        final Optional<Snowflake> target = channelSupplier.get();
+
+        return Mono.justOrEmpty(configured(body))
+                   .flatMap(text -> Mono.justOrEmpty(bridge.getSession())
+                                        .flatMap(current -> current.channel(target))
+                                        .flatMap(channel -> channel.createMessage(MessageCreateSpec.builder()
+                                                                   .content(text)
+                                                                   .allowedMentions(AllowedMentions.suppressAll())
+                                                                   .build())
+                                                ));
+    }
+
+    /**
+     * Fire-and-forget send with an explicit error consumer.
+     */
     private void sendToRelayChannel(final String body, final String failureDescription)
     {
-        final Optional<TextChannel> target = channelSupplier.get();
-        if (target.isEmpty() || body == null)
-        {
-            failRelayChannelSend(failureDescription, null);
-            return;
-        }
-
-        try
-        {
-            target.get().sendMessage(body)
-                    .setAllowedMentions(Collections.emptyList())
-                    .queue(
-                            null,
-                            err -> failRelayChannelSend(failureDescription, err)
-                    );
-        }
-        catch (RejectedExecutionException ex)
-        {
-            // The client underneath us is gone, so no gateway event is coming to announce it.
-            // Tell the supervisor directly or the bridge would sit here failing every send.
-            failRelayChannelSend(failureDescription, ex);
-            bridge.reportTransportFailure(failureDescription, ex);
-        }
+        // The no-op onNext is a placeholder for Reactor's three-argument subscribe, which has no overload taking only an error consumer.
+        createMessage(body).subscribe(sent -> {},
+                                      err -> failRelayChannelSend(failureDescription, Optional.of(err)));
     }
 
     private static final class DiscordRole
@@ -482,7 +469,8 @@ public abstract class AbstractDiscordChatRelay extends ListenerAdapter
 
     private static final class LegacyStyleState
     {
-        private TextColor color;
+        private Optional<TextColor> color = Optional.empty();
+
         private boolean obfuscated;
         private boolean bold;
         private boolean strikethrough;
@@ -491,37 +479,30 @@ public abstract class AbstractDiscordChatRelay extends ListenerAdapter
 
         private void setColor(TextColor color)
         {
-            this.color = color;
+            this.color = Optional.of(color);
             clearDecorations();
         }
 
         private Style style()
         {
             Style.Builder builder = Style.style();
-            if (color != null)
-            {
-                builder.color(color);
-            }
+            color.ifPresent(builder::color);
+
             if (obfuscated)
-            {
                 builder.decoration(TextDecoration.OBFUSCATED, TextDecoration.State.TRUE);
-            }
+
             if (bold)
-            {
                 builder.decoration(TextDecoration.BOLD, TextDecoration.State.TRUE);
-            }
+
             if (strikethrough)
-            {
                 builder.decoration(TextDecoration.STRIKETHROUGH, TextDecoration.State.TRUE);
-            }
+
             if (underlined)
-            {
                 builder.decoration(TextDecoration.UNDERLINED, TextDecoration.State.TRUE);
-            }
+
             if (italic)
-            {
                 builder.decoration(TextDecoration.ITALIC, TextDecoration.State.TRUE);
-            }
+
             return builder.build();
         }
 
@@ -531,9 +512,7 @@ public abstract class AbstractDiscordChatRelay extends ListenerAdapter
             {
                 char marker = text.charAt(i);
                 if (marker != '&' && marker != '§')
-                {
                     continue;
-                }
 
                 char code = Character.toLowerCase(text.charAt(i + 1));
                 if (code == '#' && i + 7 < text.length())
@@ -541,7 +520,7 @@ public abstract class AbstractDiscordChatRelay extends ListenerAdapter
                     String hex = text.substring(i + 2, i + 8);
                     if (hex.matches("[0-9a-fA-F]{6}"))
                     {
-                        color = TextColor.color(Integer.parseInt(hex, 16));
+                        color = Optional.of(TextColor.color(Integer.parseInt(hex, 16)));
                         clearDecorations();
                         i += 7;
                     }
@@ -566,15 +545,15 @@ public abstract class AbstractDiscordChatRelay extends ListenerAdapter
                     }
                     if (valid)
                     {
-                        color = TextColor.color(Integer.parseInt(hex.toString(), 16));
+                        color = Optional.of(TextColor.color(Integer.parseInt(hex.toString(), 16)));
                         clearDecorations();
                         i += 13;
                     }
                     continue;
                 }
 
-                NamedTextColor namedColor = legacyColor(code);
-                if (namedColor != null)
+                final Optional<TextColor> namedColor = legacyColor(code);
+                if (namedColor.isPresent())
                 {
                     color = namedColor;
                     clearDecorations();
@@ -600,7 +579,7 @@ public abstract class AbstractDiscordChatRelay extends ListenerAdapter
                         italic = true;
                         break;
                     case 'r':
-                        color = null;
+                        color = Optional.empty();
                         clearDecorations();
                         break;
                     default:
@@ -619,28 +598,31 @@ public abstract class AbstractDiscordChatRelay extends ListenerAdapter
             italic = false;
         }
 
-        private static NamedTextColor legacyColor(char code)
+        /**
+         * The colour a legacy code selects, absent when the character is not a colour code at all.
+         */
+        private static Optional<TextColor> legacyColor(char code)
         {
-            switch (code)
+            return switch (code)
             {
-                case '0': return NamedTextColor.BLACK;
-                case '1': return NamedTextColor.DARK_BLUE;
-                case '2': return NamedTextColor.DARK_GREEN;
-                case '3': return NamedTextColor.DARK_AQUA;
-                case '4': return NamedTextColor.DARK_RED;
-                case '5': return NamedTextColor.DARK_PURPLE;
-                case '6': return NamedTextColor.GOLD;
-                case '7': return NamedTextColor.GRAY;
-                case '8': return NamedTextColor.DARK_GRAY;
-                case '9': return NamedTextColor.BLUE;
-                case 'a': return NamedTextColor.GREEN;
-                case 'b': return NamedTextColor.AQUA;
-                case 'c': return NamedTextColor.RED;
-                case 'd': return NamedTextColor.LIGHT_PURPLE;
-                case 'e': return NamedTextColor.YELLOW;
-                case 'f': return NamedTextColor.WHITE;
-                default: return null;
-            }
+                case '0' -> Optional.of(NamedTextColor.BLACK);
+                case '1' -> Optional.of(NamedTextColor.DARK_BLUE);
+                case '2' -> Optional.of(NamedTextColor.DARK_GREEN);
+                case '3' -> Optional.of(NamedTextColor.DARK_AQUA);
+                case '4' -> Optional.of(NamedTextColor.DARK_RED);
+                case '5' -> Optional.of(NamedTextColor.DARK_PURPLE);
+                case '6' -> Optional.of(NamedTextColor.GOLD);
+                case '7' -> Optional.of(NamedTextColor.GRAY);
+                case '8' -> Optional.of(NamedTextColor.DARK_GRAY);
+                case '9' -> Optional.of(NamedTextColor.BLUE);
+                case 'a' -> Optional.of(NamedTextColor.GREEN);
+                case 'b' -> Optional.of(NamedTextColor.AQUA);
+                case 'c' -> Optional.of(NamedTextColor.RED);
+                case 'd' -> Optional.of(NamedTextColor.LIGHT_PURPLE);
+                case 'e' -> Optional.of(NamedTextColor.YELLOW);
+                case 'f' -> Optional.of(NamedTextColor.WHITE);
+                default -> Optional.empty();
+            };
         }
     }
 }

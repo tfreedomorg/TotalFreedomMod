@@ -3,10 +3,9 @@ package me.totalfreedom.totalfreedommod.cmd;
 import org.bukkit.entity.Player;
 
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.rank.Rank;
 
 @Command(name = "trail", description = "Pretty rainbow trails.", usage = "/trail [on | off]")
-@Permission(permission = "tfm.fun.trail", level = Rank.SUPER_ADMIN, source = SourceType.ONLY_IN_GAME)
+@Permission(permission = "tfm.fun.trail", source = SourceType.ONLY_IN_GAME)
 public class Command_trail extends FCommand
 {
     @Callback

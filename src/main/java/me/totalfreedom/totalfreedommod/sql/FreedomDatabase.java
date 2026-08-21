@@ -1,18 +1,18 @@
 package me.totalfreedom.totalfreedommod.sql;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
 import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import me.totalfreedom.totalfreedommod.sql.SQLProperties.DatabaseType;
-import me.totalfreedom.totalfreedommod.sql.adapter.AdapterFactory;
-import me.totalfreedom.totalfreedommod.sql.adapter.AdminRepository;
-import me.totalfreedom.totalfreedommod.sql.adapter.BanRepository;
-import me.totalfreedom.totalfreedommod.sql.adapter.DatabaseAdapter;
-import me.totalfreedom.totalfreedommod.sql.adapter.DiscordLinkRepository;
-import me.totalfreedom.totalfreedommod.sql.adapter.PermbanRepository;
-import me.totalfreedom.totalfreedommod.sql.adapter.StrikeRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.*;
 import me.totalfreedom.totalfreedommod.util.FLog;
-
-import java.sql.SQLException;
+import me.totalfreedom.totalfreedommod.util.FTask;
 
 /**
  * Central database management service.
@@ -27,7 +27,15 @@ public class FreedomDatabase extends FreedomService
     private ConnectionHandler connectionHandler;
     private StatementHandler statementHandler;
     private DatabaseAdapter adapter;
-    private boolean initialized = false;
+    private volatile boolean initialized = false;
+
+    /**
+     * Callbacks waiting on the database, and whether they have already been drained. Both are
+     * touched only on the main thread, so registering during {@code onStart} cannot race the
+     * drain that happens once the background bootstrap finishes.
+     */
+    private final List<Runnable> readyCallbacks = new ArrayList<>();
+    private boolean readyFired = false;
 
     public FreedomDatabase(TotalFreedomMod plugin)
     {
@@ -37,15 +45,7 @@ public class FreedomDatabase extends FreedomService
     @Override
     protected void onStart()
     {
-        try
-        {
-            initialize();
-        }
-        catch (Exception ex)
-        {
-            FLog.severe("Failed to initialize database: " + ex.getMessage());
-            ex.printStackTrace();
-        }
+        initializeAsync();
     }
 
     @Override
@@ -55,9 +55,12 @@ public class FreedomDatabase extends FreedomService
     }
 
     /**
-     * Initialize the database connection and adapter.
+     * Build the connection pool, run schema migrations, then fold any legacy YAML data in,
+     * entirely on a background thread. {@code onEnable} does not wait for any of it: every
+     * domain starts on its JSON snapshot and swaps to SQL through {@link #whenReady(Runnable)}
+     * once this finishes, so an unreachable database host delays nothing but the swap.
      */
-    public void initialize() throws SQLException
+    public void initializeAsync()
     {
         if (initialized)
         {
@@ -65,43 +68,84 @@ public class FreedomDatabase extends FreedomService
             return;
         }
 
-        FLog.info("Initializing database...");
+        FLog.info("Initializing database in the background...");
 
-        // Create connection handler
         connectionHandler = new ConnectionHandler(plugin);
+        final SQLProperties properties = connectionHandler.getSqlProperties();
+        final DatabaseType dbType = properties.getDatabaseType();
 
-        // Check database type
-        SQLProperties properties = connectionHandler.getSqlProperties();
-        DatabaseType dbType = properties.getDatabaseType();
-
-        if (dbType.isNoSQL())
+        Mono.fromCallable(() ->
         {
-            FLog.warning("NoSQL database type '" + dbType.getName() + "' is not yet fully supported.");
-            FLog.warning("Please use a SQL database (sqlite, mysql, mariadb, postgresql, h2) instead.");
+            connectionHandler.connect();
+            statementHandler = new StatementHandler(connectionHandler);
+            DatabaseAdapter created = AdapterFactory.createAdapter(plugin, properties, connectionHandler, statementHandler);
+            created.initialize();
+            return created;
+        })
+            .subscribeOn(Schedulers.boundedElastic())
+            .doOnNext(built ->
+            {
+                adapter = built;
+                initialized = true;
+                FLog.info(String.format("Database initialized successfully (%s)", dbType.getName()));
+            })
+            // Migrations have to finish before any domain reads SQL, so they ride this
+            // chain rather than registering as another ready callback.
+            .then(Mono.defer(() -> new YamlMigrationService(plugin, this).runMigrations()))
+            .subscribe(
+                    ignored -> {},
+                    ex -> FLog.severe(String.format(
+                            "Failed to initialize database, every domain stays on its JSON fallback: %s",
+                            ex.getMessage())),
+                    () -> sync("FreedomDatabase/ready", this::fireReady));
+    }
+
+    /**
+     * Register {@code callback} to run on the main thread once the database is up and its YAML
+     * migrations have finished, or immediately if that has already happened. Callbacks run in
+     * registration order and are skipped entirely if the database never comes up.
+     * <p>
+     * Main thread only.
+     */
+    public void whenReady(final Runnable callback)
+    {
+        if (readyFired)
+        {
+            callback.run();
             return;
         }
+        readyCallbacks.add(callback);
+    }
 
-        // Wait for connection
-        try
+    /**
+     * Run {@code query} off the main thread and hand its result to {@code apply} back on it.
+     * A failed or empty query logs against {@code label} and runs {@code onFailure} instead,
+     * also on the main thread.
+     */
+    public <T> void readAsync(final String label, final Mono<T> query, final Consumer<T> apply,
+            final Runnable onFailure)
+    {
+        query.switchIfEmpty(Mono.error(new IllegalStateException("query returned no result")))
+                .subscribe(
+                        result -> sync(label, () -> apply.accept(result)),
+                        ex ->
+                        {
+                            FLog.warning(String.format("%s failed: %s", label, ex.getMessage()));
+                            sync(label, onFailure);
+                        });
+    }
+
+    /**
+     * Run {@code body} on the main thread, or inline if the plugin is already disabled.
+     */
+    public void sync(final String label, final Runnable body)
+    {
+        if (!plugin.isEnabled())
         {
-            connectionHandler.getConnection().join();
+            FTask.run(label, body);
+            return;
         }
-        catch (Exception ex)
-        {
-            throw new SQLException("Failed to establish database connection", ex);
-        }
-
-        // Create statement handler
-        statementHandler = new StatementHandler(connectionHandler);
-
-        // Create the adapter using the factory
-        adapter = AdapterFactory.createAdapter(plugin, properties, connectionHandler, statementHandler);
-
-        // Initialize the adapter (runs migrations)
-        adapter.initialize();
-
-        initialized = true;
-        FLog.info("Database initialized successfully (" + dbType.getName() + ")");
+        plugin.getServer().getScheduler().runTask(plugin, FTask.guard(label, body));
     }
 
     /**
@@ -127,6 +171,11 @@ public class FreedomDatabase extends FreedomService
         }
 
         initialized = false;
+
+        // Cleared so a tfm reload queues the domains' swap callbacks again instead of running them immediately against a pool that is still being rebuilt. 
+        readyFired = false;
+        readyCallbacks.clear();
+
         FLog.info("Database shutdown complete");
     }
 
@@ -216,6 +265,73 @@ public class FreedomDatabase extends FreedomService
         return adapter.getDiscordLinkRepository();
     }
 
+    public RankRepository getRankRepository()
+    {
+        if (adapter == null)
+        {
+            throw new IllegalStateException("Database not initialized");
+        }
+        return adapter.getRankRepository();
+    }
+
+    public TitleRepository getTitleRepository()
+    {
+        if (adapter == null)
+        {
+            throw new IllegalStateException("Database not initialized");
+        }
+        return adapter.getTitleRepository();
+    }
+
+    public ProtectedAreaRepository getProtectedAreaRepository()
+    {
+        if (adapter == null)
+        {
+            throw new IllegalStateException("Database not initialized");
+        }
+        return adapter.getProtectedAreaRepository();
+    }
+
+    public SavedFlagRepository getSavedFlagRepository()
+    {
+        if (adapter == null)
+        {
+            throw new IllegalStateException("Database not initialized");
+        }
+        return adapter.getSavedFlagRepository();
+    }
+
+    public PlayerRepository getPlayerRepository()
+    {
+        if (adapter == null)
+        {
+            throw new IllegalStateException("Database not initialized");
+        }
+        return adapter.getPlayerRepository();
+    }
+
+    public MigrationRepository getMigrationRepository()
+    {
+        if (adapter == null)
+        {
+            throw new IllegalStateException("Database not initialized");
+        }
+        return adapter.getMigrationRepository();
+    }
+
+    /**
+     * Snapshot of live connection pool and fairness-queue health, or {@code null} if the
+     * database isn't initialized.
+     */
+    public ConnectionHandler.PoolStats getPoolStats()
+    {
+        if (!initialized || connectionHandler == null)
+        {
+            return null;
+        }
+        return connectionHandler.getPoolStats();
+    }
+
     /**
      * Get the database type.
      */
@@ -226,5 +342,12 @@ public class FreedomDatabase extends FreedomService
             return DatabaseType.SQLITE; // Default
         }
         return connectionHandler.getSqlProperties().getDatabaseType();
+    }
+
+    private void fireReady()
+    {
+        readyFired = true;
+        readyCallbacks.forEach(callback -> FTask.run("FreedomDatabase/readyCallback", callback));
+        readyCallbacks.clear();
     }
 }

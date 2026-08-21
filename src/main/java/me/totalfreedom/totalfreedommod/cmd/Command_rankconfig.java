@@ -1,27 +1,37 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
 import me.totalfreedom.totalfreedommod.admin.Admin;
 import me.totalfreedom.totalfreedommod.cmd.internal.FuzzyMatch;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
 import me.totalfreedom.totalfreedommod.rank.CustomRank;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import me.totalfreedom.totalfreedommod.rank.RankRole;
 
 @Command(
-    name = "rankconfig",
-    description = "Configure custom ranks.",
-    usage = "/rankconfig [list | create <id> | edit <rank> | delete <rank> | set <rank> <property> <value> | setrank <player> <rank> | reload | save]",
-    aliases = {"rankconf", "rankcfg"}
+        name = "rankconfig",
+        description = "Configure custom ranks.",
+        usage = "/rankconfig [list | create <id> | edit <rank> | delete <rank> | set <rank> <property> <value> | setrank <player> <rank> | reload | save]",
+        aliases = {"rankconf", "rankcfg"}
 )
-@Permission(permission = "tfm.manage.ranks", level = Rank.SENIOR_ADMIN)
+@Permission(permission = "tfm.manage.ranks")
 public class Command_rankconfig extends FCommand
 {
+    private static final List<String> COLOR_NAMES = Stream.concat(
+            NamedTextColor.NAMES.keys().stream(),
+            Stream.of("purple", "orange", "grey", "dark_grey", "cyan", "dark_cyan", "pink", "magenta"))
+        .sorted()
+        .toList();
+        
     @Callback
     public void menu(CommandSender sender)
     {
@@ -125,7 +135,6 @@ public class Command_rankconfig extends FCommand
             case DETERMINER -> target.setDeterminer(value);
             case COLOR -> target.setColor(parseColor(value));
             case ADMIN -> target.setAdmin(isTruthy(value));
-            case CONSOLE -> target.setConsoleOnly(isTruthy(value));
             case ADDPERM -> target.addPermission(value);
             case REMPERM -> target.removePermission(value);
             case LEVEL ->
@@ -179,6 +188,51 @@ public class Command_rankconfig extends FCommand
         return rankIdCandidates(partial);
     }
 
+    @Completer(value = "set", position = 2, scope = Completer.Scope.ARGUMENT)
+    public List<String> completeSetValue(CommandSender sender, String partial, List<String> priorArgs)
+    {
+        final Property property = parseProperty(priorArgs.get(1));
+        if (property == null)
+        {
+            return List.of();
+        }
+
+        return switch (property)
+        {
+            case COLOR -> FuzzyMatch.filter(COLOR_NAMES, partial);
+            case ADMIN -> FuzzyMatch.filter(List.of("true", "false"), partial);
+            case INHERIT -> FuzzyMatch.filter(inheritCandidates(priorArgs.get(0)), partial);
+            case REMPERM -> FuzzyMatch.filter(heldPermissions(priorArgs.get(0)), partial);
+            default -> List.of();
+        };
+    }
+
+    private List<String> inheritCandidates(String rankId)
+    {
+        final List<String> candidates = new ArrayList<>(List.of("none"));
+        plugin().rm.getCustomRanksSorted()
+                   .stream()
+                   .map(CustomRank::getId)
+                   .filter(id -> !id.equalsIgnoreCase(rankId.trim()))
+                   .forEach(candidates::add);
+
+        return candidates;
+    }
+
+    private List<String> heldPermissions(String rankId)
+    {
+        final CustomRank rank = plugin().rm.getCustomRank(rankId.trim().toLowerCase());
+        return rank == null ? List.of() : rank.getPermissions().stream().sorted().toList();
+    }
+
+    private static Property parseProperty(String typed)
+    {
+        return Arrays.stream(Property.values())
+                     .filter(property -> property.name().equalsIgnoreCase(typed.trim()))
+                     .findFirst()
+                     .orElse(null);
+    }
+
     @Callback
     @Subcommand("setrank")
     public void setRank(CommandSender sender, Player target, String rank)
@@ -195,9 +249,11 @@ public class Command_rankconfig extends FCommand
                 return;
             }
 
-            admin.setCustomRankId(null);
-            plugin().al.save();
-            msg(sender, "<green>Cleared custom rank for <player>", Placeholder.unparsed("player", target.getName()));
+            admin.setRankId(plugin().rm.getRegistry().byRole(RankRole.ADMIN_DEFAULT)
+                                       .map(CustomRank::getId)
+                                       .orElse(null));
+            plugin().al.saveAsync();
+            msg(sender, "<green>Reset <player> to the baseline admin rank.", Placeholder.unparsed("player", target.getName()));
             return;
         }
 
@@ -216,8 +272,8 @@ public class Command_rankconfig extends FCommand
             return;
         }
 
-        admin.setCustomRankId(rankId);
-        plugin().al.save();
+        admin.setRankId(rankId);
+        plugin().al.saveAsync();
 
         adminAction(
             sender,
@@ -305,6 +361,6 @@ public class Command_rankconfig extends FCommand
 
     private enum Property
     {
-        NAME, ABBREVIATION, LEVEL, COLOR, DETERMINER, ADMIN, CONSOLE, PREFIX, INHERIT, ADDPERM, REMPERM
+        NAME, ABBREVIATION, LEVEL, COLOR, DETERMINER, ADMIN, PREFIX, INHERIT, ADDPERM, REMPERM
     }
 }

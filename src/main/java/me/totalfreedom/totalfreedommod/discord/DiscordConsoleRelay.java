@@ -5,7 +5,19 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.RejectedExecutionException;
+
+import org.bukkit.Bukkit;
+import org.bukkit.scheduler.BukkitTask;
+
+import discord4j.common.util.Snowflake;
+import discord4j.core.GatewayDiscordClient;
+import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.object.emoji.Emoji;
+import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.User;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import me.totalfreedom.totalfreedommod.admin.Admin;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
@@ -14,21 +26,15 @@ import me.totalfreedom.totalfreedommod.dispatch.RemoteDispatchSession;
 import me.totalfreedom.totalfreedommod.util.CallbackLogAppender;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FTask;
-import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import net.dv8tion.jda.api.entities.emoji.Emoji;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Logger;
-import org.bukkit.Bukkit;
-import org.bukkit.scheduler.BukkitTask;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Streams server log output into the Discord console channel and dispatches
  * plain Minecraft commands typed into that channel as the linked admin.
  */
-public class DiscordConsoleRelay extends ListenerAdapter
+public class DiscordConsoleRelay
 {
 
     /** Discord hard message-length limit. We pack lines into chunks below this. */
@@ -45,16 +51,12 @@ public class DiscordConsoleRelay extends ListenerAdapter
     private static final int MIN_FLUSH_MS = 250;
 
     /**
-     * Loggers whose output is never relayed. JDA reports its own rate limiting and connection
-     * trouble through the root logger, and relaying that back into the channel being rate limited
-     * makes every problem generate more traffic describing itself.
+     * Loggers whose output should never be relayed.
      */
-    private static final String[] EXCLUDED_LOGGERS = {"net.dv8tion.jda", "okhttp3", "club.minnced"};
+    private static final String[] EXCLUDED_LOGGERS = {"discord4j", "reactor", "io.netty"};
 
     /**
-     * Set while this relay logs its own failures. The appender is on the root logger, so without
-     * it a failed send would enqueue the warning about the failed send, and that warning would be
-     * in the next attempt's payload.
+     * Set while this relay logs its own failures.
      */
     private static final ThreadLocal<Boolean> SUPPRESS_CAPTURE = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
@@ -69,8 +71,8 @@ public class DiscordConsoleRelay extends ListenerAdapter
     /** Lines discarded because the queue was full, reported in the next successful flush. */
     private int droppedLines;
 
-    private CallbackLogAppender logAppender;
-    private BukkitTask flushTask;
+    private volatile Optional<CallbackLogAppender> logAppender = Optional.empty();
+    private volatile Optional<BukkitTask> flushTask = Optional.empty();
 
     public DiscordConsoleRelay(TotalFreedomMod plugin, DiscordBridge bridge)
     {
@@ -79,39 +81,52 @@ public class DiscordConsoleRelay extends ListenerAdapter
         this.queueLimit = Math.max(64, ConfigEntry.DISCORD_CONSOLE_QUEUE_LIMIT.getInteger(DEFAULT_QUEUE_LIMIT));
     }
 
+    public Mono<Void> bind(final GatewayDiscordClient gateway)
+    {
+        return gateway.on(MessageCreateEvent.class)
+                      .filter(this::isConsoleCommand)
+                      .flatMap(event -> handleCommand(event).onErrorResume(thrown ->
+                                                            {
+                                                                warnWithoutCapture(String.format("[Discord] Console command failed: %s",
+                                                                        DiscordConnection.describeFailure(thrown)));
+                                                                return Mono.empty();
+                                                            }))
+                       .then();
+    }
+
     void attachAppender()
     {
         if (bridge.currentConsoleChannel().isEmpty())
-        {
             return;
-        }
 
-        Integer flushConfig = ConfigEntry.DISCORD_CONSOLE_FLUSH.getInteger();
-        int flushMs = flushConfig == null || flushConfig < MIN_FLUSH_MS ? DEFAULT_FLUSH_MS : flushConfig;
-        long ticks = Math.max(1L, flushMs / 50L);
+        final int flushMs = Optional.ofNullable(ConfigEntry.DISCORD_CONSOLE_FLUSH.getInteger())
+                                    .filter(configured -> configured >= MIN_FLUSH_MS)
+                                    .orElse(DEFAULT_FLUSH_MS);
+        final long ticks = Math.max(1L, flushMs / 50L);
 
-        logAppender = new CallbackLogAppender("DiscordConsoleAppender", (line, level) -> enqueue(line))
-                .excludeLoggers(EXCLUDED_LOGGERS);
-        logAppender.start();
-        ((Logger) LogManager.getRootLogger()).addAppender(logAppender);
+        final CallbackLogAppender appender = new CallbackLogAppender("DiscordConsoleAppender", (line, level) -> enqueue(line)).excludeLoggers(EXCLUDED_LOGGERS);
 
-        flushTask = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin,
-                FTask.guard("DiscordConsoleRelay/flush", this::flush), ticks, ticks);
+        appender.start();
+
+        ((Logger) LogManager.getRootLogger()).addAppender(appender);
+        logAppender = Optional.of(appender);
+
+        flushTask = Optional.of(Bukkit.getScheduler().runTaskTimerAsynchronously(plugin,
+                FTask.guard("DiscordConsoleRelay/flush", this::flush), ticks, ticks));
     }
 
     void detachAppender()
     {
-        if (logAppender != null)
+        logAppender.ifPresent(appender ->
         {
-            ((Logger) LogManager.getRootLogger()).removeAppender(logAppender);
-            logAppender.stop();
-            logAppender = null;
-        }
-        if (flushTask != null)
-        {
-            flushTask.cancel();
-            flushTask = null;
-        }
+            ((Logger) LogManager.getRootLogger()).removeAppender(appender);
+            appender.stop();
+        });
+        logAppender = Optional.empty();
+
+        flushTask.ifPresent(BukkitTask::cancel);
+        flushTask = Optional.empty();
+
         synchronized (pendingLock)
         {
             pendingLines.clear();
@@ -119,82 +134,83 @@ public class DiscordConsoleRelay extends ListenerAdapter
         }
     }
 
-    @Override
-    public void onMessageReceived(@NotNull MessageReceivedEvent event)
+    private boolean isConsoleCommand(final MessageCreateEvent event)
     {
-        if (event.getAuthor().isBot() || event.getAuthor().isSystem())
-        {
-            return;
-        }
-        if (!event.isFromGuild())
-        {
-            return;
-        }
+        if (event.getGuildId().isEmpty())
+            return false;
 
-        Optional<TextChannel> channel = bridge.currentConsoleChannel();
-        if (channel.isEmpty() || !event.getChannel().getId().equals(channel.get().getId()))
-        {
-            return;
-        }
+        final Optional<User> author = event.getMessage().getAuthor();
+        if (author.isEmpty() || author.get().isBot())
+            return false;
 
-        String content = event.getMessage().getContentRaw().trim();
+        final Optional<Snowflake> channel = bridge.currentConsoleChannel();
+        return channel.isPresent() && channel.get().equals(event.getMessage().getChannelId());
+    }
+
+    /**
+     * Resolve the author to a linked admin and run their command.
+     * <p>
+     * The repository lookup is JDBC, so it is pushed onto {@code boundedElastic} rather than run
+     * where the event arrived.
+     */
+    private Mono<Void> handleCommand(final MessageCreateEvent event)
+    {
+        final Message message = event.getMessage();
+        final String content = message.getContent().trim();
         if (content.isEmpty())
-        {
-            return;
-        }
+            return Mono.empty();
 
-        String discordUserId = event.getAuthor().getId();
-        UUID adminUuid;
+        final String commandLine = content.startsWith("/") ? content.substring(1) : content;
+        if (commandLine.isEmpty())
+            return Mono.empty();
+
+        return Mono.justOrEmpty(message.getAuthor()
+                                       .map(User::getId)
+                                       .map(Snowflake::asString))
+                   .flatMap(discordUserId -> Mono.fromCallable(() -> resolveAdmin(discordUserId))
+                                                 .subscribeOn(Schedulers.boundedElastic()))
+                   .flatMap(resolution -> resolution.admin()
+                                                    .map(admin -> dispatch(admin, commandLine))
+                                                    .orElseGet(() -> react(message, resolution.reaction())));
+    }
+
+    private AdminResolution resolveAdmin(final String discordUserId)
+    {
+        final Optional<UUID> adminUuid;
         try
         {
-            adminUuid = plugin.dm.getDiscordLinkRepository().findAdminUuidByDiscordId(discordUserId);
+            adminUuid = Optional.ofNullable(plugin.dm.getDiscordLinkRepository().findAdminUuidByDiscordId(discordUserId));
         }
         catch (SQLException ex)
         {
-            FLog.warning("[Discord] discord_links lookup failed: " + ex.getMessage());
-            react(event, "⚠️");
-            return;
+            warnWithoutCapture("[Discord] discord_links lookup failed: " + ex.getMessage());
+            return AdminResolution.lookupFailed();
         }
 
-        if (adminUuid == null)
-        {
-            react(event, "❌");
-            return;
-        }
+        return adminUuid.flatMap(uuid -> Optional.ofNullable(plugin.al.getAdminByUuid(uuid)))
+                        .filter(Admin::isActive)
+                        .map(AdminResolution::linked)
+                        .orElseGet(AdminResolution::notLinked);
+    }
 
-        Admin admin = plugin.al.getAdminByUuid(adminUuid);
-        if (admin == null || !admin.isActive())
-        {
-            react(event, "❌");
-            return;
-        }
+    private Mono<Void> dispatch(final Admin admin, final String commandLine)
+    {
+        final String displayName = "Discord@" + admin.getName();
+        final RemoteDispatchSession session = new RemoteDispatchSession(RemoteDispatchSession.Channel.DISCORD,
+                                                                        admin.getName(),
+                                                                        displayName,
+                                                                        true);
 
-        String commandLine = content.startsWith("/") ? content.substring(1) : content;
-        if (commandLine.isEmpty())
-        {
-            return;
-        }
-
-        String displayName = "Discord@" + admin.getName();
-        RemoteDispatchSession session = new RemoteDispatchSession(
-                RemoteDispatchSession.Channel.DISCORD,
-                admin.getName(),
-                displayName,
-                true);
-
-        Bukkit.getScheduler().runTask(plugin, () ->
-        {
-            FLog.info("[Discord: " + admin.getName() + "] /" + commandLine);
-            RemoteDispatchContext.dispatch(session, commandLine);
-        });
+        return Mono.<Void>fromRunnable(() ->
+                   {
+                       FLog.info("[Discord: " + admin.getName() + "] /" + commandLine);
+                       RemoteDispatchContext.dispatch(session, commandLine);
+                   })
+                   .subscribeOn(bridge.mainThread());
     }
 
     /**
      * Queue one captured log line, dropping the oldest when the queue is full.
-     * <p>
-     * The bound matters because everything downstream can stall: a channel that has gone away, a
-     * bot without send permission, or a rate limit all leave lines arriving with nowhere to go.
-     * Unbounded, that is a heap leak that only ends when the server does.
      */
     private void enqueue(String line)
     {
@@ -216,43 +232,28 @@ public class DiscordConsoleRelay extends ListenerAdapter
 
     private void flush()
     {
-        Optional<TextChannel> channel = bridge.currentConsoleChannel();
-        if (channel.isEmpty())
-        {
+        final Optional<DiscordSession> current = bridge.getSession();
+        final Optional<Snowflake> channel = bridge.currentConsoleChannel();
+        if (current.isEmpty() || channel.isEmpty())
             return;
-        }
 
         String chunk = drainChunk();
         if (chunk.isEmpty())
-        {
             return;
-        }
 
         String body = "```ansi\n" + chunk + "\n```";
-        try
-        {
-            channel.get().sendMessage(body).queue(
-                    null,
-                    err -> warnWithoutCapture("[Discord] Console flush failed: " + err.getMessage())
-            );
-        }
-        catch (RejectedExecutionException ex)
-        {
-            // The client is gone, so the failure consumer above will never run. Tell the
-            // supervisor so this counts toward the reconnect budget.
-            warnWithoutCapture("[Discord] Console flush rejected: " + ex.getMessage());
-            bridge.reportTransportFailure("console flush", ex);
-        }
+        current.get()
+               .channel(channel)
+               .flatMap(target -> target.createMessage(body))
+               .subscribe(
+                        sent ->
+                        {
+                        },
+                        err -> warnWithoutCapture("[Discord] Console flush failed: " + err.getMessage()));
     }
 
     /**
      * Take as many queued lines as fit in one message.
-     * <p>
-     * Each line is shortened to fit <em>before</em> it is measured against the remaining budget.
-     * Testing an over-long line first and breaking out of the loop left it sitting at the head of
-     * the deque, where it failed the same test on every subsequent flush: a single log line longer
-     * than one Discord message used to stop console output permanently, with the queue behind it
-     * growing forever, while inbound commands kept working and made the relay look healthy.
      */
     private String drainChunk()
     {
@@ -265,26 +266,20 @@ public class DiscordConsoleRelay extends ListenerAdapter
             droppedLines = 0;
 
             if (dropped > 0)
-            {
                 chunk.append(String.format("... %d line(s) dropped, console output is falling behind ...", dropped));
-            }
 
             while (!pendingLines.isEmpty())
             {
                 String line = truncateToFit(pendingLines.peekFirst());
 
-                // The first line always goes in, having already been cut to fit on its own.
                 if (!chunk.isEmpty() && chunk.length() + 1 + line.length() > MAX_CHUNK_LENGTH)
-                {
                     break;
-                }
 
                 pendingLines.pollFirst();
 
                 if (!chunk.isEmpty())
-                {
                     chunk.append('\n');
-                }
+
                 chunk.append(line);
             }
         }
@@ -295,8 +290,8 @@ public class DiscordConsoleRelay extends ListenerAdapter
     private static String truncateToFit(String line)
     {
         return line.length() <= MAX_CHUNK_LENGTH
-                ? line
-                : line.substring(0, MAX_CHUNK_LENGTH - 1) + "…";
+               ? line
+               : line.substring(0, MAX_CHUNK_LENGTH - 1) + "…";
     }
 
     /**
@@ -316,8 +311,30 @@ public class DiscordConsoleRelay extends ListenerAdapter
         }
     }
 
-    private static void react(MessageReceivedEvent event, String emoji)
+    private static Mono<Void> react(final Message message, final String emoji)
     {
-        event.getMessage().addReaction(Emoji.fromUnicode(emoji)).queue(null, ignored -> {});
+        return message.addReaction(Emoji.unicode(emoji))
+                      .onErrorResume(ignored -> Mono.empty());
+    }
+
+    /**
+     * Either the admin a console message should run as, or the reaction to leave on it saying why it will not run.
+     */
+    private record AdminResolution(Optional<Admin> admin, String reaction)
+    {
+        private static AdminResolution linked(final Admin admin)
+        {
+            return new AdminResolution(Optional.of(admin), "");
+        }
+
+        private static AdminResolution notLinked()
+        {
+            return new AdminResolution(Optional.empty(), "❌");
+        }
+
+        private static AdminResolution lookupFailed()
+        {
+            return new AdminResolution(Optional.empty(), "⚠️");
+        }
     }
 }

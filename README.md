@@ -1,6 +1,6 @@
 # TotalFreedomMod r03
 ![Release](https://img.shields.io/github/v/release/tfreedomorg/TotalFreedomMod?include_prereleases&style=plastic)
-![Version](https://img.shields.io/badge/version-26.7-green?style=plastic)
+![Version](https://img.shields.io/badge/version-26.7.1-green?style=plastic)
 ![License](https://img.shields.io/badge/license-TFGL%20v2.0-orange?style=plastic)
 ![Code size](https://img.shields.io/github/languages/code-size/tfreedomorg/TotalFreedomMod?style=plastic)
 

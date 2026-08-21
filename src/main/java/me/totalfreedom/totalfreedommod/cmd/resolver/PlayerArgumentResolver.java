@@ -1,13 +1,13 @@
 package me.totalfreedom.totalfreedommod.cmd.resolver;
 
-import me.totalfreedom.totalfreedommod.util.AdventureUtil;
+import java.util.List;
+import java.util.UUID;
+
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import me.totalfreedom.totalfreedommod.cmd.FCommand;
-
-import java.util.List;
-import java.util.UUID;
+import me.totalfreedom.totalfreedommod.util.AdventureUtil;
 
 public class PlayerArgumentResolver implements AbstractArgumentResolver<Player>
 {

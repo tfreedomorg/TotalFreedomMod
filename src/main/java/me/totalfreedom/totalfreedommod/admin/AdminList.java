@@ -1,32 +1,23 @@
 package me.totalfreedom.totalfreedommod.admin;
 
-import com.google.common.base.Function;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import me.totalfreedom.totalfreedommod.FreedomService;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-import java.nio.charset.StandardCharsets;
-import me.totalfreedom.totalfreedommod.sql.adapter.AdminRepository;
-import me.totalfreedom.totalfreedommod.util.FLog;
-import me.totalfreedom.totalfreedommod.util.FUtil;
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
+
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -34,10 +25,39 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.ServicePriority;
 
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
+import me.totalfreedom.totalfreedommod.FreedomService;
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.rank.CustomRank;
+import me.totalfreedom.totalfreedommod.rank.RankRole;
+import me.totalfreedom.totalfreedommod.sql.PersistenceQueue;
+import me.totalfreedom.totalfreedommod.sql.adapter.AdminRepository;
+import me.totalfreedom.totalfreedommod.util.FLog;
+import me.totalfreedom.totalfreedommod.util.FUtil;
+import me.totalfreedom.totalfreedommod.util.JsonUtil;
+
+import com.google.common.base.Function;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import com.google.gson.reflect.TypeToken;
+
 public class AdminList extends FreedomService
 {
 
-    public static final String CONFIG_FILENAME = "admins.yml";
+    public static final String CONFIG_FILENAME = "admins.json";
+
+    /**
+     * The node that marks a rank as senior. Senior standing is a capability granted by
+     * {@code ranks.json} rather than a fixed tier, so a defined rank can hold it and a
+     * rename or re-tier of the shipped ranks does not strand this check.
+     */
+    public static final String SENIOR_STATUS_NODE = "tfm.admin.senior.status";
+
+    private static final Type ADMIN_MAP_TYPE = new TypeToken<Map<String, Admin>>() {}.getType();
 
     private static final long LAST_LOGIN_DEBOUNCE_MS = 5L * 60L * 1000L;
 
@@ -46,7 +66,7 @@ public class AdminList extends FreedomService
     private final Map<String, Admin> allAdmins = Maps.newHashMap(); // Includes disabled admins
     // Only active admins below
     private final Set<Admin> activeAdmins = Sets.newHashSet();
-    
+
     // UUID-based lookup table
     private final Map<UUID, Admin> uuidTable = Maps.newHashMap();
     private final Map<String, Admin> nameTable = Maps.newHashMap();
@@ -54,26 +74,25 @@ public class AdminList extends FreedomService
     private final Set<Player> onlineAdminPlayers = Sets.newHashSet();
     //
     private final File configFile;
-    private YamlConfiguration config;
-    
+
+    // Serialises every queued write so a stale snapshot can never land after a newer one.
+    private final PersistenceQueue writes = new PersistenceQueue("admin");
+
     // Flag to track if SQL is available
     private boolean usingSql = false;
-    private final Object persistenceLock = new Object();
-    private final Object fileLock = new Object();
-    private CompletableFuture<Void> persistenceChain = CompletableFuture.completedFuture(null);
 
     public AdminList(TotalFreedomMod plugin)
     {
         super(plugin);
 
         this.configFile = new File(plugin.getDataFolder(), CONFIG_FILENAME);
-        this.config = YamlConfiguration.loadConfiguration(configFile);
     }
 
     @Override
     protected void onStart()
     {
         load();
+        plugin.dm.whenReady(this::load);
 
         server.getServicesManager().register(Function.class, new Function<Player, Boolean>()
         {
@@ -96,182 +115,25 @@ public class AdminList extends FreedomService
         save();
     }
 
+    /**
+     * Populate the list from SQL where it is available and the JSON snapshot otherwise. Never
+     * blocks: the SQL read runs off-thread and its result is applied back on the main thread,
+     * so this is safe from a command handler as well as from startup.
+     */
     public void load()
     {
-        // Try to load from SQL database first
         if (plugin.dm != null && plugin.dm.isInitialized())
         {
-            loadFromSql();
-        }
-        else
-        {
-            loadFromYaml();
-        }
-
-        if (ConfigEntry.ADMINLIST_USE_UUID_ONLY.getBoolean())
-        {
-            getMissingUuids();
-        }
-    }
-
-    /**
-     * Best-effort UUID backfill for admin records loaded without a stored UUID.
-     */
-    private void getMissingUuids()
-    {
-        int resolved = 0;
-        int offlineDerived = 0;
-        boolean mojangLookup = ConfigEntry.ADMINLIST_MOJANG_UUID_LOOKUP.getBoolean();
-        final List<Admin> backfilled = new ArrayList<>();
-
-        for (Admin admin : allAdmins.values())
-        {
-            if (admin.getUuid() != null)
-            {
-                continue;
-            }
-
-            UUID uuid = FUtil.usernameToUuid(admin.getName());
-            if (uuid != null)
-            {
-                resolved++;
-            }
-            else
-            {
-                uuid = UUID.nameUUIDFromBytes(("OfflinePlayer:" + admin.getName().toLowerCase()).getBytes(StandardCharsets.UTF_8));
-                offlineDerived++;
-            }
-            admin.setUuid(uuid);
-            backfilled.add(admin);
-        }
-
-        if (backfilled.isEmpty())
-        {
+            loadFromSqlAsync();
             return;
         }
 
-        FLog.info("UUID backfill: " + resolved + " resolved via Mojang, " + offlineDerived + " offline-derived");
-        if (offlineDerived > 0 && !mojangLookup)
-        {
-            FLog.warning("use_uuid_only is enabled but mojang_uuid_lookup is disabled; "
-                    + offlineDerived + " admin record(s) fell back to offline-derived UUIDs and "
-                    + "will not match premium accounts on login");
-        }
-
-        updateTables();
-
-        // SQL can persist just the rows we touched; YAML is a whole-file format
-        // so one bulk write beats N rewrites of the same file.
-        if (usingSql)
-        {
-            backfilled.forEach(this::saveAdminAsync);
-        }
-        else
-        {
-            saveAsync();
-        }
-    }
-    
-    /**
-     * Load admins from SQL database.
-     */
-    private void loadFromSql()
-    {
-        try
-        {
-            AdminRepository repo = plugin.dm.getAdminRepository();
-            List<Admin> admins = repo.findAll().join();
-            
-            allAdmins.clear();
-            for (Admin admin : admins)
-            {
-                String key = admin.getName().toLowerCase();
-                admin = fixConfigKey(admin, key);
-                allAdmins.put(key, admin);
-            }
-            
-            usingSql = true;
-            updateTables();
-            FLog.info("Loaded " + allAdmins.size() + " admins from SQL database (" + nameTable.size() + " active, " + ipTable.size() + " IPs)");
-        }
-        catch (Exception ex)
-        {
-            FLog.warning("Failed to load admins from SQL, falling back to YAML: " + ex.getMessage());
-            loadFromYaml();
-        }
-    }
-    
-    /**
-     * Fix the config key on an admin (needed when loading from SQL).
-     */
-    private Admin fixConfigKey(Admin admin, String key)
-    {
-        // Use reflection or create new admin to set configKey
-        // Since configKey is private with no setter, we need to recreate
-        if (admin.getConfigKey() == null || !admin.getConfigKey().equals(key))
-        {
-            Admin fixed = new Admin(key);
-            fixed.setUuid(admin.getUuid());
-            fixed.setName(admin.getName());
-            fixed.setRank(admin.getRank());
-            fixed.setActive(admin.isActive());
-            fixed.setLastLogin(admin.getLastLogin());
-            fixed.setLoginMessage(admin.getLoginMessage());
-            fixed.setCustomRankId(admin.getCustomRankId());
-            fixed.addIps(admin.getIps());
-            return fixed;
-        }
-        return admin;
-    }
-    
-    /**
-     * Load admins from YAML file (fallback).
-     */
-    private void loadFromYaml()
-    {
-        if (!configFile.exists())
-        {
-            try
-            {
-                configFile.getParentFile().mkdirs();
-                configFile.createNewFile();
-            }
-            catch (IOException ex)
-            {
-                FLog.severe("Could not create " + CONFIG_FILENAME);
-            }
-        }
-        config = YamlConfiguration.loadConfiguration(configFile);
-
-        allAdmins.clear();
-        for (String key : config.getKeys(false))
-        {
-            ConfigurationSection section = config.getConfigurationSection(key);
-            if (section == null)
-            {
-                FLog.warning("Invalid admin list format: " + key);
-                continue;
-            }
-
-            Admin admin = new Admin(key);
-            admin.loadFrom(section);
-
-            if (!admin.isValid())
-            {
-                FLog.warning("Could not load admin: " + key + ". Missing details!");
-                continue;
-            }
-
-            allAdmins.put(key, admin);
-        }
-
-        usingSql = false;
-        updateTables();
-        FLog.info("Loaded " + allAdmins.size() + " admins from YAML (" + nameTable.size() + " active, " + ipTable.size() + " IPs)");
+        loadFromJson();
+        backfillUuidsIfEnabled();
     }
 
     /**
-     * Blocking write of every admin record. This is the shutdown flush - it is
+     * Blocking write of every admin record. This is the shutdown flush which is
      * called from {@link #onStop()} so nothing is lost when the server stops.
      * <p>
      * Do <b>not</b> call this from a command or event handler: under SQL it is a
@@ -287,75 +149,55 @@ public class AdminList extends FreedomService
         }
         else
         {
-            saveToYaml();
+            saveToJson();
         }
     }
 
     /**
-     * Wait for queued {@link #saveAdminAsync(Admin)} writes to land, up to
-     * {@code timeoutMs}. Without this a shutdown flush can race the queue and
-     * let an older queued snapshot overwrite the state we just wrote.
+     * Wait for queued {@link #saveAdminAsync(Admin)} writes to land, up to {@code timeoutMs}.
      */
     public void awaitPendingWrites(long timeoutMs)
     {
-        final CompletableFuture<Void> pending;
-        synchronized (persistenceLock)
-        {
-            pending = persistenceChain;
-        }
-
-        try
-        {
-            pending.get(timeoutMs, TimeUnit.MILLISECONDS);
-        }
-        catch (TimeoutException ex)
-        {
-            FLog.warning("Timed out after " + timeoutMs + "ms waiting for pending admin writes; flushing anyway");
-        }
-        catch (InterruptedException ex)
-        {
-            Thread.currentThread().interrupt();
-        }
-        catch (Exception ex)
-        {
-            FLog.warning("A queued admin write failed before shutdown: " + ex.getMessage());
-        }
+        writes.await(timeoutMs);
     }
 
     /**
-     * Persist <i>every</i> admin record on a worker thread. Under SQL this is a
-     * fan-out: one queued write per admin, whether or not it changed.
+     * Persist <i>every</i> admin record off the main thread. Under SQL the whole
+     * list goes out as one queued batch, written serially so the connection pool
+     * is not swamped.
      * <p>
-     * Only call this when the whole list is genuinely dirty, or when running on
-     * YAML (a whole-file format that cannot be written piecemeal). If a single
-     * entry changed - a login, an IP edit, a rank change - call
-     * {@link #saveAdminAsync(Admin)} instead, which queues just that row.
+     * Only call this when the whole list is genuinely dirty. If only a single entry
+     * changed, call {@link #saveAdminAsync(Admin)} instead, which queues just that row.
      */
     public void saveAsync()
     {
         if (usingSql)
         {
-            for (Admin admin : List.copyOf(allAdmins.values()))
-            {
-                saveAdminAsync(admin);
-            }
+            queueSqlWrites(allAdmins.values()
+                    .stream()
+                    .map(this::pendingWrite)
+                    .toList());
             return;
         }
 
         // Render on this thread while we still own the maps, then hand the
         // finished text to the worker. Serialising inside the async task would
         // read allAdmins off-thread while the main thread is free to mutate it.
-        final String data = serialiseAdmins();
+        final String json = serialiseAdmins();
 
         if (!plugin.isEnabled())
         {
-            writeYaml(data);
+            writeJson(json);
             return;
         }
 
-        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> writeYaml(data));
+        enqueue(writeJsonAsync(json));
     }
 
+    /**
+     * Queue a single admin row for an off-thread write, followed by a refresh of
+     * the JSON snapshot. Safe to call from commands and event handlers.
+     */
     public void saveAdminAsync(Admin admin)
     {
         if (admin == null)
@@ -369,200 +211,7 @@ public class AdminList extends FreedomService
             return;
         }
 
-        if (plugin.dm == null || !plugin.dm.isInitialized())
-        {
-            FLog.warning("SQL not available; admin change was not saved for " + admin.getName());
-            return;
-        }
-
-        final Admin snapshot = copyAdmin(admin);
-
-        synchronized (persistenceLock)
-        {
-            persistenceChain = persistenceChain
-                    .handle((ignored, throwable) -> null)
-                    // Async: resolveUuid may hit Mojang. A plain thenCompose would
-                    // run it on this thread whenever the chain is already complete.
-                    .thenComposeAsync(ignored -> resolveUuid(admin, snapshot))
-                    .thenCompose(uuid -> plugin.dm.getAdminRepository().save(uuid, snapshot).thenAccept(id ->
-                    {
-                    }))
-                    .exceptionally(ex ->
-                    {
-                        FLog.warning("Failed to save admin " + snapshot.getName() + " to SQL: " + ex.getMessage());
-                        return null;
-                    });
-        }
-    }
-
-    /**
-     * Resolve the UUID for a queued write. Runs on the persistence chain rather
-     * than the caller, because {@link FUtil#usernameToUuid} can make a blocking
-     * Mojang request with a 5s connect and 5s read timeout - that must never
-     * land on the main thread during play. The resolved value is handed back to
-     * the live entry on the main thread, which owns the lookup tables.
-     */
-    private CompletableFuture<UUID> resolveUuid(Admin live, Admin snapshot)
-    {
-        if (snapshot.getUuid() != null)
-        {
-            return CompletableFuture.completedFuture(snapshot.getUuid());
-        }
-
-        UUID resolved = FUtil.usernameToUuid(snapshot.getName());
-        if (resolved == null)
-        {
-            resolved = UUID.nameUUIDFromBytes(("OfflinePlayer:" + snapshot.getName().toLowerCase()).getBytes(StandardCharsets.UTF_8));
-        }
-
-        snapshot.setUuid(resolved);
-
-        final UUID finalResolved = resolved;
-        try
-        {
-            if (plugin.isEnabled())
-            {
-                plugin.getServer().getScheduler().runTask(plugin, () ->
-                {
-                    if (live.getUuid() == null)
-                    {
-                        live.setUuid(finalResolved);
-                        uuidTable.put(finalResolved, live);
-                    }
-                });
-            }
-        }
-        catch (RuntimeException ex)
-        {
-            // Plugin disabled between the check and the schedule; Bukkit answers
-            // that with IllegalPluginAccessException. The snapshot already holds
-            // the UUID, so let the write below proceed regardless.
-            FLog.debug("Could not sync resolved UUID back to " + snapshot.getName() + "; server is stopping");
-        }
-
-        return CompletableFuture.completedFuture(finalResolved);
-    }
-
-    private Admin copyAdmin(Admin admin)
-    {
-        Admin copy = new Admin(admin.getConfigKey());
-        copy.setUuid(admin.getUuid());
-        copy.setName(admin.getName());
-        copy.setRank(admin.getRank());
-        copy.setActive(admin.isActive());
-        copy.setLastLogin(admin.getLastLogin() == null ? null : new Date(admin.getLastLogin().getTime()));
-        copy.setLoginMessage(admin.getLoginMessage());
-        copy.setCustomRankId(admin.getCustomRankId());
-        copy.addIps(new ArrayList<>(admin.getIps()));
-        return copy;
-    }
-    
-    /**
-     * Save all admins to SQL database.
-     */
-    private void saveToSql()
-    {
-        if (plugin.dm == null || !plugin.dm.isInitialized())
-        {
-            FLog.warning("SQL not available, falling back to YAML save");
-            saveToYaml();
-            return;
-        }
-        
-        final AdminRepository repo = plugin.dm.getAdminRepository();
-        int saved = 0;
-        int failed = 0;
-
-        // Isolate per admin: this is the shutdown flush, so one unwritable row
-        // must not take the rest of the list down with it.
-        for (Admin admin : allAdmins.values())
-        {
-            try
-            {
-                UUID uuid = admin.getUuid();
-                if (uuid == null)
-                {
-                    // Generate UUID if not present. Blocking Mojang lookup is
-                    // acceptable here - this only runs at startup/shutdown.
-                    uuid = FUtil.usernameToUuid(admin.getName());
-                    if (uuid == null)
-                    {
-                        uuid = UUID.nameUUIDFromBytes(("OfflinePlayer:" + admin.getName().toLowerCase()).getBytes(StandardCharsets.UTF_8));
-                    }
-                    admin.setUuid(uuid);
-                }
-                repo.save(uuid, admin).join();
-                saved++;
-            }
-            catch (Exception ex)
-            {
-                failed++;
-                FLog.warning("Failed to save admin " + admin.getName() + " to SQL: " + ex.getMessage());
-            }
-        }
-
-        // Don't fall back to YAML on failure - we don't want conflicting data.
-        if (failed > 0)
-        {
-            FLog.warning("Saved " + saved + " admins to SQL database, " + failed + " failed");
-        }
-        else
-        {
-            FLog.debug("Saved " + saved + " admins to SQL database");
-        }
-    }
-    
-    /**
-     * Render the whole admin list to YAML text.
-     * <p>
-     * Reads {@code allAdmins} and mutates {@code config}, so it must run on the
-     * thread that owns them - the main thread. Callers wanting an off-thread
-     * write should call this first and hand the result to {@link #writeYaml}.
-     */
-    private String serialiseAdmins()
-    {
-        // Clear the config
-        for (String key : config.getKeys(false))
-        {
-            config.set(key, null);
-        }
-
-        for (Admin admin : allAdmins.values())
-        {
-            ConfigurationSection section = config.createSection(admin.getConfigKey());
-            admin.saveTo(section);
-        }
-
-        return config.saveToString();
-    }
-
-    /**
-     * Write pre-rendered YAML to disk. Touches no shared state beyond the file,
-     * so it is safe from any thread; the lock only serialises concurrent writers
-     * so two saves cannot interleave into a half-written file.
-     */
-    private void writeYaml(String data)
-    {
-        synchronized (fileLock)
-        {
-            try
-            {
-                configFile.getParentFile().mkdirs();
-                Files.writeString(configFile.toPath(), data, StandardCharsets.UTF_8);
-            }
-            catch (IOException ex)
-            {
-                FLog.severe("Could not save " + CONFIG_FILENAME + ": " + ex.getMessage());
-            }
-        }
-    }
-
-    /**
-     * Save all admins to YAML file (fallback). Blocking - startup/shutdown only.
-     */
-    private void saveToYaml()
-    {
-        writeYaml(serialiseAdmins());
+        queueSqlWrites(List.of(pendingWrite(admin)));
     }
 
     public synchronized boolean isAdminSync(CommandSender sender)
@@ -582,20 +231,33 @@ public class AdminList extends FreedomService
         return admin != null && admin.isActive();
     }
 
+    /**
+     * Whether {@code sender} counts as a senior admin.
+     * <p>
+     * Asked as a capability rather than as a rank comparison, because no rank is named in code any
+     * more: whichever ranks {@code ranks.json} grants {@link #SENIOR_STATUS_NODE} to are the senior
+     * ones, including any custom definitions.
+     */
     public boolean isSeniorAdmin(CommandSender sender)
     {
-        Admin admin = getAdmin(sender);
-        if (admin == null)
-        {
-            return false;
-        }
+        return isAdmin(sender) && plugin.rm.hasPermission(sender, SENIOR_STATUS_NODE);
+    }
 
-        return admin.getRank().ordinal() >= Rank.SENIOR_ADMIN.ordinal();
+    /**
+     * The same test applied to a stored profile rather than to a live sender, for the cleanup pass
+     * that runs over admins who are not online to be asked.
+     */
+    public boolean grantsSeniorStatus(Admin admin)
+    {
+        return plugin.rm.getRegistry()
+                        .byId(admin.getRankId())
+                        .map(rank -> plugin.rm.getRegistry().satisfies(rank, SENIOR_STATUS_NODE))
+                        .orElse(false);
     }
 
     public Admin getAdmin(CommandSender sender)
     {
-        if (sender instanceof Player player) // this instead of two separate methods. 
+        if (sender instanceof Player player) // this instead of two separate methods.
         {
             if (ConfigEntry.ADMINLIST_USE_UUID_ONLY.getBoolean())
             {
@@ -619,11 +281,11 @@ public class AdminList extends FreedomService
                 }
                 return uuidAdmin;
             }
-    
+
             // Find admin
             final String ip = player.getAddress().getAddress().getHostAddress();
             Admin admin = getEntryByName(player.getName());
-    
+
             // Admin by name
             if (admin != null)
             {
@@ -640,10 +302,11 @@ public class AdminList extends FreedomService
                     }
                     return admin;
                 }
-    
-                // Impostor
+
+                // Impostor: the name is ours but the IP is not. Fall through to
+                // the IP lookup, which will not match this entry.
             }
-    
+
             // Admin by ip
             admin = getEntryByIp(ip);
             if (admin != null)
@@ -662,8 +325,8 @@ public class AdminList extends FreedomService
                 }
                 saveAdminAsync(admin);
             }
-    
-            return null;
+
+            return admin;
         }
 
         return getEntryByName(sender.getName());
@@ -687,15 +350,12 @@ public class AdminList extends FreedomService
             return directAdmin;
         }
 
-        for (String ip : ipTable.keySet())
-        {
-            if (FUtil.fuzzyIpMatch(needleIp, ip, 3))
-            {
-                return ipTable.get(ip);
-            }
-        }
-
-        return null;
+        return ipTable.entrySet()
+                .stream()
+                .filter(entry -> FUtil.fuzzyIpMatch(needleIp, entry.getKey(), 3))
+                .map(Map.Entry::getValue)
+                .findFirst()
+                .orElse(null);
     }
 
     public void updateLastLogin(Player player)
@@ -733,14 +393,14 @@ public class AdminList extends FreedomService
         }
 
         Admin admin = getAdmin(player);
-        return admin == null ? false : admin.getName().equalsIgnoreCase(player.getName());
+        return admin != null && admin.getName().equalsIgnoreCase(player.getName());
     }
 
     public boolean addAdmin(Admin admin)
     {
         if (!admin.isValid())
         {
-            FLog.warning("Could not add admin: " + admin.getConfigKey() + " Admin is missing details!");
+            FLog.warning(String.format("Could not add admin: %s Admin is missing details!", admin.getConfigKey()));
             return false;
         }
 
@@ -753,31 +413,15 @@ public class AdminList extends FreedomService
         // Save admin
         if (usingSql)
         {
-            saveAdminToSql(admin);
+            saveAdminAsync(admin);
         }
         else
         {
-            admin.saveTo(config.createSection(key));
-            try
-            {
-                config.save(configFile);
-            }
-            catch (IOException ex)
-            {
-                FLog.severe("Could not save " + CONFIG_FILENAME);
-            }
+            saveAsync();
         }
 
         refreshWorldEditBypassForAdmin(admin);
         return true;
-    }
-
-    /**
-     * Save a single admin to SQL database.
-     */
-    private void saveAdminToSql(Admin admin)
-    {
-        saveAdminAsync(admin);
     }
 
     public boolean removeAdmin(Admin admin)
@@ -796,94 +440,11 @@ public class AdminList extends FreedomService
         }
         else
         {
-            config.set(admin.getConfigKey(), null);
-            try
-            {
-                config.save(configFile);
-            }
-            catch (IOException ex)
-            {
-                FLog.severe("Could not save " + CONFIG_FILENAME);
-            }
+            saveAsync();
         }
 
         refreshWorldEditBypassForAdmin(admin);
         return true;
-    }
-
-    private void refreshWorldEditBypassForAdmin(Admin admin)
-    {
-        if (plugin.web == null)
-        {
-            return;
-        }
-        try
-        {
-            org.bukkit.entity.Player online = null;
-            final UUID uuid = admin.getUuid();
-            if (uuid != null)
-            {
-                online = plugin.getServer().getPlayer(uuid);
-            }
-            if (online == null && admin.getName() != null)
-            {
-                online = plugin.getServer().getPlayerExact(admin.getName());
-            }
-            if (online != null)
-            {
-                plugin.web.refreshBypassNegation(online);
-            }
-        }
-        catch (Throwable t)
-        {
-            FLog.warning("Failed to refresh WorldEdit bypass negation: " + t.getMessage());
-        }
-    }
-
-    /**
-     * Remove admin from SQL database.
-     */
-    private void removeAdminFromSql(Admin admin)
-    {
-        if (plugin.dm == null || !plugin.dm.isInitialized())
-        {
-            return;
-        }
-
-        UUID uuid = admin.getUuid();
-        String name = admin.getName();
-
-        synchronized (persistenceLock)
-        {
-            persistenceChain = persistenceChain
-                    .handle((ignored, throwable) -> null)
-                    .thenCompose(ignored ->
-                    {
-                        if (uuid != null)
-                        {
-                            return plugin.dm.getAdminRepository().deleteByUuid(uuid).thenAccept(deleted ->
-                            {
-                            });
-                        }
-
-                        return CompletableFuture.runAsync(() ->
-                        {
-                            try
-                            {
-                                plugin.dm.getAdminRepository().deleteByUsername(name);
-                            }
-                            catch (Exception ex)
-                            {
-                                throw new RuntimeException(ex);
-                            }
-                        });
-                    })
-                    .exceptionally(ex ->
-                    {
-                        FLog.warning("Failed to remove admin " + name + " from SQL: " + ex.getMessage());
-                        return null;
-                    });
-        }
     }
 
     /**
@@ -915,42 +476,36 @@ public class AdminList extends FreedomService
         uuidTable.clear();
         onlineAdminPlayers.clear();
 
-        for (Admin admin : allAdmins.values())
+        allAdmins.values().forEach(admin ->
         {
             // Always populate UUID table
             if (admin.getUuid() != null)
             {
                 uuidTable.put(admin.getUuid(), admin);
             }
-            
+
             if (!admin.isActive())
             {
-                continue;
+                return;
             }
 
             activeAdmins.add(admin);
             nameTable.put(admin.getName().toLowerCase(), admin);
-
-            for (String ip : admin.getIps())
-            {
-                ipTable.put(ip, admin);
-            }
-
-        }
+            admin.getIps().forEach(ip -> ipTable.put(ip, admin));
+        });
 
         // Re-populate online-admin cache from currently-online players.
-        for (Player online : Bukkit.getOnlinePlayers())
+        Bukkit.getOnlinePlayers()
+                .stream()
+                .filter(this::isAdmin)
+                .forEach(onlineAdminPlayers::add);
+
+        if (plugin.wm != null && plugin.wm.adminworld != null)
         {
-            if (isAdmin(online))
-            {
-                onlineAdminPlayers.add(online);
-            }
+            plugin.wm.adminworld.wipeAccessCache();
         }
-
-        plugin.wm.adminworld.wipeAccessCache();
-
     }
-    
+
     public Map<String, Admin> getAllAdmins()
     {
         return allAdmins;
@@ -1002,30 +557,554 @@ public class AdminList extends FreedomService
 
     public void deactivateOldEntries(boolean verbose)
     {
-        for (Admin admin : allAdmins.values())
-        {
-            if (!admin.isActive() || admin.getRank().isAtLeast(Rank.SENIOR_ADMIN))
-            {
-                continue;
-            }
+        final long threshold = ConfigEntry.ADMINLIST_CLEAN_THESHOLD_HOURS.getInteger();
 
-            final Date lastLogin = admin.getLastLogin();
-            final long lastLoginHours = TimeUnit.HOURS.convert(new Date().getTime() - lastLogin.getTime(), TimeUnit.MILLISECONDS);
+        allAdmins.values()
+                .stream()
+                .filter(Admin::isActive)
+                .filter(admin -> !grantsSeniorStatus(admin))
+                // A record with no recorded login has nothing to age out against.
+                .filter(admin -> admin.getLastLogin() != null)
+                .filter(admin -> inactiveHours(admin) >= threshold)
+                .forEach(admin ->
+                {
+                    if (verbose)
+                    {
+                        FUtil.adminAction("TotalFreedomMod", String.format(
+                                "Deactivating superadmin %s, inactive for %d hours",
+                                admin.getName(), inactiveHours(admin)), true);
+                    }
 
-            if (lastLoginHours < ConfigEntry.ADMINLIST_CLEAN_THESHOLD_HOURS.getInteger())
-            {
-                continue;
-            }
-
-            if (verbose)
-            {
-                FUtil.adminAction("TotalFreedomMod", "Deactivating superadmin " + admin.getName() + ", inactive for " + lastLoginHours + " hours", true);
-            }
-
-            admin.setActive(false);
-            saveAdminAsync(admin);
-        }
+                    admin.setActive(false);
+                    saveAdminAsync(admin);
+                });
 
         updateTables();
     }
+
+    /**
+     * Best-effort UUID backfill for admin records loaded without a stored UUID.
+     * Runs at startup only: {@link FUtil#usernameToUuid} may make a blocking
+     * Mojang request, which must never happen during play.
+     */
+    private void getMissingUuids()
+    {
+        final List<UuidBackfill> backfilled = allAdmins.values()
+                .stream()
+                .filter(admin -> admin.getUuid() == null)
+                .map(AdminList::backfillUuid)
+                .toList();
+
+        if (backfilled.isEmpty())
+        {
+            return;
+        }
+
+        final long resolved = backfilled.stream()
+                .filter(UuidBackfill::fromLookup)
+                .count();
+        final long offlineDerived = backfilled.size() - resolved;
+
+        FLog.info(String.format("UUID backfill: %d resolved via lookup, %d offline-derived", resolved, offlineDerived));
+
+        if (offlineDerived > 0 && !ConfigEntry.ADMINLIST_MOJANG_UUID_LOOKUP.getBoolean())
+        {
+            FLog.warning(String.format("use_uuid_only is enabled but mojang_uuid_lookup is disabled; "
+                    + "%d admin record(s) fell back to offline-derived UUIDs and "
+                    + "will not match premium accounts on login", offlineDerived));
+        }
+
+        updateTables();
+        saveAsync();
+    }
+
+    /**
+     * Read every admin off-thread and apply the result on the main thread, dropping back to
+     * the JSON snapshot if the read fails.
+     */
+    private void loadFromSqlAsync()
+    {
+        final AdminRepository repo = plugin.dm.getAdminRepository();
+        plugin.dm.readAsync("AdminList/loadFromSql", repo.findAll(),
+                admins -> applyLoadedAdmins(repo, admins),
+                () ->
+                {
+                    loadFromJson();
+                    backfillUuidsIfEnabled();
+                });
+    }
+
+    private void applyLoadedAdmins(final AdminRepository repo, final List<Admin> admins)
+    {
+        allAdmins.clear();
+        admins.forEach(admin ->
+        {
+            final String key = admin.getName().toLowerCase();
+            allAdmins.put(key, fixConfigKey(admin, key));
+        });
+
+        usingSql = true;
+        updateTables();
+        FLog.info(String.format("Loaded %d admins from SQL database (%d active, %d IPs)",
+                allAdmins.size(), nameTable.size(), ipTable.size()));
+
+        reconcileFromJsonIfNewer(repo);
+        backfillUuidsIfEnabled();
+    }
+
+    private void backfillUuidsIfEnabled()
+    {
+        if (ConfigEntry.ADMINLIST_USE_UUID_ONLY.getBoolean())
+            getMissingUuids();
+    }
+
+    /**
+     * If admins.json was written more recently than the database's last update (e.g. edited
+     * by hand, or restored from backup while SQL was unavailable), re-import it into SQL.
+     * The comparison and the re-import both ride the write queue off the main thread.
+     * <p>
+     * The import replaces the table rather than merging into it, so an entry removed from the file
+     * by hand is removed from SQL too instead of reappearing on the next start. An empty or
+     * unreadable file is ignored, so a truncated snapshot cannot empty the table.
+     */
+    private void reconcileFromJsonIfNewer(final AdminRepository repo)
+    {
+        if (!configFile.exists())
+        {
+            // Nothing to reconcile against, but SQL now has rows that no snapshot covers.
+            enqueue(writeJsonAsync(serialiseAdmins()));
+            return;
+        }
+
+        final Map<String, Admin> jsonAdmins;
+        try
+        {
+            jsonAdmins = readJsonAdmins();
+        }
+        catch (IOException ex)
+        {
+            FLog.warning(String.format("Failed to read %s: %s", CONFIG_FILENAME, ex.getMessage()));
+            return;
+        }
+
+        if (jsonAdmins.isEmpty())
+        {
+            // An empty snapshot described nothing, but SQL may hold rows it should be covering.
+            // Refresh it rather than leaving the fallback with no admins.
+            enqueue(writeJsonAsync(serialiseAdmins()));
+            return;
+        }
+
+        final long fileModified = configFile.lastModified();
+
+        enqueue(Mono.fromCallable(() ->
+                {
+                    final Long sqlUpdatedAt = repo.getMaxUpdatedAt();
+                    return FUtil.isSnapshotNewer(fileModified, sqlUpdatedAt);
+                })
+                .subscribeOn(Schedulers.boundedElastic())
+                .filter(Boolean::booleanValue)
+                .flatMap(ignored ->
+                {
+                    FLog.info(String.format("%s is newer than the database; rebuilding it from the file's %d admin(s).",
+                                            CONFIG_FILENAME, jsonAdmins.size()));
+                    return Flux.fromIterable(jsonAdmins.values())
+                               .filter(Admin::isValid)
+                               .concatMap(admin -> repo.save(resolveUuidFor(admin), copyAdmin(admin)))
+                               .then(repo.findAll())
+                               .flatMapMany(Flux::fromIterable)
+                               .filter(existing -> existing.getUuid() != null
+                                                   && !jsonAdmins.containsKey(existing.getName().toLowerCase()))
+                               .concatMap(stale -> repo.deleteByUuid(stale.getUuid()))
+                               .then(Mono.<Void>fromRunnable(() -> plugin.dm.sync("AdminList/applyReconciled",
+                                                             () -> applyReconciledAdmins(jsonAdmins))));
+                })
+                .onErrorResume(ex ->
+                {
+                    FLog.warning(String.format("Failed to reconcile %s into the database: %s",
+                            CONFIG_FILENAME, ex.getMessage()));
+                    return Mono.empty();
+                })
+                .then());
+    }
+
+    private void applyReconciledAdmins(final Map<String, Admin> jsonAdmins)
+    {
+        allAdmins.clear();
+        allAdmins.putAll(jsonAdmins);
+        updateTables();
+    }
+
+    private Map<String, Admin> readJsonAdmins() throws IOException
+    {
+        try (FileReader reader = new FileReader(configFile))
+        {
+            Map<String, Admin> admins = JsonUtil.GSON.fromJson(reader, ADMIN_MAP_TYPE);
+            return admins != null ? admins : Maps.newHashMap();
+        }
+    }
+
+    /**
+     * Fix the config key on an admin (needed when loading from SQL).
+     */
+    private Admin fixConfigKey(Admin admin, String key)
+    {
+        if (admin.getConfigKey() == null || !admin.getConfigKey().equals(key))
+        {
+            Admin fixed = new Admin(key);
+            fixed.setUuid(admin.getUuid());
+            fixed.setName(admin.getName());
+            fixed.setRankId(admin.getRankId());
+            fixed.setActive(admin.isActive());
+            fixed.setLastLogin(admin.getLastLogin());
+            fixed.setLoginMessage(admin.getLoginMessage());
+            fixed.addIps(admin.getIps());
+            return fixed;
+        }
+        return admin;
+    }
+
+    /**
+     * Load admins from JSON file (fallback).
+     */
+    private void loadFromJson()
+    {
+        if (!configFile.exists())
+        {
+            try
+            {
+                configFile.getParentFile().mkdirs();
+                configFile.createNewFile();
+            }
+            catch (IOException ex)
+            {
+                FLog.severe(String.format("Could not create %s", CONFIG_FILENAME));
+            }
+        }
+
+        allAdmins.clear();
+        try
+        {
+            readJsonAdmins().forEach((key, admin) ->
+            {
+                if (admin == null || !admin.isValid())
+                {
+                    FLog.warning(String.format("Could not load admin: %s. Missing details!", key));
+                    return;
+                }
+                allAdmins.put(key, admin);
+            });
+        }
+        catch (IOException ex)
+        {
+            FLog.severe(String.format("Could not read %s: %s", CONFIG_FILENAME, ex.getMessage()));
+        }
+
+        usingSql = false;
+        updateTables();
+        FLog.info(String.format("Loaded %d admins from JSON (%d active, %d IPs)",
+                allAdmins.size(), nameTable.size(), ipTable.size()));
+    }
+
+    private void enqueue(Mono<Void> work)
+    {
+        writes.enqueue(work);
+    }
+
+    /**
+     * Queue a batch of admin rows for an off-thread SQL write, followed by one
+     * refresh of the JSON snapshot.
+     */
+    private void queueSqlWrites(List<PendingWrite> batch)
+    {
+        if (batch.isEmpty())
+        {
+            return;
+        }
+
+        if (plugin.dm == null || !plugin.dm.isInitialized())
+        {
+            FLog.warning(String.format("SQL not available; %d admin change(s) were not saved", batch.size()));
+            return;
+        }
+
+        final AdminRepository repo = plugin.dm.getAdminRepository();
+
+        // Render the snapshot here, while we still own the maps on the calling
+        // thread. Serialising inside the queued task would read allAdmins
+        // off-thread while the main thread is free to mutate it.
+        final String json = serialiseAdmins();
+
+        enqueue(Flux.fromIterable(batch)
+                .concatMap(pending -> resolveUuidAsync(pending.live(), pending.snapshot())
+                        .flatMap(uuid -> repo.save(uuid, pending.snapshot()))
+                        .onErrorResume(ex ->
+                        {
+                            FLog.warning(String.format("Failed to save admin %s to SQL: %s",
+                                    pending.snapshot().getName(), ex.getMessage()));
+                            return Mono.<Integer>empty();
+                        }))
+                .then(writeJsonAsync(json)));
+    }
+
+    /**
+     * Remove admin from SQL database.
+     */
+    private void removeAdminFromSql(Admin admin)
+    {
+        if (plugin.dm == null || !plugin.dm.isInitialized())
+        {
+            FLog.warning(String.format("SQL not available; removal of admin %s was not saved", admin.getName()));
+            return;
+        }
+
+        final AdminRepository repo = plugin.dm.getAdminRepository();
+        final UUID uuid = admin.getUuid();
+        final String name = admin.getName();
+        final String json = serialiseAdmins();
+
+        final Mono<Void> delete = uuid != null
+                ? repo.deleteByUuid(uuid).then()
+                : Mono.<Void>fromRunnable(() ->
+                {
+                    try
+                    {
+                        repo.deleteByUsername(name);
+                    }
+                    catch (SQLException ex)
+                    {
+                        throw new IllegalStateException(ex);
+                    }
+                }).subscribeOn(Schedulers.boundedElastic());
+
+        enqueue(delete
+                .onErrorResume(ex ->
+                {
+                    FLog.warning(String.format("Failed to remove admin %s from SQL: %s", name, ex.getMessage()));
+                    return Mono.empty();
+                })
+                .then(writeJsonAsync(json)));
+    }
+
+    /**
+     * Blocking write of every admin record to SQL. Startup/shutdown only.
+     */
+    private void saveToSql()
+    {
+        if (plugin.dm == null || !plugin.dm.isInitialized())
+        {
+            FLog.warning("SQL not available, falling back to the JSON snapshot");
+            saveToJson();
+            return;
+        }
+
+        final AdminRepository repo = plugin.dm.getAdminRepository();
+
+        final Long failed = Flux.fromIterable(List.copyOf(allAdmins.values()))
+                .concatMap(admin -> Mono.fromCallable(() -> resolveUuidFor(admin))
+                        .flatMap(uuid -> repo.save(uuid, admin))
+                        .thenReturn(Boolean.TRUE)
+                        .onErrorResume(ex ->
+                        {
+                            FLog.warning(String.format("Failed to save admin %s to SQL: %s",
+                                    admin.getName(), ex.getMessage()));
+                            return Mono.just(Boolean.FALSE);
+                        }))
+                .filter(Boolean.FALSE::equals)
+                .count()
+                .block();
+
+        FLog.debug(String.format("Flushed %d admin(s) to SQL (%d failed)",
+                allAdmins.size(), failed == null ? 0L : failed));
+
+        // Write the snapshot either way, so a later SQL-less start has something to read.
+        saveToJson();
+    }
+
+    /**
+     * Blocking write of the JSON snapshot. Startup/shutdown and main-thread
+     * fallbacks only; queued writes go through {@link #writeJsonAsync(String)}.
+     */
+    private void saveToJson()
+    {
+        writeJson(serialiseAdmins());
+    }
+
+    private String serialiseAdmins()
+    {
+        return JsonUtil.GSON.toJson(allAdmins, ADMIN_MAP_TYPE);
+    }
+
+    private Mono<Void> writeJsonAsync(String json)
+    {
+        return Mono.<Void>fromRunnable(() -> writeJson(json))
+                .subscribeOn(Schedulers.boundedElastic());
+    }
+
+    private void writeJson(String json)
+    {
+        try (FileWriter writer = new FileWriter(configFile))
+        {
+            writer.write(json);
+        }
+        catch (IOException ex)
+        {
+            FLog.severe(String.format("Could not save %s: %s", CONFIG_FILENAME, ex.getMessage()));
+        }
+    }
+
+    private PendingWrite pendingWrite(Admin live)
+    {
+        return new PendingWrite(live, copyAdmin(live));
+    }
+
+    private Admin copyAdmin(Admin admin)
+    {
+        Admin copy = new Admin(admin.getConfigKey());
+        copy.setUuid(admin.getUuid());
+        copy.setName(admin.getName());
+        copy.setRankId(effectiveRankId(admin));
+        copy.setActive(admin.isActive());
+        copy.setLastLogin(admin.getLastLogin() == null ? null : new Date(admin.getLastLogin().getTime()));
+        copy.setLoginMessage(admin.getLoginMessage());
+        copy.addIps(new ArrayList<>(admin.getIps()));
+        return copy;
+    }
+
+    /**
+     * The rank id to store for an admin. An unset id means "whatever fills the default admin role",
+     * which a NOT NULL column cannot express, so the role is resolved to a concrete id at write time.
+     */
+    private String effectiveRankId(final Admin admin)
+    {
+        if (admin.getRankId() != null)
+            return admin.getRankId();
+
+        return plugin.rm.getRegistry()
+                        .byRole(RankRole.ADMIN_DEFAULT)
+                        .map(CustomRank::getId)
+                        .orElse(null);
+    }
+
+    /**
+     * Resolve the UUID for a queued write. The lookup runs on the persistence
+     * chain rather than the caller, because {@link FUtil#usernameToUuid} can make
+     * a blocking Mojang request with a 5s connect and 5s read timeout. The resolved value is handed
+     * back to the live entry on the main thread, which owns the lookup tables.
+     */
+    private Mono<UUID> resolveUuidAsync(Admin live, Admin snapshot)
+    {
+        if (snapshot.getUuid() != null)
+        {
+            return Mono.just(snapshot.getUuid());
+        }
+
+        return Mono.fromCallable(() -> resolveUuidFor(snapshot))
+                .subscribeOn(Schedulers.boundedElastic())
+                .doOnNext(resolved -> syncResolvedUuid(live, resolved));
+    }
+
+    /**
+     * Hand a UUID resolved off-thread back to the live entry and the lookup
+     * table, both of which belong to the main thread.
+     */
+    private void syncResolvedUuid(Admin live, UUID resolved)
+    {
+        if (!plugin.isEnabled())
+        {
+            return;
+        }
+
+        try
+        {
+            plugin.getServer().getScheduler().runTask(plugin, () ->
+            {
+                if (live.getUuid() == null)
+                {
+                    live.setUuid(resolved);
+                }
+                uuidTable.putIfAbsent(resolved, live);
+            });
+        }
+        catch (RuntimeException ex)
+        {
+            // Plugin disabled between the check and the schedule; Bukkit answers
+            // that with IllegalPluginAccessException. The snapshot already holds
+            // the UUID, so the write itself is unaffected.
+            FLog.debug(String.format("Could not sync resolved UUID back to %s; server is stopping", live.getName()));
+        }
+    }
+
+    /**
+     * Resolve and store a UUID on {@code admin}: Mojang lookup by name, falling
+     * back to an offline-derived UUID. Blocking - never call this on the main
+     * thread outside startup or shutdown.
+     */
+    private UUID resolveUuidFor(Admin admin)
+    {
+        if (admin.getUuid() != null)
+        {
+            return admin.getUuid();
+        }
+
+        final UUID looked = FUtil.usernameToUuid(admin.getName());
+        final UUID resolved = looked != null ? looked : offlineUuid(admin.getName());
+        admin.setUuid(resolved);
+        return resolved;
+    }
+
+    private void refreshWorldEditBypassForAdmin(Admin admin)
+    {
+        if (plugin.web == null)
+        {
+            return;
+        }
+        try
+        {
+            Player online = null;
+            final UUID uuid = admin.getUuid();
+            if (uuid != null)
+            {
+                online = plugin.getServer().getPlayer(uuid);
+            }
+            if (online == null && admin.getName() != null)
+            {
+                online = plugin.getServer().getPlayerExact(admin.getName());
+            }
+            if (online != null)
+            {
+                plugin.web.refreshBypassNegation(online);
+            }
+        }
+        catch (Throwable t)
+        {
+            FLog.warning(String.format("Failed to refresh WorldEdit bypass negation: %s", t.getMessage()));
+        }
+    }
+
+    private long inactiveHours(Admin admin)
+    {
+        return TimeUnit.HOURS.convert(new Date().getTime() - admin.getLastLogin().getTime(), TimeUnit.MILLISECONDS);
+    }
+
+    private static UuidBackfill backfillUuid(Admin admin)
+    {
+        final UUID looked = FUtil.usernameToUuid(admin.getName());
+        admin.setUuid(looked != null ? looked : offlineUuid(admin.getName()));
+        return new UuidBackfill(admin, looked != null);
+    }
+
+    private static UUID offlineUuid(String name)
+    {
+        return UUID.nameUUIDFromBytes(String.format("OfflinePlayer:%s", name.toLowerCase())
+                .getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * A live entry paired with the immutable snapshot that will actually be
+     * written, so a mutation on the main thread cannot change a row mid-write.
+     */
+    private record PendingWrite(Admin live, Admin snapshot) {}
+
+    private record UuidBackfill(Admin admin, boolean fromLookup) {}
 }

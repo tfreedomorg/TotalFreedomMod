@@ -2,7 +2,9 @@ package me.totalfreedom.totalfreedommod.sql.adapter;
 
 import java.sql.SQLException;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+
+import reactor.core.publisher.Mono;
+
 import me.totalfreedom.totalfreedommod.banning.StrikeRecord;
 
 public interface StrikeRepository
@@ -15,11 +17,17 @@ public interface StrikeRepository
 
     void deleteAllSync() throws SQLException;
 
-    CompletableFuture<Map<String, StrikeRecord>> loadAllAsync();
+    /**
+     * Epoch millis of the most recently updated strike row, or null if the table is empty.
+     * Used to compare SQL freshness against the strikes.json snapshot's last-modified time.
+     */
+    Long getMaxUpdatedAt() throws SQLException;
 
-    CompletableFuture<Void> upsertAsync(StrikeRecord record);
+    Mono<Map<String, StrikeRecord>> loadAllAsync();
 
-    CompletableFuture<Boolean> deleteByIpAsync(String ip);
+    Mono<Void> upsertAsync(StrikeRecord record);
 
-    CompletableFuture<Void> deleteAll();
+    Mono<Boolean> deleteByIpAsync(String ip);
+
+    Mono<Void> deleteAll();
 }

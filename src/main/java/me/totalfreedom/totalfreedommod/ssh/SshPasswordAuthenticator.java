@@ -2,8 +2,10 @@ package me.totalfreedom.totalfreedommod.ssh;
 
 import java.util.HashMap;
 import java.util.Map;
+
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.util.FLog;
+
 import org.apache.sshd.server.auth.password.PasswordAuthenticator;
 import org.apache.sshd.server.session.ServerSession;
 

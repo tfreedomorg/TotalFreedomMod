@@ -1,20 +1,20 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+
+import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Callback;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Command;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Permission;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Resolve;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Subcommand;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
 
 @Command(name = "freeze", description = "Freeze players. Append \"on\" or \"off\" at the end to set a specific state.",
         usage = "/freeze <[on | off] | <player> [on | off]>", aliases = {"fr"})
-@Permission(permission = "tfm.admin.freeze", level = Rank.SUPER_ADMIN)
+@Permission(permission = "tfm.admin.freeze")
 public class Command_freeze extends FCommand
 {
 
@@ -73,6 +73,9 @@ public class Command_freeze extends FCommand
     @Callback
     public void setFreezeForPlayer(CommandSender sender, Player player, @Resolve("Boolean") boolean value)
     {
+        if (value && isProtectedAdmin(sender, player))
+            return;
+
         plugin().pl.getPlayer(player).getFreezeData().setFrozen(value);
 
         msg(sender, "<gray><player> has been <state>.",

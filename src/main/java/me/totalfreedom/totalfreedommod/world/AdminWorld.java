@@ -1,14 +1,8 @@
 package me.totalfreedom.totalfreedommod.world;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.util.FLog;
+
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
@@ -17,10 +11,21 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerMoveEvent;
 
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.util.FLog;
+
 public final class AdminWorld extends CustomWorld
 {
 
     private static final long CACHE_CLEAR_FREQUENCY = 30L * 1000L; //30 seconds, milliseconds
+
+    /**
+     * The permission that opens the admin world. Held by staff through their rank and by trusted
+     * players through a title, which is the whole reason entry is a permission check rather than an
+     * admin check.
+     */
+    private static final String ADMIN_WORLD_NODE = "tfm.world.adminworld";
     private static final long TP_COOLDOWN_TIME = 500L; //0.5 seconds, milliseconds
     private static final String GENERATION_PARAMETERS = ConfigEntry.FLATLANDS_GENERATE_PARAMS.getString();
     //
@@ -187,7 +192,10 @@ public final class AdminWorld extends CustomWorld
         Boolean cached = accessCache.get(player);
         if (cached == null)
         {
-            boolean canAccess = plugin.al.isAdmin(player);
+            // Asked as a permission rather than as "is this an admin", so that a title can open the
+            // world to someone trusted without promoting them. Admins still pass on their rank;
+            // a titled player passes on the title's own grant and gains nothing else by it.
+            boolean canAccess = plugin.rm.hasPermission(player, ADMIN_WORLD_NODE);
             if (!canAccess)
             {
                 Player supervisor = guestList.get(player);

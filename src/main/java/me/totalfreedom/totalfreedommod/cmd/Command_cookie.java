@@ -10,13 +10,13 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-import me.totalfreedom.totalfreedommod.util.FUtil;
 import net.kyori.adventure.text.Component;
 
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+import me.totalfreedom.totalfreedommod.util.FUtil;
+
 @Command(name = "cookie", description = "For those who have no friends.", usage = "/cookie")
-@Permission(permission = "tfm.fun.cookie", level = Rank.SUPER_ADMIN)
+@Permission(permission = "tfm.fun.cookie")
 public class Command_cookie extends FCommand
 {
     public static final String COOKIE_LYRICS = "Imagine that you have zero cookies and you split them evenly among zero friends. How many cookies does each person get? See? It doesn't make sense. And Cookie Monster is sad that there are no cookies, and you are sad that you have no friends.";

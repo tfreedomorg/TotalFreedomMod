@@ -5,30 +5,29 @@ import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+
+import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
 import me.totalfreedom.totalfreedommod.banning.Ban;
 import me.totalfreedom.totalfreedommod.cmd.internal.FuzzyMatch;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
 import me.totalfreedom.totalfreedommod.cmd.resolver.DateOffsetArgumentResolver;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.player.PlayerData;
-import me.totalfreedom.totalfreedommod.rank.Rank;
 import me.totalfreedom.totalfreedommod.util.FUtil;
 
-import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
-
 @Command(name = "tempban", aliases = {"tban", "noob"},
-    description = "Temporarily bans an online or previously known player.",
-    usage = "/<command> [-s] [-rb] <player> [duration] [reason]")
-@Permission(permission = "tfm.admin.ban", level = Rank.SUPER_ADMIN)
+        description = "Temporarily bans an online or previously known player.",
+        usage = "/<command> [-s] [-rb] <player> [duration] [reason]")
+@Permission(permission = "tfm.admin.ban")
 public class Command_tempban extends FCommand
 {
-    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd 'at' HH:mm:ss z");
-
     private static final String DEFAULT_DURATION = "5m";
+
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd 'at' HH:mm:ss z");
 
     @Callback
     public void tempBanDefault(CommandSender sender, String name, @Switch("s") boolean silent, @Switch("rb") boolean rollback)
@@ -38,9 +37,11 @@ public class Command_tempban extends FCommand
 
     /**
      * Takes everything after the player name as one greedy argument so the duration can be
-     * omitted. Brigadier cannot route an optional duration followed by a free-form reason - both
+     * omitted. 
+     * <p>
+     * Brigadier cannot route an optional duration followed by a free-form reason; both
      * are string-like, so the sibling nodes would overlap and resolution would be order-dependent
-     * - so the tail is split here instead.
+     * so the tail is split here instead.
      */
     @Callback
     public void tempBanWithArgs(CommandSender sender, String name, @Greedy String args, @Switch("s") boolean silent, @Switch("rb") boolean rollback)
@@ -50,9 +51,8 @@ public class Command_tempban extends FCommand
         final String head = split == -1 ? tail : tail.substring(0, split);
 
         final Date parsed = FUtil.parseDateOffset(head);
-        final String reason = parsed == null
-                ? tail
-                : (split == -1 ? null : tail.substring(split + 1).strip());
+        final String c = (split == -1) ? null : tail.substring(split + 1).strip();
+        final String reason = (parsed) == null ? tail : c;
 
         tempBan(
             sender,
@@ -80,8 +80,7 @@ public class Command_tempban extends FCommand
     }
 
     /**
-     * The tail is a greedy string, so it carries no resolver suggestions of its own. Offer the
-     * duration shapes anyway - typing a reason straight over them is still valid.
+     * The tail is a greedy string, so it carries no resolver suggestions of its own.
      */
     @Completer(value = "", position = 1)
     public List<String> completeDuration(CommandSender sender, String partial)
@@ -94,6 +93,9 @@ public class Command_tempban extends FCommand
         final Player player = server().getPlayer(name);
         final PlayerData data = BanCommandUtil.getData(plugin(), name, player);
         final String canonicalName = BanCommandUtil.getCanonicalName(name, player, data);
+
+        if (isProtectedAdminByName(sender, canonicalName))
+            return;
 
         if (plugin().bm.getByUsername(canonicalName) != null)
         {
@@ -109,15 +111,14 @@ public class Command_tempban extends FCommand
 
         if (!silent)
         {
-            adminAction(
-                        sender, "<red>Temporarily banning <player> until <until><include_reason:\" - Reason: <yellow><reason>\":\"\">",
+            adminAction(sender, "<red>Temporarily banning <player> until <until><include_reason:\" - Reason: <yellow><reason>\":\"\">",
                         Placeholder.unparsed("player", canonicalName),
-                        Placeholder.unparsed("until", DATE_FORMAT.format(expiry)),
+                        Placeholder.unparsed("until", dateFormat.format(expiry)),
                         Formatter.booleanChoice("include_reason", reason != null && !reason.isEmpty()),
                         Placeholder.unparsed("reason", reason != null ? reason : "")
                     );
 
-            plugin().db.sendActionMessage(sender.getName(), canonicalName, reason, ConfigEntry.DISCORD_PLAYER_TBAN_MESSAGE);
+            plugin().db.sendTBanMessage(sender.getName(), canonicalName, reason, dateFormat.format(expiry));
         }
 
         if (rollback)
@@ -137,9 +138,8 @@ public class Command_tempban extends FCommand
                 .forEach(target ->
                 {
                     if (!silent)
-                    {
                         smitePlayer(target);
-                    }
+                    
                     target.kick(ban.bakeKickMessage());
                 });
     }

@@ -1,16 +1,16 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
-import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
 import me.totalfreedom.totalfreedommod.player.FPlayer;
-import me.totalfreedom.totalfreedommod.rank.Rank;
 
-@Command(name = "blockcmd", description = "Block all commands for a specific player.", usage = "/<command> <-a | purge | <player>>", aliases = {"blockcommands","blockcommand","bc","bcmd"})
-@Permission(level = Rank.SUPER_ADMIN, permission = "tfm.admin.blockcmd")
+@Command(name = "blockcmd", description = "Block all commands for a specific player.", usage = "/<command> <-a | purge | <player>>", aliases = {"blockcommands", "blockcommand", "bc", "bcmd"})
+@Permission(permission = "tfm.admin.blockcmd")
 public class Command_blockcmd extends FCommand
 {
     @Callback

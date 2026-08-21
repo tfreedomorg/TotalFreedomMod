@@ -3,13 +3,13 @@ package me.totalfreedom.totalfreedommod.cmd;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.rank.Rank;
 import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+
 @Command(name = "entitywipe", description = "Remove various server entities that may cause lag, such as dropped items, minecarts, and boats.", usage = "/entitywipe [world]", aliases = {"ew", "rd"})
-@Permission(permission = "tfm.server.entitywipe", level = Rank.SUPER_ADMIN)
+@Permission(permission = "tfm.server.entitywipe")
 public class Command_entitywipe extends FCommand
 {
     @Callback

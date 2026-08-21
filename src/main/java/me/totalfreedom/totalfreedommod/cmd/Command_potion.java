@@ -7,7 +7,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffectType;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
@@ -15,10 +14,12 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+
 @Command(
-    name = "potion",
-    description = "Manipulate potion effects. Duration is measured in server ticks (~20 ticks per second).",
-    usage = "/potion <list | clear [player] | clearall | add <type> <duration> <amplifier> [player] | remove <type> [player]>"
+        name = "potion",
+        description = "Manipulate potion effects. Duration is measured in server ticks (~20 ticks per second).",
+        usage = "/potion <list | clear [player] | clearall | add <type> <duration> <amplifier> [player] | remove <type> [player]>"
 )
 @Permission(permission = "tfm.player.potion")
 public class Command_potion extends FCommand

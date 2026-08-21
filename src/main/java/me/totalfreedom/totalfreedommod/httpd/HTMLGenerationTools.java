@@ -1,9 +1,10 @@
 package me.totalfreedom.totalfreedommod.httpd;
 
-import com.google.common.html.HtmlEscapers;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
+
+import com.google.common.html.HtmlEscapers;
 
 public class HTMLGenerationTools
 {

@@ -3,16 +3,16 @@ package me.totalfreedom.totalfreedommod.cmd;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.bukkit.command.CommandSender;
+
+import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
+
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Callback;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Command;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Permission;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
-
-import org.bukkit.command.CommandSender;
 
 @Command(name = "permbanlist", aliases = "pbanlist", description = "Shows all permanently banned players and IP addresses.", usage = "/<command> [page]")
-@Permission(level = Rank.OP, permission = "tfm.admin.banlist")
+@Permission(permission = "tfm.admin.banlist")
 public class Command_permbanlist extends FCommand
 {
     private static final int ENTRIES_PER_PAGE = 10;

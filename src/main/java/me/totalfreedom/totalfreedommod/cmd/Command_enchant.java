@@ -1,17 +1,18 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
+import java.util.List;
+
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.List;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
 
 @Permission(source = SourceType.ONLY_IN_GAME, permission = "tfm.player.enchant")
 @Command(name = "enchant", description = "Enchant items.", usage = "/<command> <list | addall | reset | add <enchantment> [level] | remove <enchantment>>")

@@ -1,32 +1,25 @@
 package me.totalfreedom.totalfreedommod;
 
-import me.totalfreedom.totalfreedommod.fun.Trailer;
-import me.totalfreedom.totalfreedommod.tablist.TabList;
-import me.totalfreedom.totalfreedommod.world.CleanroomChunkGenerator;
 import java.io.File;
 import java.io.InputStream;
 import java.util.Properties;
+
+import org.bukkit.generator.ChunkGenerator;
+import org.bukkit.plugin.java.JavaPlugin;
+
 import me.totalfreedom.totalfreedommod.admin.AdminList;
 import me.totalfreedom.totalfreedommod.banning.BanManager;
 import me.totalfreedom.totalfreedommod.banning.PermbanList;
 import me.totalfreedom.totalfreedommod.banning.StrikeList;
-import me.totalfreedom.totalfreedommod.blocking.BlockBlocker;
-import me.totalfreedom.totalfreedommod.blocking.EventBlocker;
-import me.totalfreedom.totalfreedommod.blocking.InteractBlocker;
-import me.totalfreedom.totalfreedommod.blocking.MobBlocker;
-import me.totalfreedom.totalfreedommod.blocking.PotionBlocker;
+import me.totalfreedom.totalfreedommod.blocking.*;
 import me.totalfreedom.totalfreedommod.blocking.command.CommandBlocker;
-import me.totalfreedom.totalfreedommod.blocking.sweep.SweepScheduler;
-import me.totalfreedom.totalfreedommod.blocking.entity.EntityNameValidator;
-import me.totalfreedom.totalfreedommod.blocking.entity.EntitySizeGuard;
-import me.totalfreedom.totalfreedommod.blocking.entity.TextDisplayGuard;
-import me.totalfreedom.totalfreedommod.blocking.entity.ProjectileGuard;
-import me.totalfreedom.totalfreedommod.blocking.entity.WaypointGuard;
+import me.totalfreedom.totalfreedommod.blocking.entity.*;
 import me.totalfreedom.totalfreedommod.blocking.item.ConsoleSpamFilter;
-import me.totalfreedom.totalfreedommod.blocking.packet.CrashPacketService;
 import me.totalfreedom.totalfreedommod.blocking.item.ItemValidator;
+import me.totalfreedom.totalfreedommod.blocking.packet.CrashPacketService;
 import me.totalfreedom.totalfreedommod.blocking.sign.SignValidator;
 import me.totalfreedom.totalfreedommod.blocking.spawner.SpawnerValidator;
+import me.totalfreedom.totalfreedommod.blocking.sweep.SweepScheduler;
 import me.totalfreedom.totalfreedommod.bridge.CoreProtectBridge;
 import me.totalfreedom.totalfreedommod.bridge.EssentialsBridge;
 import me.totalfreedom.totalfreedommod.bridge.LibsDisguisesBridge;
@@ -36,26 +29,24 @@ import me.totalfreedom.totalfreedommod.cmd.CommandLoader;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.config.MainConfig;
 import me.totalfreedom.totalfreedommod.discord.DiscordBridge;
+import me.totalfreedom.totalfreedommod.framework.ServiceManager;
 import me.totalfreedom.totalfreedommod.freeze.Freezer;
-import me.totalfreedom.totalfreedommod.fun.ItemFun;
-import me.totalfreedom.totalfreedommod.fun.Jumppads;
-import me.totalfreedom.totalfreedommod.fun.Landminer;
-import me.totalfreedom.totalfreedommod.fun.MP44;
+import me.totalfreedom.totalfreedommod.fun.*;
 import me.totalfreedom.totalfreedommod.httpd.HTTPDaemon;
-import me.totalfreedom.totalfreedommod.ssh.SshDaemon;
 import me.totalfreedom.totalfreedommod.player.FPlayer;
 import me.totalfreedom.totalfreedommod.player.PlayerList;
 import me.totalfreedom.totalfreedommod.rank.ConsoleSenderRegistry;
 import me.totalfreedom.totalfreedommod.rank.RankManager;
 import me.totalfreedom.totalfreedommod.sql.FreedomDatabase;
-import me.totalfreedom.totalfreedommod.sql.YamlMigrationService;
+import me.totalfreedom.totalfreedommod.ssh.SshDaemon;
+import me.totalfreedom.totalfreedommod.tablist.TabList;
+import me.totalfreedom.totalfreedommod.vanish.VanishService;
+import me.totalfreedom.totalfreedommod.title.TitleManager;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FUtil;
 import me.totalfreedom.totalfreedommod.util.MethodTimer;
-import me.totalfreedom.totalfreedommod.framework.ServiceManager;
+import me.totalfreedom.totalfreedommod.world.CleanroomChunkGenerator;
 import me.totalfreedom.totalfreedommod.world.WorldManager;
-import org.bukkit.generator.ChunkGenerator;
-import org.bukkit.plugin.java.JavaPlugin;
 
 public class TotalFreedomMod extends JavaPlugin
 {
@@ -76,8 +67,8 @@ public class TotalFreedomMod extends JavaPlugin
     public WorldManager wm; // WorldManager - Manages world operations
     public AdminList al; // AdminList - Manages admin list and permissions
     public RankManager rm; // RankManager - Handles player ranks and display
+    public TitleManager tm; // TitleManager - Flat, non-inheriting capability grants shown alongside ranks
     public ConsoleSenderRegistry csr; // ConsoleSenderRegistry - Maps console senders to appropriate rank
-    // public CommandLoader cl; // CommandLoader - Loads and registers commands (LEGACY)
     public CommandLoader cmdl; // CmdLoader - Loads and registers Brigadier commands 
     public CommandBlocker cb; // CommandBlocker - Blocks specific commands
     public SweepScheduler sweepScheduler; // SweepScheduler - Shared budgeted world/chunk sweep walker
@@ -107,13 +98,13 @@ public class TotalFreedomMod extends JavaPlugin
     public CommandSpy cs; // CommandSpy - Logs and monitors command usage
     public PotionSpy ps; // PotionSpy - Logs and monitors potion usage
     public SignSpy ss; // SignSpy - Logs and monitors sign edits
+    public BookSpy bs; // BookSpy - Logs and monitors book edits
     public Cager ca; // Cager - Creates cages around players
     public Freezer fm; // Freezer - Freezes players in place
     public Orbiter or; // Orbiter - Makes players orbit around a point
     public Muter mu; // Muter - Mutes players
     public SpectatorBlocker sb; // SpectatorBlocker - Blocks spectator teleports to players
     public Fuckoff fo; // Fuckoff - Kicks players with a message
-    public AutoKick ak; // AutoKick - Automatically kicks players based on conditions
     public AutoEject ae; // AutoEject - Automatically ejects players from vehicles
     public MovementValidator mv; // MovementValidator - Validates player movement
     public EntityWiper ew; // EntityWiper - Wipes entities from the world
@@ -127,6 +118,7 @@ public class TotalFreedomMod extends JavaPlugin
     public SshDaemon sd; // SshDaemon - SSH server for remote console access
     public DiscordBridge db; // DiscordBridge - Built-in Discord chat/console relay
     public TabList tl; // TabList - Customizable tab list header, footer, and player names
+    public VanishService vs; // VanishService - Single source of truth for vanish state and visibility
     //
     // Bridges
     public ServiceManager<TotalFreedomMod> bridges;
@@ -181,20 +173,23 @@ public class TotalFreedomMod extends JavaPlugin
 
         // Start services
         services = new ServiceManager<>(this);
-        sf = services.registerService(SavedFlags.class);
-        
-        // Initialize database manager first (before services that depend on it)
+
+        // Initialize database manager first (before services that depend on it). Services stop
+        // in reverse registration order, so everything registered after this also flushes its
+        // pending writes before the connection pool closes.
         dm = services.registerService(FreedomDatabase.class);
-        
+
+        sf = services.registerService(SavedFlags.class);
         wm = services.registerService(WorldManager.class);
         al = services.registerService(AdminList.class);
 
         configConverter.convertAdminConsoleRanks();
 
-        // Run YAML to SQL migrations after database and admin list are ready
-        runYamlMigrations();
-
         rm = services.registerService(RankManager.class);
+        tm = services.registerService(TitleManager.class);
+
+        // Runs after both registries exist: it reads ranks and titles to decide what to move.
+        configConverter.convertCosmeticRankHolders();
 
         // Console sender whitelist. This first read only resolves bindings that name a legacy
         // rank, since registerService constructs RankManager without starting it and no custom
@@ -244,13 +239,13 @@ public class TotalFreedomMod extends JavaPlugin
         cs = services.registerService(CommandSpy.class);
         ps = services.registerService(PotionSpy.class);
         ss = services.registerService(SignSpy.class);
+        bs = services.registerService(BookSpy.class);
         ca = services.registerService(Cager.class);
         fm = services.registerService(Freezer.class);
         or = services.registerService(Orbiter.class);
         mu = services.registerService(Muter.class);
         sb = services.registerService(SpectatorBlocker.class);
         fo = services.registerService(Fuckoff.class);
-        ak = services.registerService(AutoKick.class);
         ae = services.registerService(AutoEject.class);
 
         mv = services.registerService(MovementValidator.class);
@@ -274,6 +269,7 @@ public class TotalFreedomMod extends JavaPlugin
         db = services.registerService(DiscordBridge.class);
 
         tl = services.registerService(TabList.class);
+        vs = services.registerService(VanishService.class); // must register after jlm; see VanishService#onPlayerQuit
         services.start();
 
         // Start bridges
@@ -374,35 +370,6 @@ public class TotalFreedomMod extends JavaPlugin
         public String formattedVersion()
         {
             return pluginVersion + "." + number + " (" + head + ")";
-        }
-    }
-
-    /**
-     * Run YAML to SQL migrations for admins, bans, and permbans.
-     * This converts existing YAML files to the new SQL database format.
-     */
-    private void runYamlMigrations()
-    {
-        if (dm == null || !dm.isInitialized())
-        {
-            FLog.info("Database not initialized, skipping YAML migrations");
-            return;
-        }
-        
-        try
-        {
-            YamlMigrationService migrationService = new YamlMigrationService(this, dm);
-            migrationService.runMigrations().join();
-            
-            // Reload admin list after migration to pick up SQL data
-            if (al != null)
-            {
-                al.load();
-            }
-        }
-        catch (Exception ex)
-        {
-            FLog.warning("Error during YAML migrations: " + ex.getMessage());
         }
     }
 

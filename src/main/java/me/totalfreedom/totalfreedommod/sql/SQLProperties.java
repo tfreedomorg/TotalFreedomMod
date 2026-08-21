@@ -1,19 +1,19 @@
 package me.totalfreedom.totalfreedommod.sql;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
-import java.io.File;
-
-import org.jetbrains.annotations.NotNull;
 
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 
+import org.jetbrains.annotations.NotNull;
+
 /**
  * Handles SQL database configuration properties.
- * Supports: sqlite, mysql, mariadb, postgresql, h2, mongodb, redis
+ * Supports: sqlite, mysql, postgresql
  */
 public final class SQLProperties 
 {
@@ -24,11 +24,7 @@ public final class SQLProperties
     {
         SQLITE("sqlite", 0, "org.sqlite.JDBC", false),
         MYSQL("mysql", 3306, "com.mysql.cj.jdbc.Driver", true),
-        MARIADB("mariadb", 3306, "org.mariadb.jdbc.Driver", true),
-        POSTGRESQL("postgresql", 5432, "org.postgresql.Driver", true),
-        H2("h2", 9092, "org.h2.Driver", false),
-        MONGODB("mongodb", 27017, "mongodb.jdbc.MongoDriver", true),
-        REDIS("redis", 6379, null, true); // Redis doesn't use JDBC
+        POSTGRESQL("postgresql", 5432, "org.postgresql.Driver", true);
 
         private final String name;
         private final int defaultPort;
@@ -60,14 +56,9 @@ public final class SQLProperties
             return SQLITE; // Default fallback
         }
 
-        public boolean isNoSQL()
-        {
-            return this == MONGODB || this == REDIS;
-        }
-
         public boolean isEmbedded()
         {
-            return this == SQLITE || this == H2;
+            return this == SQLITE;
         }
     }
 
@@ -138,8 +129,6 @@ public final class SQLProperties
         return switch (type)
         {
             case SQLITE -> "totalfreedom.db";
-            case H2 -> "./totalfreedom";
-            case REDIS -> "0";
             default -> "totalfreedom";
         };
     }
@@ -260,56 +249,10 @@ public final class SQLProperties
                 appendOptions(url);
                 break;
 
-            case MARIADB:
-                // jdbc:mariadb://host:port/database
-                url.append("mariadb://").append(host).append(":").append(port).append("/").append(databaseName);
-                appendOptions(url);
-                break;
-
             case POSTGRESQL:
                 // jdbc:postgresql://host:port/database
                 url.append("postgresql://").append(host).append(":").append(port).append("/").append(databaseName);
                 appendOptions(url);
-                break;
-
-            case H2:
-                // jdbc:h2:./database (file) or jdbc:h2:mem:database (memory) or jdbc:h2:tcp://host:port/database (server)
-                if (databaseName.startsWith("mem:") || databaseName.startsWith("./") || databaseName.startsWith("/"))
-                {
-                    url.append("h2:").append(databaseName);
-                }
-                else if (host != null && !host.isEmpty() && !host.equals("localhost") && port > 0)
-                {
-                    url.append("h2:tcp://").append(host).append(":").append(port).append("/").append(databaseName);
-                }
-                else
-                {
-                    url.append("h2:").append(databaseName);
-                }
-                appendOptions(url, ";");
-                break;
-
-            case MONGODB:
-                // mongodb://host:port/database
-                url.setLength(0); // Clear "jdbc:"
-                url.append("mongodb://");
-                if (hasCredentials())
-                {
-                    url.append(username).append(":").append(password).append("@");
-                }
-                url.append(host).append(":").append(port).append("/").append(databaseName);
-                appendOptions(url);
-                break;
-
-            case REDIS:
-                // redis://host:port/database
-                url.setLength(0); // Clear "jdbc:"
-                url.append("redis://");
-                if (hasCredentials())
-                {
-                    url.append(":").append(password).append("@");
-                }
-                url.append(host).append(":").append(port).append("/").append(databaseName);
                 break;
 
             default:
@@ -327,14 +270,6 @@ public final class SQLProperties
         appendOptions(url, "?", "&");
     }
 
-    /**
-     * Append options using custom separators (e.g., H2 uses ; instead of & and ?)
-     */
-    private void appendOptions(StringBuilder url, String separator)
-    {
-        appendOptions(url, separator, separator);
-    }
-
     private void appendOptions(StringBuilder url, String firstSeparator, String separator)
     {
         if (additionalOptions.isEmpty())
@@ -349,22 +284,6 @@ public final class SQLProperties
             url.append(entry.getKey()).append("=").append(entry.getValue());
             first = false;
         }
-    }
-
-    /**
-     * Check if the configured database type uses standard JDBC.
-     */
-    public boolean isJdbcDatabase()
-    {
-        return databaseType != DatabaseType.REDIS;
-    }
-
-    /**
-     * Check if the configured database type is a NoSQL database.
-     */
-    public boolean isNoSQL()
-    {
-        return databaseType.isNoSQL();
     }
 
     /**

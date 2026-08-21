@@ -1,10 +1,10 @@
 package me.totalfreedom.totalfreedommod.blocking.command;
 
-import me.totalfreedom.totalfreedommod.PluginProvider;
-import me.totalfreedom.totalfreedommod.admin.Admin;
-import me.totalfreedom.totalfreedommod.rank.Rank;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+
+import me.totalfreedom.totalfreedommod.PluginProvider;
+import me.totalfreedom.totalfreedommod.admin.Admin;
 
 public enum CommandBlockerRank
 {
@@ -43,7 +43,7 @@ public enum CommandBlockerRank
         Admin admin = PluginProvider.get().al.getAdmin(sender);
         if (admin != null)
         {
-            if (admin.getRank() == Rank.SENIOR_ADMIN)
+            if (PluginProvider.get().al.isSeniorAdmin(sender))
             {
                 return SENIOR;
             }

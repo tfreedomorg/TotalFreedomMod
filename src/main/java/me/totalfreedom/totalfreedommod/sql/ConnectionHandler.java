@@ -1,44 +1,47 @@
 package me.totalfreedom.totalfreedommod.sql;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
+
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import me.totalfreedom.totalfreedommod.sql.SQLProperties.DatabaseType;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
 import me.totalfreedom.totalfreedommod.util.FLog;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+import com.zaxxer.hikari.HikariPoolMXBean;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.jetbrains.annotations.NotNull;
+
 /**
- * Handles database connections for all supported database types.
- * Supports: SQLite, MySQL, MariaDB, PostgreSQL, H2, MongoDB, Redis
+ * Contains the HikariCP connection pool for the configured database.
+ * Supports: SQLite, MySQL, PostgreSQL
  */
 public class ConnectionHandler
 {
-    private final TotalFreedomMod plugin;
+    private static final int DEFAULT_POOL_SIZE = 10;
+    private static final int SQLITE_POOL_SIZE = 1;
+
+    /**
+     * A thread waiting to acquire an {@link AccessController} permit blocks for the duration of awaiting, 
+     * so for SQLite's pool of 1, a scheduler capped at 1 thread would let only one caller
+     * ever be "waiting" at a time and starve every other concurrent request.
+     */
+    private static final int SCHEDULER_POOL_MULTIPLIER = 4;
+    private static final int SCHEDULER_MIN_THREADS = 16;
+    private static final int SCHEDULER_QUEUED_TASK_CAP = 100_000;
+
     private final SQLProperties sqlProperties;
-    private Connection connection = null;
-    private final ExecutorService dbExecutor;
-    
-    // For NoSQL databases, we'll store the client reference
-    private Object noSqlClient = null;
+    private volatile HikariDataSource dataSource;
+    private volatile AccessController accessController;
+    private volatile Scheduler scheduler;
 
     public ConnectionHandler(@NotNull final TotalFreedomMod plugin)
     {
-        this.plugin = plugin;
         this.sqlProperties = new SQLProperties(plugin);
-        // Use a single-thread executor for DB operations to avoid blocking main thread
-        this.dbExecutor = Executors.newSingleThreadExecutor(r -> {
-            Thread t = new Thread(r, "TFM-Database");
-            t.setDaemon(true);
-            return t;
-        });
     }
 
     /**
@@ -51,140 +54,131 @@ public class ConnectionHandler
     }
 
     /**
-     * Get or create a JDBC connection for SQL databases.
-     * For NoSQL databases (MongoDB, Redis), this will throw an exception.
+     * Build the HikariCP connection pool for the configured database. 
+     * Blocks until Hikari's own initial-connection test succeeds or fails.
+     *
+     * @apiNote SQLite is a single-writer embedded engine, so it is pinned to a single pooled connection regardless of configuration.
+     */
+    public void connect() throws SQLException
+    {
+        DatabaseType dbType = sqlProperties.getDatabaseType();
+
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(sqlProperties.getJdbcUrl());
+        config.setPoolName("TFM-" + dbType.getName());
+
+        String driverClass = sqlProperties.getDriverClass();
+        if (driverClass != null && !driverClass.isEmpty())
+        {
+            config.setDriverClassName(driverClass);
+        }
+
+        if (sqlProperties.hasCredentials())
+        {
+            config.setUsername(sqlProperties.getUsername());
+            config.setPassword(sqlProperties.getPassword());
+        }
+
+        if (dbType == DatabaseType.SQLITE)
+        {
+            config.setMaximumPoolSize(SQLITE_POOL_SIZE);
+            config.setConnectionTestQuery("SELECT 1");
+            // SQLite pragmas are set per-connection so we need to make sure it doesn't accidentally get recycled
+            config.setMaxLifetime(0);
+        }
+        else
+        {
+            config.setMaximumPoolSize(DEFAULT_POOL_SIZE);
+            config.setMinimumIdle(1);
+        }
+
+        try
+        {
+            FLog.info(String.format(
+                                    "Connecting to database: %s at %s", 
+                                    dbType.getName(), 
+                                    maskPassword(config.getJdbcUrl())
+                                ));
+            this.dataSource = new HikariDataSource(config);
+            final int schedulerThreads = Math.max(dataSource.getMaximumPoolSize() * SCHEDULER_POOL_MULTIPLIER, SCHEDULER_MIN_THREADS);
+            this.scheduler = Schedulers.newBoundedElastic(schedulerThreads, SCHEDULER_QUEUED_TASK_CAP, "tfm-sql-" + dbType.getName());
+            this.accessController = new AccessController(dataSource.getMaximumPoolSize(), scheduler);
+
+            if (dbType == DatabaseType.SQLITE)
+            {
+                try (Connection connection = dataSource.getConnection())
+                {
+                    sqlProperties.applySqlitePragmas(connection);
+                }
+                catch (SQLException e)
+                {
+                    throw e; // this should be handled downstream, not here.
+                }
+                catch (Exception e)
+                {
+                    throw new SQLException("Failed to apply SQLite pragmas", e); // this should also be handled downstream.
+                }
+            }
+
+            FLog.info(String.format(
+                                    "Database connection pool established (%s, poolSize %d)", 
+                                    dbType.getName(), 
+                                    dataSource.getMaximumPoolSize()
+                                ));
+        }
+        catch (SQLException e)
+        {
+            throw e;
+        }
+        catch (Exception e)
+        {
+            throw new SQLException("Failed to initialize database connection pool", e);
+        }
+    }
+
+    /**
+     * Borrow a pooled connection. Callers are responsible for closing it, which
+     * returns it to the pool rather than actually closing the physical connection.
      */
     @NotNull
-    public CompletableFuture<Connection> getConnection()
+    public Connection borrowConnection() throws SQLException
     {
-        return CompletableFuture.supplyAsync(() -> {
-            try
-            {
-                DatabaseType dbType = sqlProperties.getDatabaseType();
-                
-                // Check if this is a NoSQL database
-                if (dbType.isNoSQL())
-                {
-                    throw new SQLException("Database type " + dbType.getName() + 
-                        " is a NoSQL database and does not use JDBC connections. " +
-                        "Use getNoSqlClient() instead.");
-                }
-
-                if (connection == null || connection.isClosed())
-                {
-                    // Load JDBC driver if specified
-                    String driverClass = sqlProperties.getDriverClass();
-                    if (driverClass != null && !driverClass.isEmpty())
-                    {
-                        try
-                        {
-                            Class.forName(driverClass);
-                        }
-                        catch (ClassNotFoundException e)
-                        {
-                            FLog.warning("JDBC driver not found: " + driverClass + 
-                                ". Attempting to connect anyway...");
-                        }
-                    }
-
-                    String url = sqlProperties.getJdbcUrl();
-                    FLog.info("Connecting to database: " + dbType.getName() + " at " + maskPassword(url));
-                    
-                    connection = DriverManager.getConnection(url, sqlProperties.getConnectionProperties());
-                    
-                    // Apply SQLite-specific pragmas if applicable
-                    if (dbType == DatabaseType.SQLITE)
-                    {
-                        sqlProperties.applySqlitePragmas(connection);
-                    }
-                    
-                    FLog.info("Database connection established (" + dbType.getName() + ")");
-                }
-                return connection;
-            }
-            catch (SQLException e)
-            {
-                throw new RuntimeException("Failed to get database connection", e);
-            }
-            catch (Exception e)
-            {
-                throw new RuntimeException("Failed to initialize database", e);
-            }
-        }, dbExecutor);
+        if (dataSource == null)
+        {
+            throw new IllegalStateException("Connection pool not initialized. Call connect() first.");
+        }
+        return dataSource.getConnection();
     }
 
     /**
-     * Get NoSQL client for MongoDB or Redis.
-     * Returns null for SQL databases.
-     * 
-     * Note: Implementation depends on the NoSQL driver being used.
-     * This method provides a placeholder for NoSQL client initialization.
+     * Semaphore holder which limits concurrent async queries to the pool's maximum connection count.
      */
-    @Nullable
-    public CompletableFuture<Object> getNoSqlClient()
+    @NotNull
+    public AccessController getAccessController()
     {
-        return CompletableFuture.supplyAsync(() -> {
-            DatabaseType dbType = sqlProperties.getDatabaseType();
-            
-            if (!dbType.isNoSQL())
-            {
-                FLog.warning("getNoSqlClient() called for SQL database type: " + dbType.getName());
-                return null;
-            }
-
-            if (noSqlClient != null)
-            {
-                return noSqlClient;
-            }
-
-            String url = sqlProperties.getJdbcUrl();
-            FLog.info("Connecting to NoSQL database: " + dbType.getName());
-
-            switch (dbType)
-            {
-                case MONGODB:
-                    // MongoDB client initialization
-                    // Requires: org.mongodb:mongodb-driver-sync dependency
-                    // noSqlClient = MongoClients.create(url);
-                    FLog.warning("MongoDB support requires mongodb-driver-sync dependency. " +
-                        "Add implementation 'org.mongodb:mongodb-driver-sync:4.11.1' to build.gradle");
-                    throw new UnsupportedOperationException(
-                        "MongoDB client not implemented. Add MongoDB driver dependency.");
-
-                case REDIS:
-                    // Redis client initialization
-                    // Requires: redis.clients:jedis dependency
-                    // noSqlClient = new JedisPool(host, port);
-                    FLog.warning("Redis support requires jedis dependency. " +
-                        "Add implementation 'redis.clients:jedis:5.1.0' to build.gradle");
-                    throw new UnsupportedOperationException(
-                        "Redis client not implemented. Add Jedis driver dependency.");
-
-                default:
-                    throw new IllegalStateException("Unknown NoSQL type: " + dbType);
-            }
-        }, dbExecutor);
+        if (accessController == null)
+        {
+            throw new IllegalStateException("Connection pool not initialized. Call connect() first.");
+        }
+        return accessController;
     }
 
     /**
-     * Check if the current database configuration uses JDBC.
+     * Dedicated Reactor scheduler for SQL work, sized off the pool's actual max size plus additional headroom to avoid starvation. 
+     * <p>
+     * Use {@link SCHEDULER_POOL_MULTIPLIER} rather than sharing the JVM-wide
+     * default {@link Schedulers#boundedElastic()} with unrelated plugin async work.
      */
-    public boolean isJdbcDatabase()
+    @NotNull
+    public Scheduler getScheduler()
     {
-        return sqlProperties.isJdbcDatabase();
+        if (scheduler == null)
+        {
+            throw new IllegalStateException("Connection pool not initialized. Call connect() first.");
+        }
+        return scheduler;
     }
 
-    /**
-     * Check if the current database configuration is NoSQL.
-     */
-    public boolean isNoSQL()
-    {
-        return sqlProperties.isNoSQL();
-    }
-
-    /**
-     * Get the configured database type.
-     */
     @NotNull
     public DatabaseType getDatabaseType()
     {
@@ -192,97 +186,82 @@ public class ConnectionHandler
     }
 
     /**
-     * Shutdown the connection handler, closing all connections.
+     * Snapshot of live pool and fairness-queue stats, for admin-facing diagnostics.
      */
+    public record PoolStats(
+            String databaseType,
+            int maxPoolSize,
+            int activeConnections,
+            int idleConnections,
+            int totalConnections,
+            int threadsAwaitingConnection,
+            int availablePermits,
+            int queueLength)
+    {
+    }
+
+    /**
+     * Read current pool health directly off Hikari's own {@link HikariPoolMXBean}, plus the
+     * {@link AccessController} fairness-queue counters.
+     */
+    @NotNull
+    public PoolStats getPoolStats()
+    {
+        if (dataSource == null || accessController == null)
+        {
+            throw new IllegalStateException("Connection pool not initialized. Call connect() first.");
+        }
+
+        final HikariPoolMXBean poolMXBean = dataSource.getHikariPoolMXBean();
+        return new PoolStats(
+                getDatabaseType().getName(),
+                dataSource.getMaximumPoolSize(),
+                poolMXBean.getActiveConnections(),
+                poolMXBean.getIdleConnections(),
+                poolMXBean.getTotalConnections(),
+                poolMXBean.getThreadsAwaitingConnection(),
+                accessController.availablePermits(),
+                accessController.queueLength());
+    }
+
+    public boolean isConnected()
+    {
+        return dataSource != null && !dataSource.isClosed();
+    }
+
+    public boolean testConnection()
+    {
+        try (Connection connection = borrowConnection())
+        {
+            return connection.isValid(5);
+        }
+        catch (Exception e)
+        {
+            FLog.severe(String.format(
+                                    "Database connection test failed: %s", 
+                                    ExceptionUtils.getRootCauseMessage(e)
+                                ));
+            return false;
+        }
+    }
+
     public void shutdown()
     {
         FLog.info("Shutting down database connection handler...");
-        dbExecutor.shutdown();
-        
-        // Close JDBC connection
-        if (connection != null)
+        if (scheduler != null)
         {
-            try
-            {
-                connection.close();
-                FLog.info("Database connection closed.");
-            }
-            catch (SQLException e)
-            {
-                FLog.warning("Failed to close database connection: " + e.getMessage());
-            }
+            scheduler.dispose();
         }
-
-        // Close NoSQL client
-        if (noSqlClient != null)
+        if (dataSource != null && !dataSource.isClosed())
         {
-            try
-            {
-                // MongoDB: ((MongoClient) noSqlClient).close();
-                // Redis: ((JedisPool) noSqlClient).close();
-                FLog.info("NoSQL client closed.");
-            }
-            catch (Exception e)
-            {
-                FLog.warning("Failed to close NoSQL client: " + e.getMessage());
-            }
-            noSqlClient = null;
+            dataSource.close();
+            FLog.info("Database connection pool closed.");
         }
     }
 
-    /**
-     * Test the database connection.
-     */
-    public CompletableFuture<Boolean> testConnection()
-    {
-        return CompletableFuture.supplyAsync(() -> {
-            try
-            {
-                if (isNoSQL())
-                {
-                    // For NoSQL, just check if we can get a client
-                    getNoSqlClient().join();
-                    return true;
-                }
-                else
-                {
-                    Connection conn = getConnection().join();
-                    return conn != null && !conn.isClosed() && conn.isValid(5);
-                }
-            }
-            catch (Exception e)
-            {
-                FLog.severe("Database connection test failed: " + e.getMessage());
-                return false;
-            }
-        }, dbExecutor);
-    }
-
-    /**
-     * Mask password in connection URL for logging.
-     */
     private String maskPassword(String url)
     {
-        // Mask any password patterns like :password@ or password=xxx
         return url.replaceAll(":[^:@/]+@", ":****@")
                   .replaceAll("password=[^&;]+", "password=****");
-    }
-
-    public CompletableFuture<Void> closeConnection() {
-        return CompletableFuture.runAsync(() -> {
-            if (connection != null)
-            {
-                try
-                {
-                    connection.close();
-                    FLog.info("Database connection closed.");
-                }
-                catch (SQLException e)
-                {
-                    FLog.warning("Failed to close database connection: " + e.getMessage());
-                }
-                connection = null;
-            }
-        }, dbExecutor);
     }
 }

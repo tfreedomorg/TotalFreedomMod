@@ -1,14 +1,8 @@
 package me.totalfreedom.totalfreedommod.blocking.entity;
 
-import com.destroystokyo.paper.event.entity.EntityAddToWorldEvent;
 import java.util.ArrayList;
-import me.totalfreedom.totalfreedommod.FreedomService;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.blocking.sweep.EntityVisitor;
-import me.totalfreedom.totalfreedommod.blocking.sweep.SweepContext;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.util.DetectionReporter;
-import me.totalfreedom.totalfreedommod.util.FLog;
+
+import com.destroystokyo.paper.event.entity.EntityAddToWorldEvent;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
@@ -17,6 +11,14 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+
+import me.totalfreedom.totalfreedommod.FreedomService;
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.blocking.sweep.EntityVisitor;
+import me.totalfreedom.totalfreedommod.blocking.sweep.SweepContext;
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.util.DetectionReporter;
+import me.totalfreedom.totalfreedommod.util.FLog;
 
 public class WaypointGuard extends FreedomService
 {
