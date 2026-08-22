@@ -20,6 +20,7 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
 
+import java.util.List;
 import java.util.Random;
 
 @Command(name = "crash", description = "Crashes the specified player", usage = "/crash <player>", aliases = {"fuckup"})
@@ -62,7 +63,7 @@ public class Command_crash extends FCommand
         // Send it as a boss bar if they have action bars blocked
         player.showBossBar(BossBar.bossBar(c, 0.69F, BossBar.Color.RED, BossBar.Overlay.PROGRESS));
         // Okay, fine, we'll just throw the book at them
-        player.openBook(Book.book(c, c, c));
+        player.openBook(Book.book(c, c, List.of(c)));
 
         // If all else fails, let's softlock them with fake dimension updates sent every tick
         if (server().getPluginManager().isPluginEnabled("packetevents"))
