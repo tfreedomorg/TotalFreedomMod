@@ -19,7 +19,7 @@ import me.totalfreedom.api.cmd.annotation.Command;
 import me.totalfreedom.api.cmd.annotation.Permission;
 import me.totalfreedom.api.cmd.annotation.Subcommand;
 
-@Command(name = "invis", description = "Shows (and optionally clears) invisisible players", usage = "/invis [clear]")
+@Command(name = "invis", description = "Shows (and optionally clears) invisible players", usage = "/invis [clear]")
 @Permission(permission = "tfm.admin.invis")
 public class Command_invis extends FCommand
 {
@@ -52,7 +52,7 @@ public class Command_invis extends FCommand
                                                                     player.displayName()
                                                                           .colorIfAbsent(NamedTextColor.WHITE)
                                                                           .hoverEvent(HoverEvent.showText(Component.text(player.getName())))
-                                                                          .clickEvent(ClickEvent.runCommand("/tp" + (plugin().esb.isEssentialsEnabled() ? "o " : " ") + player.getName()))
+                                                                          .clickEvent(ClickEvent.runCommand("/tp" + (plugin().bridges().require(EssentialsBridge.class).isEssentialsEnabled() ? "o " : " ") + player.getName()))
                                                     )
                                                 .toList();
 

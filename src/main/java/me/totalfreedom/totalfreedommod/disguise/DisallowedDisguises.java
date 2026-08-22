@@ -2,9 +2,7 @@ package me.totalfreedom.totalfreedommod.disguise;
 
 import me.totalfreedom.api.FreedomAPI;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;

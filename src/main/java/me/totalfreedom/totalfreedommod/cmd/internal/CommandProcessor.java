@@ -196,7 +196,7 @@ public final class CommandProcessor
 
             if (!registered.contains(commandName))
             {
-                FLog.severe(String.format("/%s was rejected by the command registrar; another plugin already owns that label.",
+                FLog.error(String.format("/%s was rejected by the command registrar; another plugin already owns that label.",
                     commandName));
                 return;
             }
