@@ -2,6 +2,7 @@ package me.totalfreedom.totalfreedommod;
 
 import java.io.File;
 import java.io.InputStream;
+import java.util.Optional;
 import java.util.Properties;
 
 import org.bukkit.generator.ChunkGenerator;
@@ -45,7 +46,7 @@ import me.totalfreedom.totalfreedommod.title.TitleManager;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FUtil;
 import me.totalfreedom.totalfreedommod.util.MethodTimer;
-import me.totalfreedom.totalfreedommod.world.CleanroomChunkGenerator;
+import me.totalfreedom.totalfreedommod.world.GenerationService;
 import me.totalfreedom.totalfreedommod.world.WorldManager;
 
 public class TotalFreedomMod extends JavaPlugin
@@ -65,6 +66,7 @@ public class TotalFreedomMod extends JavaPlugin
     public FreedomDatabase dm; // FreedomDatabase - Manages SQL database connections
     public SavedFlags sf; // SavedFlags - Stores saved flag states
     public WorldManager wm; // WorldManager - Manages world operations
+    public GenerationService gs; // GenerationService - Loads and serves world-generation profiles
     public AdminList al; // AdminList - Manages admin list and permissions
     public RankManager rm; // RankManager - Handles player ranks and display
     public TitleManager tm; // TitleManager - Flat, non-inheriting capability grants shown alongside ranks
@@ -180,6 +182,8 @@ public class TotalFreedomMod extends JavaPlugin
         dm = services.registerService(FreedomDatabase.class);
 
         sf = services.registerService(SavedFlags.class);
+        // Before WorldManager: profiles must be loaded before anything tries to spin up a world from one.
+        gs = services.registerService(GenerationService.class);
         wm = services.registerService(WorldManager.class);
         al = services.registerService(AdminList.class);
 
@@ -287,20 +291,14 @@ public class TotalFreedomMod extends JavaPlugin
     @Override
     public ChunkGenerator getDefaultWorldGenerator(String worldName, String id)
     {
-        if ("flatlands".equals(worldName))
+        if (gs != null)
         {
-            String params;
-            if (config != null)
-            {
-                params = ConfigEntry.FLATLANDS_GENERATE_PARAMS.getString();
-            }
-            else
-            {
-                saveDefaultConfig();
-                params = getConfig().getString("flatlands.generate_params", "16|stone|32|dirt|1|grass_block");
-            }
-            return new CleanroomChunkGenerator(params);
+            final Optional<ChunkGenerator> generator = gs.generatorFor(worldName);
+
+            if (generator.isPresent())
+                return generator.get();
         }
+
         return super.getDefaultWorldGenerator(worldName, id);
     }
 

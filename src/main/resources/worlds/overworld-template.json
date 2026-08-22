@@ -1,0 +1,130 @@
+{
+  "shape": {
+    "mode": "heightmap",
+    "bounds": { "minY": -64, "maxY": 320, "seaLevel": 63 },
+    "terrain": {
+      "noise": {
+        "type": "simplex",
+        "octaves": 4,
+        "frequency": 0.00195,
+        "persistence": 0.5,
+        "lacunarity": 2.0,
+        "ridged": false
+      },
+      "spline": {
+        "points": [
+          [-1.00,  30],
+          [-0.60,  45],
+          [-0.30,  58],
+          [-0.10,  63],
+          [ 0.05,  68],
+          [ 0.30,  85],
+          [ 0.60, 120],
+          [ 1.00, 180]
+        ]
+      },
+      "warp": 0.015
+    },
+    "river": {
+      "noise": {
+        "type": "simplex",
+        "octaves": 2,
+        "frequency": 0.0016,
+        "persistence": 0.5,
+        "lacunarity": 2.0,
+        "ridged": false
+      },
+      "threshold": 0.03,
+      "depth": 5,
+      "bedBlock": "gravel"
+    },
+    "caves": {
+      "noise": {
+        "type": "simplex",
+        "octaves": 3,
+        "frequency": 0.0078,
+        "persistence": 0.5,
+        "lacunarity": 2.0,
+        "ridged": true
+      },
+      "threshold": 0.48,
+      "minY": -59,
+      "maxY": 128,
+      "floodLevel": -54
+    }
+  },
+
+  "palette": {
+    "materials": {
+      "defaultBlock": "stone",
+      "fluidBlock": "water",
+      "bedrockBlock": "bedrock",
+      "bedrock": "FLOOR"
+    },
+    "surface": [
+      { "biome": "desert",       "depthFrom": 0, "depthTo": 6, "block": "sand" },
+      { "biome": "snowy_plains", "depthFrom": 0, "depthTo": 0, "block": "snow_block" },
+      {                          "depthFrom": 0, "depthTo": 0, "block": "grass_block" },
+      {                          "depthFrom": 1, "depthTo": 3, "block": "dirt" },
+      {                          "depthFrom": 4,               "block": "stone" }
+    ],
+    "climate": {
+      "temperature": {
+        "type": "simplex",
+        "octaves": 2,
+        "frequency": 0.00098,
+        "persistence": 0.5,
+        "lacunarity": 2.0,
+        "ridged": false
+      },
+      "humidity": {
+        "type": "simplex",
+        "octaves": 2,
+        "frequency": 0.00098,
+        "persistence": 0.5,
+        "lacunarity": 2.0,
+        "ridged": false
+      },
+      "scale": 1.0
+    },
+    "fallback": "plains",
+    "biomes": [
+      { "biome": "snowy_plains", "minTemperature": -1.00, "maxTemperature": -0.45, "minHumidity": -1.00, "maxHumidity":  1.00 },
+      { "biome": "taiga",        "minTemperature": -0.45, "maxTemperature": -0.15, "minHumidity": -1.00, "maxHumidity":  1.00 },
+      { "biome": "plains",       "minTemperature": -0.15, "maxTemperature":  0.55, "minHumidity": -1.00, "maxHumidity":  0.10 },
+      { "biome": "forest",       "minTemperature": -0.15, "maxTemperature":  0.55, "minHumidity":  0.10, "maxHumidity":  1.00 },
+      { "biome": "desert",       "minTemperature":  0.55, "maxTemperature":  1.00, "minHumidity": -1.00, "maxHumidity": -0.10 },
+      { "biome": "savanna",      "minTemperature":  0.55, "maxTemperature":  1.00, "minHumidity": -0.10, "maxHumidity":  0.30 },
+      { "biome": "jungle",       "minTemperature":  0.55, "maxTemperature":  1.00, "minHumidity":  0.30, "maxHumidity":  1.00 }
+    ]
+  },
+
+  "features": [
+    { "type": "ore",     "rarity": 20, "minY": 0,   "maxY": 192, "block": "coal_ore",          "size": 17 },
+    { "type": "ore",     "rarity": 16, "minY": -16, "maxY": 112, "block": "copper_ore",        "size": 10 },
+    { "type": "ore",     "rarity": 10, "minY": -24, "maxY": 56,  "block": "iron_ore",          "size": 9 },
+    { "type": "ore",     "rarity": 8,  "minY": -64, "maxY": 15,  "block": "redstone_ore",      "size": 8 },
+    { "type": "ore",     "rarity": 4,  "minY": -64, "maxY": 32,  "block": "gold_ore",          "size": 9 },
+    { "type": "ore",     "rarity": 2,  "minY": -64, "maxY": 30,  "block": "lapis_ore",         "size": 7 },
+    { "type": "ore",     "rarity": 1,  "minY": -64, "maxY": 16,  "block": "diamond_ore",       "size": 8 },
+    { "type": "tree",    "rarity": 10, "minY": 60,  "maxY": 200, "biomes": ["forest", "taiga", "jungle"] },
+    { "type": "tree",    "rarity": 3,  "minY": 60,  "maxY": 200, "biomes": ["plains", "savanna", "snowy_plains"] },
+    { "type": "patch",   "rarity": 7,  "minY": 60,  "maxY": 200, "block": "short_grass",       "size": 32, "biomes": ["plains", "savanna"] },
+    { "type": "patch",   "rarity": 2,  "minY": 60,  "maxY": 200, "block": "short_grass",       "size": 32, "biomes": ["forest", "jungle"] },
+    { "type": "patch",   "rarity": 2,  "minY": 60,  "maxY": 200, "block": "dead_bush",         "size": 6,  "biomes": ["desert"] },
+    { "type": "boulder", "rarity": 1,  "minY": 60,  "maxY": 220, "block": "mossy_cobblestone", "size": 3,  "biomes": ["taiga"] },
+    { "type": "lake",    "rarity": 1,  "minY": 40,  "maxY": 90,  "block": "water",             "size": 6 }
+  ],
+
+  "world": {
+    "environment": "normal",
+    "generateStructures": false,
+    "vanilla": {
+      "surface": false,
+      "caves": false,
+      "decorations": false,
+      "mobs": true,
+      "structures": false
+    }
+  }
+}

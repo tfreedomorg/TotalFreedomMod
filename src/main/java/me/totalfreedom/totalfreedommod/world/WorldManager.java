@@ -1,11 +1,18 @@
 package me.totalfreedom.totalfreedommod.world;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeSet;
+
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.weather.ThunderChangeEvent;
 import org.bukkit.event.weather.WeatherChangeEvent;
@@ -14,23 +21,50 @@ import net.kyori.adventure.text.format.NamedTextColor;
 
 import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.player.FPlayer;
 
 import static me.totalfreedom.totalfreedommod.util.FUtil.playerMsg;
 
+/**
+ * The registry of {@link CustomWorld}s TFM manages, keyed by world name. A wrapper is created and
+ * cached on first {@link #get}, so any world with a profile (or none at all, for the movement/weather
+ * hooks below) can be addressed generically instead of needing its own hardcoded field.
+ * <p>
+ * Every world with a profile on disk is eagerly created at startup; there is no separate config
+ * flag for any of them, flatlands and an admin world included. Wanting one gone means deleting or
+ * renaming its {@code worlds/<name>.json}, not flipping a switch.
+ */
 public class WorldManager extends FreedomService
 {
-
-    public Flatlands flatlands;
-    public AdminWorld adminworld;
+    private final Map<String, CustomWorld> managed = new HashMap<>();
 
     public WorldManager(TotalFreedomMod plugin)
     {
         super(plugin);
+    }
 
-        this.flatlands = new Flatlands(plugin);
-        this.adminworld = new AdminWorld(plugin);
+    /** The {@link CustomWorld} wrapper for a world name, creating and caching one on first use. */
+    public CustomWorld get(String worldName)
+    {
+        return managed.computeIfAbsent(worldName, name -> new CustomWorld(plugin, name));
+    }
+
+    /** Every world name worth suggesting for a world-targeting command: every managed profile, plus every world currently loaded. */
+    public List<String> worldNames()
+    {
+        final TreeSet<String> names = new TreeSet<>(plugin.gs.available());
+        Bukkit.getWorlds().forEach(world -> names.add(world.getName()));
+        return new ArrayList<>(names);
+    }
+
+    /**
+     * Drops the cached access check on every world touched so far. An admin or title grant/revoke
+     * can change who passes {@code access.permission()} on any of them, not just one hardcoded
+     * world, so this sweeps all of {@link #managed} rather than naming one.
+     */
+    public void invalidateAccessCaches()
+    {
+        managed.values().forEach(CustomWorld::wipeAccessCache);
     }
 
     @Override
@@ -38,30 +72,37 @@ public class WorldManager extends FreedomService
     {
         Bukkit.getScheduler().runTask(plugin, () ->
         {
-            flatlands.getWorld();
-            adminworld.getWorld();
-
-        // Disable weather
-            if (ConfigEntry.DISABLE_WEATHER.getBoolean())
+            // Every world with a profile on disk is a world this server runs; there is no separate
+            // enable flag. Deleting or renaming worlds/<name>.json is what turns one off.
+            plugin.gs.available().forEach(name ->
             {
-                for (World world : server.getWorlds())
+                final World world = get(name).getWorld();
+
+                if (world != null && isWeatherDisabled(name))
                 {
                     world.setThundering(false);
                     world.setStorm(false);
                     world.setThunderDuration(0);
                     world.setWeatherDuration(0);
                 }
-            }
+            });
         });
+    }
+
+    /** Whether {@code worldName}'s own profile turns its weather off. False for a world with no profile. */
+    private boolean isWeatherDisabled(final String worldName)
+    {
+        return plugin.gs.profile(worldName).map(profile -> profile.world().weatherDisabled()).orElse(false);
     }
 
     @Override
     protected void onStop()
     {
-        World fl = Bukkit.getWorld(flatlands.getName());
-        if (fl != null) fl.save();
-        World aw = Bukkit.getWorld(adminworld.getName());
-        if (aw != null) aw.save();
+        managed.values().forEach(customWorld ->
+        {
+            World world = Bukkit.getWorld(customWorld.getName());
+            if (world != null) world.save();
+        });
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -72,10 +113,10 @@ public class WorldManager extends FreedomService
 
         if (!plugin.al.isAdmin(player) && fPlayer.getFreezeData().isFrozen())
         {
-            return; // Don't process adminworld validation
+            return; // Don't process managed-world access validation
         }
 
-        adminworld.validateMovement(event);
+        validateDestination(event);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -86,7 +127,23 @@ public class WorldManager extends FreedomService
             return;
         }
 
-        adminworld.validateMovement(event);
+        validateDestination(event);
+    }
+
+    /**
+     * Runs the destination world's own {@link CustomWorld#validateMovement}, whatever that world
+     * turns out to be. A no-op for a world with no {@code access} section, and for one with no
+     * profile at all, since {@link CustomWorld#canAccessWorld} returns true either way.
+     */
+    private void validateDestination(final PlayerMoveEvent event)
+    {
+        final World destination = event.getTo().getWorld();
+        if (destination == null)
+        {
+            return;
+        }
+
+        get(destination.getName()).validateMovement(event);
     }
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -94,7 +151,7 @@ public class WorldManager extends FreedomService
     {
         try
         {
-            if (event.getWorld().equals(adminworld.getWorld()) && adminworld.getWeatherMode() != WorldWeather.OFF)
+            if (get(event.getWorld().getName()).getWeatherMode() != WorldWeather.OFF)
             {
                 return;
             }
@@ -103,10 +160,16 @@ public class WorldManager extends FreedomService
         {
         }
 
-        if (ConfigEntry.DISABLE_WEATHER.getBoolean() && event.toThunderState())
+        if (isWeatherDisabled(event.getWorld().getName()) && event.toThunderState())
         {
             event.setCancelled(true);
         }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPlayerQuit(PlayerQuitEvent event)
+    {
+        managed.values().forEach(customWorld -> customWorld.forgetPlayer(event.getPlayer()));
     }
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -114,7 +177,7 @@ public class WorldManager extends FreedomService
     {
         try
         {
-            if (event.getWorld().equals(adminworld.getWorld()) && adminworld.getWeatherMode() != WorldWeather.OFF)
+            if (get(event.getWorld().getName()).getWeatherMode() != WorldWeather.OFF)
             {
                 return;
             }
@@ -123,12 +186,17 @@ public class WorldManager extends FreedomService
         {
         }
 
-        if (ConfigEntry.DISABLE_WEATHER.getBoolean() && event.toWeatherState())
+        if (isWeatherDisabled(event.getWorld().getName()) && event.toWeatherState())
         {
             event.setCancelled(true);
         }
     }
 
+    /**
+     * Sends a player to any world by name: back to the main world if they are already in the target,
+     * a managed world's own spawn (subject to its access check) if the name has a profile, or any
+     * other currently loaded world's spawn otherwise.
+     */
     public void gotoWorld(Player player, String targetWorld)
     {
         if (player == null)
@@ -140,6 +208,21 @@ public class WorldManager extends FreedomService
         {
             playerMsg(player, "Going to main world.", NamedTextColor.GRAY);
             player.teleport(Bukkit.getWorlds().get(0).getSpawnLocation());
+            return;
+        }
+
+        if (plugin.gs.available().contains(targetWorld))
+        {
+            final CustomWorld customWorld = get(targetWorld);
+
+            if (!customWorld.canAccessWorld(player))
+            {
+                playerMsg(player, "You don't have permission to access that world.", NamedTextColor.RED);
+                return;
+            }
+
+            playerMsg(player, "Going to world: " + targetWorld, NamedTextColor.GRAY);
+            customWorld.sendToWorld(player);
             return;
         }
 

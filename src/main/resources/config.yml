@@ -460,17 +460,6 @@ autoeject:
 freecam_trigger_count: 10
 explosive_radius: 4.0
 
-# Disable certain events
-disable:
-  night: true
-  weather: true
-  spawners: false
-  spawner_place: false
-  portal_create: false
-  pistons: false
-  entity_spam: false
-  entity_spam_max: 750
-
 # Enable misc. features
 landmines_enabled: false
 mp44_enabled: false
@@ -489,22 +478,6 @@ moblimiter:
     - "minecraft:slime"
     - "minecraft:giant"
     - "minecraft:bat"
-
-# Flatlands
-flatlands:
-  generate: true
-
-  # Flatlands generation parameters - Uses CleanroomGenerator v1.2.1 syntax
-  # Format: [prefix]height|block|height|block|...
-  # Prefixes: . = no bedrock, ^ = start at y=-64 (1.18+ deep worlds)
-  # Examples:
-  #   "64|stone" - 1 bedrock + 64 stone
-  #   ".64|stone" - 64 stone, no bedrock  
-  #   "^64|stone" - starts at y=-64
-  #   "." - void world
-  # Block names support modern format like "minecraft:grass_block[snowy=true]"
-  # Legacy comma-separated format is still supported for backward compatibility
-  generate_params: 16|stone|32|dirt|1|grass_block
 
 # Admin-Only Mode
 admin_only_mode: false

@@ -11,7 +11,7 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
 import me.totalfreedom.totalfreedommod.fun.Jumppads;
 
-@Permission(level = Rank.SUPER_ADMIN, source = SourceType.BOTH, permission = "tfm.fun.jumppads")
+@Permission(source = SourceType.BOTH, permission = "tfm.fun.jumppads")
 @Command(name = "jumppads", description = "Manage jumppads", usage = "/<command> <<on | off> | info | mode <mode> | strength <strength>>", aliases = {"launchpads", "jp"})
 public class Command_jumppads extends FCommand
 {

@@ -47,9 +47,7 @@ public enum WorldTime
 
     public void setWorldToTime(World world)
     {
-        long time = world.getTime();
-        time -= time % 24000;
-        world.setTime(time + 24000 + getTimeTicks());
+        world.setTime(getTimeTicks());
     }
 
     public static WorldTime getByAlias(String needle)
