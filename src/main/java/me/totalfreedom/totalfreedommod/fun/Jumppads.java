@@ -1,15 +1,7 @@
 package me.totalfreedom.totalfreedommod.fun;
 
-import com.google.common.collect.Maps;
-
 import java.util.*;
 
-import lombok.Getter;
-import lombok.Setter;
-import me.totalfreedom.totalfreedommod.FreedomService;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.util.FLog;
 import org.bukkit.GameMode;
 import org.bukkit.Tag;
 import org.bukkit.block.Block;
@@ -17,6 +9,15 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.util.Vector;
+
+import me.totalfreedom.totalfreedommod.FreedomService;
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.util.FLog;
+
+import com.google.common.collect.Maps;
+import lombok.Getter;
+import lombok.Setter;
 
 public class Jumppads extends FreedomService
 {

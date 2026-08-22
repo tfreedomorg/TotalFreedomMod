@@ -2,17 +2,17 @@ package me.totalfreedom.totalfreedommod.cmd;
 
 import java.util.List;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-import me.totalfreedom.totalfreedommod.util.FUtil;
-import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-@Permission(level = Rank.OP, permission = "tfm.server.whitelist")
+import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+import me.totalfreedom.totalfreedommod.util.FUtil;
+
+@Permission(permission = "tfm.server.whitelist")
 @Command(name = "whitelist", description = "Manage the whitelist.", usage = "/<command> <on | off | list | count | add <player> | remove <player> | addall | purge>")
 public class Command_whitelist extends FCommand
 {
@@ -49,7 +49,7 @@ public class Command_whitelist extends FCommand
 
     @Callback
     @Subcommand("on")
-    @Permission(level = Rank.SUPER_ADMIN, permission = "tfm.server.whitelist")
+    @Permission(permission = "tfm.server.whitelist.manage")
     public void on(CommandSender sender)
     {
         adminAction(sender, "<aqua>Turning the whitelist on.");
@@ -58,7 +58,7 @@ public class Command_whitelist extends FCommand
 
     @Callback
     @Subcommand("off")
-    @Permission(level = Rank.SUPER_ADMIN, permission = "tfm.server.whitelist")
+    @Permission(permission = "tfm.server.whitelist.manage")
     public void off(CommandSender sender)
     {
         adminAction(sender, "<aqua>Turning the whitelist off.");
@@ -83,7 +83,7 @@ public class Command_whitelist extends FCommand
 
     @Callback
     @Subcommand("add")
-    @Permission(level = Rank.SUPER_ADMIN, permission = "tfm.server.whitelist")
+    @Permission(permission = "tfm.server.whitelist.manage")
     public void add(CommandSender sender, String name)
     {
         final OfflinePlayer player = resolveOfflinePlayer(name);
@@ -94,7 +94,7 @@ public class Command_whitelist extends FCommand
 
     @Callback
     @Subcommand("remove")
-    @Permission(level = Rank.SUPER_ADMIN, permission = "tfm.server.whitelist")
+    @Permission(permission = "tfm.server.whitelist.manage")
     public void remove(CommandSender sender, String name)
     {
         final OfflinePlayer player = resolveOfflinePlayer(name);
@@ -111,7 +111,7 @@ public class Command_whitelist extends FCommand
 
     @Callback
     @Subcommand("addall")
-    @Permission(level = Rank.SUPER_ADMIN, permission = "tfm.server.whitelist")
+    @Permission(permission = "tfm.server.whitelist.manage")
     public void addAll(CommandSender sender)
     {
         adminAction(sender, "<aqua>Adding all online players to the whitelist.");
@@ -131,7 +131,7 @@ public class Command_whitelist extends FCommand
 
     @Callback
     @Subcommand("purge")
-    @Permission(level = Rank.SUPER_ADMIN, source = SourceType.ONLY_CONSOLE, permission = "tfm.server.whitelist")
+    @Permission(source = SourceType.ONLY_CONSOLE, permission = "tfm.server.whitelist.manage")
     public void purge(CommandSender sender)
     {
         adminAction(sender, "<aqua>Whitelist purging is temporarily disabled.");

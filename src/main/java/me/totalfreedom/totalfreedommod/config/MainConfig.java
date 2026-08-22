@@ -7,12 +7,15 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.EnumMap;
 import java.util.List;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.util.FLog;
-import me.totalfreedom.totalfreedommod.framework.PluginComponent;
-import org.apache.commons.io.FileUtils;
+
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
+
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.framework.PluginComponent;
+import me.totalfreedom.totalfreedommod.util.FLog;
+
+import org.apache.commons.io.FileUtils;
 
 public class MainConfig extends PluginComponent<TotalFreedomMod>
 {

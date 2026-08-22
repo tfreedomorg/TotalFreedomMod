@@ -1,6 +1,7 @@
 package me.totalfreedom.totalfreedommod.blocking.sweep;
 
 import java.util.function.Predicate;
+
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 

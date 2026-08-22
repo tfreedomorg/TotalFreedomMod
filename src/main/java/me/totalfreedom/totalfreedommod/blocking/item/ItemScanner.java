@@ -1,31 +1,13 @@
 package me.totalfreedom.totalfreedommod.blocking.item;
 
+import java.util.List;
+
 import io.papermc.paper.datacomponent.DataComponentTypes;
-import io.papermc.paper.datacomponent.item.BannerPatternLayers;
-import io.papermc.paper.datacomponent.item.BlocksAttacks;
-import io.papermc.paper.datacomponent.item.BundleContents;
-import io.papermc.paper.datacomponent.item.ChargedProjectiles;
-import io.papermc.paper.datacomponent.item.CustomModelData;
-import io.papermc.paper.datacomponent.item.Equippable;
-import io.papermc.paper.datacomponent.item.Fireworks;
-import io.papermc.paper.datacomponent.item.ItemAttributeModifiers;
-import io.papermc.paper.datacomponent.item.ItemContainerContents;
-import io.papermc.paper.datacomponent.item.ItemLore;
-import io.papermc.paper.datacomponent.item.JukeboxPlayable;
-import io.papermc.paper.datacomponent.item.PotionContents;
-import io.papermc.paper.datacomponent.item.SuspiciousStewEffects;
-import io.papermc.paper.datacomponent.item.UseRemainder;
-import io.papermc.paper.datacomponent.item.WritableBookContent;
-import io.papermc.paper.datacomponent.item.WrittenBookContent;
+import io.papermc.paper.datacomponent.item.*;
 import io.papermc.paper.datacomponent.item.attribute.AttributeModifierDisplay;
 import io.papermc.paper.datacomponent.item.blocksattacks.DamageReduction;
 import io.papermc.paper.registry.set.RegistryKeySet;
 import io.papermc.paper.text.Filtered;
-import java.util.List;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.util.ComponentScanner;
-import net.kyori.adventure.key.Key;
-import net.kyori.adventure.text.Component;
 import org.bukkit.FireworkEffect;
 import org.bukkit.JukeboxSong;
 import org.bukkit.MusicInstrument;
@@ -36,6 +18,12 @@ import org.bukkit.damage.DamageType;
 import org.bukkit.entity.EntityType;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ItemType;
+
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.text.Component;
+
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.util.ComponentScanner;
 
 final class ItemScanner
 {

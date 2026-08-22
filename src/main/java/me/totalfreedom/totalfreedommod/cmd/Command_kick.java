@@ -1,14 +1,17 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import java.util.List;
 
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-@Permission(level = Rank.SUPER_ADMIN, permission = "tfm.admin.kick")
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+
+
+@Permission(permission = "tfm.admin.kick")
 @Command(name = "kick", aliases = "k", description = "Kick a player.", usage = "/<command> [-s] <player> [reason]")
 public class Command_kick extends FCommand
 {
@@ -18,14 +21,17 @@ public class Command_kick extends FCommand
         kick(sender, player, null, silent);
     }
 
+    @Completer(value = "", position = 1)
+    public List<String> completeReason(CommandSender sender, String partial)
+    {
+        return NameCandidates.onlineTyped(server(), partial);
+    }
+
     @Callback
     public void kick(CommandSender sender, Player player, @Greedy String reason, @Switch("s") boolean silent)
     {
-        if (isAdmin(player))
-        {
-            msg(sender, "<red>This command cannot be used on other admins.");
+        if (isProtectedAdmin(sender, player))
             return;
-        }
 
         final String kickMessage = reason != null
                 ? "<red>You have been kicked from the server.\n<red>Kicked by: <gold><sender>\n<red>Reason: <gold><reason>"

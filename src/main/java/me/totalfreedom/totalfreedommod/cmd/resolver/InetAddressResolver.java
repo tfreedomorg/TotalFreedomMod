@@ -1,8 +1,8 @@
 package me.totalfreedom.totalfreedommod.cmd.resolver;
 
-import com.google.common.net.InetAddresses;
-
 import java.net.InetAddress;
+
+import com.google.common.net.InetAddresses;
 
 public class InetAddressResolver implements AbstractArgumentResolver<InetAddress>
 {

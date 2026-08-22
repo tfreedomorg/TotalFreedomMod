@@ -1,22 +1,28 @@
 package me.totalfreedom.totalfreedommod;
 
-import io.papermc.paper.event.player.AsyncChatEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+
+import io.papermc.paper.event.player.AsyncChatEvent;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.block.SignChangeEvent;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
+import org.bukkit.event.player.PlayerEditBookEvent;
+import org.bukkit.inventory.meta.BookMeta;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
 import me.totalfreedom.totalfreedommod.banning.Ban;
 import me.totalfreedom.totalfreedommod.cmd.MessageUtils;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FUtil;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 
 public class TextFilterService extends FreedomService
 {
@@ -42,16 +48,14 @@ public class TextFilterService extends FreedomService
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onAsyncChat(AsyncChatEvent event)
     {
-        if (!shouldFilter())
+        if (isFilterDisabled())
         {
             return;
         }
 
         final String message = MessageUtils.toPlainText(event.message());
         if (!matchesFilter(message))
-        {
             return;
-        }
 
         event.setCancelled(true);
         Bukkit.getScheduler().runTask(plugin, () -> temporarilyBan(event.getPlayer()));
@@ -60,15 +64,63 @@ public class TextFilterService extends FreedomService
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event)
     {
-        if (!shouldFilter())
-        {
+        if (isFilterDisabled())
             return;
-        }
 
         if (!matchesFilter(event.getMessage()))
-        {
             return;
+
+        event.setCancelled(true);
+        temporarilyBan(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onSignEdit(SignChangeEvent event)
+    {
+        if (isFilterDisabled())
+            return;
+
+        final StringBuilder builder = new StringBuilder();
+
+        for (int i = 0; i < event.lines().size(); i++)
+        {
+            if (!builder.isEmpty())
+            {
+                builder.append(Component.newline());
+            }
+            builder.append(event.line(i));
         }
+
+        if (!matchesFilter(builder.toString()))
+            return;
+
+        event.setCancelled(true);
+        temporarilyBan(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onBookEdit(PlayerEditBookEvent event)
+    {
+        final BookMeta meta = event.getNewBookMeta();
+        final StringBuilder builder = new StringBuilder();
+
+        if (isFilterDisabled())
+            return;
+
+        if (meta.hasTitle())
+        {
+            builder.append(MessageUtils.toPlainText(meta.title()));
+        }
+
+        for (Component page : meta.pages())
+        {
+            if (!builder.isEmpty())
+                builder.append(Component.newline());
+            builder.append(MessageUtils.toPlainText(page));
+        }
+
+        if (!matchesFilter(builder.toString()))
+            return;
 
         event.setCancelled(true);
         temporarilyBan(event.getPlayer());
@@ -98,9 +150,9 @@ public class TextFilterService extends FreedomService
         FLog.info("Loaded " + filters.size() + " text filter regex pattern(s).");
     }
 
-    private boolean shouldFilter()
+    private boolean isFilterDisabled()
     {
-        return ConfigEntry.TEXT_FILTER_ENABLED.getBoolean(true) && !filters.isEmpty();
+        return !ConfigEntry.TEXT_FILTER_ENABLED.getBoolean(true) || filters.isEmpty();
     }
 
     private boolean matchesFilter(String text)

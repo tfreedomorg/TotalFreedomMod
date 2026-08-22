@@ -1,12 +1,12 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
-
 import org.bukkit.entity.Player;
 
-@Permission(level = Rank.SENIOR_ADMIN, source = SourceType.ONLY_IN_GAME, permission = "tfm.admin.senior.fuckoff")
+import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
+
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+
+@Permission(source = SourceType.ONLY_IN_GAME, permission = "tfm.admin.senior.fuckoff")
 @Command(name = "fuckoff", description = "You'll never even see it coming.", usage = "/fuckoff <on [radius (default=25)] | off>")
 public class Command_fuckoff extends FCommand
 {

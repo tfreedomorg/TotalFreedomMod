@@ -2,17 +2,7 @@ package me.totalfreedom.totalfreedommod.player;
 
 import java.util.ArrayList;
 import java.util.List;
-import lombok.Getter;
-import lombok.Setter;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.caging.CageData;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.freeze.FreezeData;
-import me.totalfreedom.totalfreedommod.util.AdventureUtil;
-import me.totalfreedom.totalfreedommod.util.FTask;
-import me.totalfreedom.totalfreedommod.util.FUtil;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.EntityType;
@@ -20,6 +10,20 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.caging.CageData;
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.freeze.FreezeData;
+import me.totalfreedom.totalfreedommod.util.AdventureUtil;
+import me.totalfreedom.totalfreedommod.util.FTask;
+import me.totalfreedom.totalfreedommod.util.FUtil;
+
+import lombok.Getter;
+import lombok.Setter;
 
 public class FPlayer
 {
@@ -84,7 +88,7 @@ public class FPlayer
     @Getter
     @Setter
     private boolean superadminIdVerified = false;
-    private CommandSpyMode commandSpyMode = CommandSpyMode.OFF;
+    private SpyMode commandSpyMode = SpyMode.OFF;
     private boolean joinLeaveMessagesEnabled = true;
     private Component tag = null;
     private String tagInternal = null;
@@ -436,22 +440,22 @@ public class FPlayer
 
     public void setCommandSpy(boolean enabled)
     {
-        this.commandSpyMode = enabled ? CommandSpyMode.ALL : CommandSpyMode.OFF;
+        this.commandSpyMode = enabled ? SpyMode.ALL : SpyMode.OFF;
     }
 
     public boolean cmdspyEnabled()
     {
-        return commandSpyMode != CommandSpyMode.OFF;
+        return commandSpyMode != SpyMode.OFF;
     }
 
-    public CommandSpyMode getCommandSpyMode()
+    public SpyMode getCommandSpyMode()
     {
         return commandSpyMode;
     }
 
-    public void setCommandSpyMode(CommandSpyMode commandSpyMode)
+    public void setCommandSpyMode(SpyMode commandSpyMode)
     {
-        this.commandSpyMode = commandSpyMode == null ? CommandSpyMode.OFF : commandSpyMode;
+        this.commandSpyMode = commandSpyMode == null ? SpyMode.OFF : commandSpyMode;
     }
 
     public boolean joinLeaveMessagesEnabled()

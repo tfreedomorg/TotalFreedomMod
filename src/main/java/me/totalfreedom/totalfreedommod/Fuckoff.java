@@ -2,7 +2,7 @@ package me.totalfreedom.totalfreedommod;
 
 import java.util.HashSet;
 import java.util.Set;
-import me.totalfreedom.totalfreedommod.player.FPlayer;
+
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -10,6 +10,8 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.util.Vector;
+
+import me.totalfreedom.totalfreedommod.player.FPlayer;
 
 public class Fuckoff extends FreedomService
 {

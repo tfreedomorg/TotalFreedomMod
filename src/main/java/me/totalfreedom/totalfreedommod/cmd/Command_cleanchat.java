@@ -3,10 +3,9 @@ package me.totalfreedom.totalfreedommod.cmd;
 import org.bukkit.command.CommandSender;
 
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.rank.Rank;
 
 @Command(name = "cleanchat", description = "Clears the chat.", usage = "/cleanchat", aliases = {"cc", "clearchat"})
-@Permission(level = Rank.SUPER_ADMIN, permission = "tfm.admin.cleanchat")
+@Permission(permission = "tfm.admin.cleanchat")
 public class Command_cleanchat extends FCommand
 {
     @Callback

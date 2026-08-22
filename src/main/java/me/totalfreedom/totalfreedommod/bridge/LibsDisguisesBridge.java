@@ -1,13 +1,15 @@
 package me.totalfreedom.totalfreedommod.bridge;
 
 import java.lang.reflect.Method;
+
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
+
 import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import me.totalfreedom.totalfreedommod.disguise.DisallowedDisguises;
 import me.totalfreedom.totalfreedommod.util.FLog;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
 
 /**
  * Bridge to LibsDisguises plugin.

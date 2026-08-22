@@ -12,7 +12,7 @@ import org.bukkit.entity.Player;
 import me.totalfreedom.totalfreedommod.PluginProvider;
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import me.totalfreedom.totalfreedommod.rank.CustomRank;
-import me.totalfreedom.totalfreedommod.rank.Rank;
+import me.totalfreedom.totalfreedommod.rank.RankRole;
 
 /**
  * Plaintext online player list shared by automated console contexts.
@@ -49,7 +49,12 @@ public final class PlayerListUtil
 
         // Build a map from ranks to players that have that rank, with OP as a default
         final Map<CustomRank, List<Player>> playerRanks = new HashMap<>();
-        final var defaultRank = CustomRank.fromLegacyRank(Rank.OP);
+        final var defaultRank = plugin.rm.getRegistry().byRole(RankRole.DEFAULT_OP).orElse(null);
+        // Without an op rank in the registry there is no bucket to default anyone into, so fall
+        // back to the plain listing rather than dropping unranked players from the output.
+        if (defaultRank == null)
+            return buildPlainList();
+
         playerRanks.put(defaultRank, new ArrayList<>());
         for (final var player : players)
         {
@@ -57,9 +62,7 @@ public final class PlayerListUtil
             // If they're an admin, we can pull their rank
             if (admin != null)
             {
-                var rank = plugin.rm.getCustomRank(admin.getCustomRankId());
-                if (rank == null)
-                    rank = CustomRank.fromLegacyRank(admin.getRank());
+                final var rank = plugin.rm.getCustomRank(admin.getRankId());
                 if (rank == null)
                 {
                     // Give them OP if somehow they don't have a rank

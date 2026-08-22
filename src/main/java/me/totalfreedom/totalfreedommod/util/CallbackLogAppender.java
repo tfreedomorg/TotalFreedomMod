@@ -2,7 +2,10 @@ package me.totalfreedom.totalfreedommod.util;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Stream;
+
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.appender.AbstractAppender;
@@ -29,28 +32,26 @@ public class CallbackLogAppender extends AbstractAppender
     public CallbackLogAppender(String name, LogLineConsumer consumer)
     {
         super(name, null, PatternLayout.createDefaultLayout(), true, Property.EMPTY_ARRAY);
-        this.consumer = consumer;
+        this.consumer = Objects.requireNonNull(consumer, "consumer");
     }
 
     /**
      * Drop events from loggers whose name starts with any of {@code prefixes}.
-     * <p>
-     * Needed when the consumer's own delivery path logs: a relay that ships log lines to a remote
-     * service and whose client library logs its failures into the same root logger will keep
-     * feeding itself, and each failure enqueues the evidence of the previous one.
      *
      * @return this appender, so the exclusions can be set where it is constructed
      */
     public CallbackLogAppender excludeLoggers(String... prefixes)
     {
-        this.excludedLoggerPrefixes = prefixes == null ? new String[0] : prefixes.clone();
+        this.excludedLoggerPrefixes = Optional.ofNullable(prefixes)
+                .map(String[]::clone)
+                .orElseGet(() -> new String[0]);
         return this;
     }
 
     @Override
     public void append(LogEvent event)
     {
-        if (consumer == null || isExcluded(event.getLoggerName()))
+        if (isExcluded(event.getLoggerName()))
         {
             return;
         }
@@ -78,12 +79,8 @@ public class CallbackLogAppender extends AbstractAppender
 
     private boolean isExcluded(String loggerName)
     {
-        if (loggerName == null)
-        {
-            return false;
-        }
-
-        return Stream.of(excludedLoggerPrefixes)
-                .anyMatch(loggerName::startsWith);
+        return Optional.ofNullable(loggerName)
+                .filter(name -> Stream.of(excludedLoggerPrefixes).anyMatch(name::startsWith))
+                .isPresent();
     }
 }

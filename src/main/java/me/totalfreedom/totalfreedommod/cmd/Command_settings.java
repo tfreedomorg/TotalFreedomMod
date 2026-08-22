@@ -8,17 +8,17 @@ import org.bukkit.GameRules;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
 import me.totalfreedom.totalfreedommod.PluginProvider;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
 import static me.totalfreedom.totalfreedommod.config.ConfigEntry.*;
 
 @Command(name = "settings", description = "Modify TotalFreedom Server Settings / Flags", usage = "/settings [toggle | set] <setting> [<radius> | <range> <count>]", aliases = {"toggle", "set", "tfset"})
-@Permission(permission = "tfm.server.settings", level = Rank.SUPER_ADMIN)
+@Permission(permission = "tfm.server.settings")
 public class Command_settings extends FCommand
 {
     private static final double DEFAULT_EXPLOSION_RADIUS = 4.0;

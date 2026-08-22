@@ -2,10 +2,11 @@ package me.totalfreedom.totalfreedommod.cmd.resolver;
 
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
-import net.kyori.adventure.key.InvalidKeyException;
-import net.kyori.adventure.key.Key;
 import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
+
+import net.kyori.adventure.key.InvalidKeyException;
+import net.kyori.adventure.key.Key;
 
 public class EnchantmentArgumentResolver implements AbstractArgumentResolver<Enchantment>
 {

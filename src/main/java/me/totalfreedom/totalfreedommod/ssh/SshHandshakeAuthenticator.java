@@ -1,11 +1,12 @@
 package me.totalfreedom.totalfreedommod.ssh;
 
+import java.util.List;
+
 import me.totalfreedom.totalfreedommod.util.FLog;
+
 import org.apache.sshd.server.auth.keyboard.InteractiveChallenge;
 import org.apache.sshd.server.auth.keyboard.KeyboardInteractiveAuthenticator;
 import org.apache.sshd.server.session.ServerSession;
-
-import java.util.List;
 
 public class SshHandshakeAuthenticator implements KeyboardInteractiveAuthenticator
 {

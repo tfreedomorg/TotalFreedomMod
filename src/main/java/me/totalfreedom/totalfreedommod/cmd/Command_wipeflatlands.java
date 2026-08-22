@@ -3,10 +3,9 @@ package me.totalfreedom.totalfreedommod.cmd;
 import org.bukkit.command.CommandSender;
 
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.rank.Rank;
 
 @Command(name = "wipeflatlands", description = "Wipe the flatlands map. Requires manual restart after command is used.", usage = "/wipeflatlands")
-@Permission(permission = "tfm.admin.senior.wipeflatlands", level = Rank.SENIOR_ADMIN, source = SourceType.ONLY_CONSOLE)
+@Permission(permission = "tfm.admin.senior.wipeflatlands", source = SourceType.ONLY_CONSOLE)
 public class Command_wipeflatlands extends FCommand
 {
     @Callback

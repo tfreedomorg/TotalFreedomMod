@@ -3,10 +3,9 @@ package me.totalfreedom.totalfreedommod.cmd;
 import org.bukkit.command.CommandSender;
 
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.rank.Rank;
 
 @Command(name = "undisguiseall", description = "Undisguise all players on the server", usage = "/undisguiseall", aliases = {"uall"})
-@Permission(permission = "tfm.admin.undisguiseall", level = Rank.SUPER_ADMIN)
+@Permission(permission = "tfm.admin.undisguiseall")
 public class Command_undisguiseall extends FCommand
 {
     @Callback

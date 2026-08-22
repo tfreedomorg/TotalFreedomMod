@@ -1,10 +1,12 @@
 package me.totalfreedom.totalfreedommod.httpd.module;
 
-import java.util.Collection;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.httpd.NanoHTTPD;
+import java.util.List;
+
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.httpd.NanoHTTPD;
 
 public class Module_list extends HTTPDModule
 {
@@ -19,7 +21,11 @@ public class Module_list extends HTTPDModule
     {
         final StringBuilder body = new StringBuilder();
 
-        final Collection<? extends Player> onlinePlayers = Bukkit.getOnlinePlayers();
+        final List<Player> onlinePlayers = Bukkit.getOnlinePlayers()
+                                                   .stream()
+                                                   .filter(player -> !plugin.vs.isVanished(player))
+                                                   .map(player -> (Player) player)
+                                                   .toList();
 
         body.append("<p>There are ").append(onlinePlayers.size()).append("/").append(Bukkit.getMaxPlayers()).append(" players online:</p>\r\n");
 

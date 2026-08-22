@@ -1,13 +1,13 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.rank.Rank;
 
 @Command(name = "adventure", description = "Quickly change your own gamemode to adventure, or define someone's username to change theirs.", usage = "/adventure [-a | name]", aliases = {"gma"})
 @Permission(permission = "tfm.admin.gamemode")
@@ -23,7 +23,7 @@ public class Command_adventure extends FCommand
 
 	@Callback
 	@Subcommand("-a") // a switch wouldn't be really appropriate here due to the nature of the @Permission annotation
-	@Permission(permission = "tfm.admin.gamemode", level = Rank.SUPER_ADMIN)
+	@Permission(permission = "tfm.admin.gamemode")
 	public void changeGamemodeAll(CommandSender sender)
 	{
 		adminAction(sender, "<red>Changing everyone's gamemode to Adventure");
@@ -31,7 +31,7 @@ public class Command_adventure extends FCommand
 	}
 
 	@Callback
-	@Permission(permission = "tfm.admin.gamemode", level = Rank.SUPER_ADMIN)
+	@Permission(permission = "tfm.admin.gamemode")
 	public void changeGamemodeOther(CommandSender sender, Player target)
 	{
 		target.setGameMode(GameMode.ADVENTURE);

@@ -1,0 +1,144 @@
+{
+  "impostor": {
+    "name": "Impostor",
+    "abbreviation": "Imp",
+    "prefix": "&8[&eImp&8] ",
+    "level": -1,
+    "color": "dark_gray",
+    "determiner": "an",
+    "admin": false,
+    "roles": [
+      "impostor"
+    ],
+    "permissions": [
+      "tfm.player.list"
+    ]
+  },
+  "non_op": {
+    "name": "Player",
+    "abbreviation": "",
+    "prefix": "",
+    "level": 0,
+    "color": "white",
+    "determiner": "a",
+    "admin": false,
+    "roles": [
+      "default"
+    ],
+    "permissions": [
+      "tfm.player.localspawn",
+      "tfm.player.radar",
+      "tfm.player.rank",
+      "tfm.player.spawn",
+      "tfm.player.list",
+      "tfm.player.joinmessages",
+      "tfm.world.flatlands",
+      "tfm.server.info"
+    ]
+  },
+  "op": {
+    "name": "Operator",
+    "abbreviation": "OP",
+    "prefix": "&8[&cOP&8] ",
+    "level": 1,
+    "color": "green",
+    "determiner": "an",
+    "admin": false,
+    "roles": [
+      "default_op"
+    ],
+    "inherit": "non_op",
+    "permissions": [
+      "tfm.player.*",
+      "tfm.admin.banlist",
+      "tfm.fun.hack",
+      "tfm.fun.landmine",
+      "tfm.fun.mp44",
+      "tfm.fun.spawnmob",
+      "tfm.fun.tossmob",
+      "tfm.server.whitelist"
+    ]
+  },
+  "super_admin": {
+    "name": "Super Admin",
+    "abbreviation": "SA",
+    "prefix": "&8[&bSA&8] ",
+    "level": 2,
+    "color": "gold",
+    "determiner": "a",
+    "admin": true,
+    "roles": [
+      "admin_default"
+    ],
+    "inherit": "op",
+    "permissions": [
+      "tfm.fun.*",
+      "tfm.world.*",
+      "tfm.server.*",
+      "tfm.admin.adminchat",
+      "tfm.admin.aeclear",
+      "tfm.admin.announce",
+      "tfm.admin.autoclear",
+      "tfm.admin.autotp",
+      "tfm.admin.ban",
+      "tfm.admin.baninfo",
+      "tfm.admin.blockcmd",
+      "tfm.admin.bookspy",
+      "tfm.admin.cage",
+      "tfm.admin.cleanchat",
+      "tfm.admin.cmdspy",
+      "tfm.admin.consolesay",
+      "tfm.admin.deop",
+      "tfm.admin.discordlink",
+      "tfm.admin.disguisetoggle",
+      "tfm.admin.findip",
+      "tfm.admin.freeze",
+      "tfm.admin.fuckup",
+      "tfm.admin.gamemode",
+      "tfm.admin.gchat",
+      "tfm.admin.gcmd",
+      "tfm.admin.invis",
+      "tfm.admin.vanish",
+      "tfm.vanish.see",
+      "tfm.admin.kick",
+      "tfm.admin.mute",
+      "tfm.admin.myadmin",
+      "tfm.admin.nickclean",
+      "tfm.admin.potspy",
+      "tfm.admin.premium",
+      "tfm.admin.protectregion",
+      "tfm.admin.purgeall",
+      "tfm.admin.ro",
+      "tfm.admin.saconfig",
+      "tfm.admin.say",
+      "tfm.admin.signspy",
+      "tfm.admin.sqlstatus",
+      "tfm.admin.strike",
+      "tfm.admin.undisguiseall",
+      "tfm.admin.warn",
+      "tfm.admin.whohas",
+      "tfm.admin.wildcard"
+    ]
+  },
+  "senior_admin": {
+    "name": "Senior Admin",
+    "abbreviation": "SrA",
+    "prefix": "&8[&6SrA&8] ",
+    "level": 3,
+    "color": "light_purple",
+    "determiner": "a",
+    "admin": true,
+    "roles": [
+      "console_floor"
+    ],
+    "inherit": "super_admin",
+    "permissions": [
+      "tfm.admin.senior.*",
+      "tfm.manage.*",
+      "tfm.admin.ban.perm",
+      "tfm.admin.banlist.purge",
+      "tfm.ssh.totp",
+      "tfm.vanish.bypass"
+    ]
+  }
+}

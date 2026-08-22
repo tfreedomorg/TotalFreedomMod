@@ -7,11 +7,10 @@ import java.util.stream.Stream;
 import org.bukkit.entity.Player;
 
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.player.CommandSpyMode;
-import me.totalfreedom.totalfreedommod.rank.Rank;
+import me.totalfreedom.totalfreedommod.player.SpyMode;
 
-@Command(name = "cmdspy", description = "Spy on commands", usage = "/<command> [admins | ops | all]", aliases = {"commandspy", "cspy"})
-@Permission(permission = "tfm.admin.cmdspy", source = SourceType.ONLY_IN_GAME, level = Rank.SUPER_ADMIN)
+@Command(name = "cmdspy", description = "Spy on commands", usage = "/cmdspy [ops | admins | all | off]", aliases = {"commandspy", "cspy"})
+@Permission(permission = "tfm.admin.cmdspy", source = SourceType.ONLY_IN_GAME)
 public class Command_cmdspy extends FCommand
 {
     // doing this to show ajax why i don't like using var keyword :)
@@ -19,11 +18,11 @@ public class Command_cmdspy extends FCommand
     public void toggle(final Player player)
     {
         final var pd = plugin().pl.getPlayer(player);
-        commandSpy(player, pd.cmdspyEnabled() ? CommandSpyMode.OFF : CommandSpyMode.ALL);
+        commandSpy(player, pd.cmdspyEnabled() ? SpyMode.OFF : SpyMode.ALL);
     }
 
     @Callback
-    public void commandSpy(final Player player, final CommandSpyMode mode) // should auto resolve enums
+    public void commandSpy(final Player player, final SpyMode mode) // should auto resolve enums
     {
         final var fp = plugin().pl.getPlayer(player);
         final var pd = plugin().pl.getData(player);
@@ -34,7 +33,7 @@ public class Command_cmdspy extends FCommand
 
         switch (mode)
         {
-            case OFF -> msg(player, "<red>CommandSpy disabled.");
+            case OFF -> msg(player, "<gray>CommandSpy disabled.");
             case ADMINS -> msg(player, "<gray>CommandSpy set to <green>ADMINS</green> mode. You will only see admins' commands.");
             case OPS -> msg(player, "<gray>CommandSpy set to <green>OPS</green> mode. You will only see OPs' commands.");
             case ALL -> msg(player, "<gray>CommandSpy set to <green>ALL</green> mode. You will see both OPs' and admins' commands.");
@@ -46,7 +45,7 @@ public class Command_cmdspy extends FCommand
     {
         final String lower = partial.toLowerCase(Locale.ROOT);
 
-        return Stream.of("admins", "ops", "all", "off")
+        return Stream.of("ops", "admins", "all", "off")
                      .filter(mode -> mode.startsWith(lower))
                      .toList();
     }
