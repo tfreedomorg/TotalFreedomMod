@@ -12,10 +12,8 @@ import org.bukkit.plugin.Plugin;
 
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.audience.ForwardingAudience;
-import net.kyori.adventure.audience.MessageType;
 import net.kyori.adventure.chat.ChatType;
 import net.kyori.adventure.chat.SignedMessage;
-import net.kyori.adventure.identity.Identity;
 import net.kyori.adventure.text.Component;
 
 /**

@@ -101,7 +101,7 @@ public class Command_crash extends FCommand
             // Send it as a boss bar if they have action bars blocked
             player.showBossBar(BossBar.bossBar(c, 0.69F, BossBar.Color.RED, BossBar.Overlay.PROGRESS));
             // Okay, fine, we'll just throw the book at them
-            player.openBook(Book.book(c, c, c));
+            player.openBook(Book.book(c, c, List.of(c)));
         }),
         /**
          * The client temporarily stores map data persistently while you are connected to a server. If you flood the
