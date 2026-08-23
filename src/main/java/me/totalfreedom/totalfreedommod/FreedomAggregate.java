@@ -150,6 +150,7 @@ public class FreedomAggregate
         services.register(EcoManager.class, EcoManager::new);
         services.register(JoinLeaveMessages.class, JoinLeaveMessages::new);
         services.register(Announcer.class, Announcer::new);
+        services.register(ChatReaction.class, ChatReaction::new);
         services.register(ChatManager.class, ChatManager::new);
         services.register(TextFilterService.class, TextFilterService::new);
         services.register(BanManager.class, BanManager::new);
