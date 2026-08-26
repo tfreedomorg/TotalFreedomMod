@@ -1007,15 +1007,12 @@ public class ProtectArea extends FreedomService
             // This logic is really hairy, but it's derived from here:
             // https://math.stackexchange.com/a/2651718
 
-            final int thisMinX = this.min.getBlockX();
-            final int thisMaxX = this.max.getBlockX();
-            final int thatMinX = min.getBlockX();
-            final int thatMaxX = max.getBlockX();
-
-            return (thisMinX <= thatMinX && thatMinX <= thisMaxX) ||
-                (thisMinX <= thatMaxX && thatMaxX <= thisMaxX) ||
-                (thatMinX <= thisMinX && thisMinX <= thatMaxX) ||
-                (thatMinX <= thisMaxX && thisMaxX <= thatMaxX);
+            return this.min.getBlockX() <= max.getBlockX()
+                && min.getBlockX() <= this.max.getBlockX()
+                && this.min.getBlockY() <= max.getBlockY()
+                && min.getBlockY() <= this.max.getBlockY()
+                && this.min.getBlockZ() <= max.getBlockZ()
+                && min.getBlockZ() <= this.max.getBlockZ();
         }
 
         public static class CantFindWorldException extends Exception
