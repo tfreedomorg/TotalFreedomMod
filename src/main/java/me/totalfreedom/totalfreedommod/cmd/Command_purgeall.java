@@ -11,6 +11,7 @@ import me.totalfreedom.api.cmd.FCommand;
 import me.totalfreedom.api.cmd.annotation.Callback;
 import me.totalfreedom.api.cmd.annotation.Command;
 import me.totalfreedom.api.cmd.annotation.Permission;
+import me.totalfreedom.totalfreedommod.lockup.LockupManager;
 import me.totalfreedom.totalfreedommod.player.FPlayer;
 
 @Command(name = "purgeall", description = "Superadmin command - Purge everything! (except for bans).", usage = "/<command>")
@@ -23,6 +24,7 @@ public class Command_purgeall extends FCommand
         adminAction(sender, "<red>Purging all player data");
 
         plugin().services().require(EntityWiper.class).wipeEntities(true);
+        plugin().services().require(LockupManager.class).purge();
 
         server().getOnlinePlayers().forEach(player -> 
         {

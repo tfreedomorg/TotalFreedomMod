@@ -84,6 +84,7 @@
       "tfm.admin.ban",
       "tfm.admin.baninfo",
       "tfm.admin.blockcmd",
+      "tfm.admin.lockup",
       "tfm.admin.bookspy",
       "tfm.admin.cage",
       "tfm.admin.cleanchat",

@@ -46,6 +46,7 @@ import me.totalfreedom.totalfreedommod.disguise.DisallowedDisguises;
 import me.totalfreedom.totalfreedommod.eco.EcoManager;
 import me.totalfreedom.totalfreedommod.framework.ServiceManager;
 import me.totalfreedom.totalfreedommod.freeze.Freezer;
+import me.totalfreedom.totalfreedommod.lockup.LockupManager;
 import me.totalfreedom.totalfreedommod.fun.*;
 import me.totalfreedom.totalfreedommod.httpd.HTTPDaemon;
 import me.totalfreedom.totalfreedommod.player.FPlayer;
@@ -171,6 +172,7 @@ public class FreedomAggregate
         services.register(Freezer.class, Freezer::new);
         services.register(Orbiter.class, Orbiter::new);
         services.register(Muter.class, Muter::new);
+        services.register(LockupManager.class, LockupManager::new);
         services.register(SpectatorBlocker.class, SpectatorBlocker::new);
         services.register(Fuckoff.class, Fuckoff::new);
         services.register(AutoEject.class, AutoEject::new);

@@ -1,128 +1,131 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitTask;
 
+import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
 import me.totalfreedom.totalfreedommod.cmd.internal.FuzzyMatch;
+import me.totalfreedom.api.cmd.annotation.*;
 import me.totalfreedom.api.cmd.FCommand;
-import me.totalfreedom.api.cmd.SourceType;
-import me.totalfreedom.api.cmd.annotation.Callback;
-import me.totalfreedom.api.cmd.annotation.Command;
-import me.totalfreedom.api.cmd.annotation.Completer;
-import me.totalfreedom.api.cmd.annotation.Permission;
-import me.totalfreedom.api.cmd.annotation.Subcommand;
-import me.totalfreedom.totalfreedommod.player.FPlayer;
-import me.totalfreedom.totalfreedommod.util.FTask;
+import me.totalfreedom.totalfreedommod.lockup.LockupEntry;
+import me.totalfreedom.totalfreedommod.lockup.LockupManager;
 
-@Command(name = "lockup", description = "Block target's minecraft input. This is evil, and I never should have wrote it.", usage = "/<command> <all | purge | <<partialname> on | off>>")
-@Permission(source = SourceType.ONLY_CONSOLE, permission = "tfm.admin.senior.lockup")
+@Command(name = "lockup", 
+    description = "Mute, blind, freeze, and block commands for a player and everyone on its address for 24 hours.",
+    usage = "/lockup <<player> | off <ip | player> | list | all | purge>")
+@Permission(permission = "tfm.admin.lockup")
 public class Command_lockup extends FCommand
 {
+    @Callback
+    @Subcommand("list")
+    public void list(CommandSender sender)
+    {
+        final List<LockupEntry> entries = plugin().services().require(LockupManager.class).getLockups();
+
+        if (entries.isEmpty())
+        {
+            msg(sender, "<gray>No lockups are currently standing.");
+            return;
+        }
+
+        final long now = System.currentTimeMillis();
+
+        msg(sender, "<gray>Standing lockups:");
+        entries.forEach(entry -> msg(sender,
+                "<gray> <white><name></white> <dark_gray>(<ip>)</dark_gray> by <white><admin></white>, <white><remaining></white> left",
+                Placeholder.unparsed("name", entry.username()),
+                Placeholder.unparsed("ip", entry.ip()),
+                Placeholder.unparsed("admin", entry.lockedBy()),
+                Placeholder.unparsed("remaining", entry.remainingLabel(now))));
+    }
+
     @Callback
     @Subcommand("all")
     public void lockAll(CommandSender sender)
     {
-        adminAction(sender, "<red>Locking up all players");
+        adminAction(sender, "<red>Locking up all non-admins");
 
-        server().getOnlinePlayers()
-                .stream()
-                .filter(player -> !isAdmin(player))
-                .forEach(this::startLockup);
+        final List<Player> targets = server().getOnlinePlayers()
+                                             .stream()
+                                             .map(Player.class::cast)
+                                             .filter(player -> !isAdmin(player))
+                                             .toList();
 
-        msg(sender, "<gray>Locked up all players.");
+        targets.forEach(player -> plugin().services().require(LockupManager.class).lockup(sender, player));
+
+        msg(sender, "<gray>Locked up <count> player<plural>.",
+                Formatter.number("count", targets.size()),
+                Placeholder.unparsed("plural", targets.size() == 1 ? "" : "s"));
     }
 
     @Callback
     @Subcommand("purge")
-    public void unlockAll(CommandSender sender)
+    public void purge(CommandSender sender)
     {
-        adminAction(sender, "<aqua>Unlocking all players");
+        adminAction(sender, "<aqua>Purging all lockups");
 
-        server().getOnlinePlayers().forEach(this::cancelLockup);
+        final int count = plugin().services().require(LockupManager.class).purge();
 
-        msg(sender, "<gray>Unlocked all players.");
+        msg(sender, "<gray>Purged <count> lockup<plural>.",
+                Formatter.number("count", count),
+                Placeholder.unparsed("plural", count == 1 ? "" : "s"));
     }
 
-    @Completer(value = "", position = 0)
+    @Completer(value = "off", position = 0)
     public List<String> completeTarget(CommandSender sender, String partial)
     {
-        return NameCandidates.online(server(), partial);
-    }
-
-    @Completer(value = "", position = 1)
-    public List<String> completeState(CommandSender sender, String partial)
-    {
-        return FuzzyMatch.filter(List.of("on", "off"), partial);
+        return FuzzyMatch.filter(plugin().services().require(LockupManager.class).getLockups()
+                                            .stream()
+                                            .flatMap(entry -> Stream.of(entry.username(), entry.ip()))
+                                            .sorted()
+                                            .toList(),
+                                partial);
     }
 
     @Callback
-    public void toggle(CommandSender sender, String name, String state)
+    @Subcommand("off")
+    public void release(CommandSender sender, String target)
     {
-        final Player player = server().getPlayer(name);
+        plugin().services().require(LockupManager.class).findByTarget(target).ifPresentOrElse(
+                entry -> release(sender, entry),
+                () -> msg(sender, "<gray>No lockup is standing on that player or address."));
+    }
 
-        if (player == null)
-        {
-            msg(sender, "<gray>Player not found!");
+    @Callback
+    public void lockup(CommandSender sender, Player player)
+    {
+        final String ip = fplayer(player).getIp();
+
+        if (isProtectedAdmin(sender, player))
             return;
-        }
 
-        if (state.equalsIgnoreCase("on"))
-        {
-            if (isProtectedAdmin(sender, player))
-                return;
+        adminAction(sender, "<red>Locking up <player>",
+                Placeholder.unparsed("player", player.getName()));
 
-            adminAction(sender, "<red>Locking up <player>", Placeholder.unparsed("player", player.getName()));
-            startLockup(player);
-            msg(sender, "<gray>Locked up <player>.", Placeholder.unparsed("player", player.getName()));
-        }
-        else if (state.equalsIgnoreCase("off"))
-        {
-            adminAction(sender, "<aqua>Unlocking <player>", Placeholder.unparsed("player", player.getName()));
-            cancelLockup(player);
-            msg(sender, "<gray>Unlocked <player>.", Placeholder.unparsed("player", player.getName()));
-        }
+        final int held = plugin().services().require(LockupManager.class).lockup(sender, player).size();
+
+        msg(player, "<red>You have been locked up.");
+        msg(sender, "<gray>Locked up <count> player<plural> on <ip>.",
+                Formatter.number("count", held),
+                Placeholder.unparsed("plural", held == 1 ? "" : "s"),
+                Placeholder.unparsed("ip", ip));
     }
 
-    private void cancelLockup(FPlayer playerdata)
+    private void release(CommandSender sender, LockupEntry entry)
     {
-        BukkitTask lockupScheduleId = playerdata.getLockupScheduleID();
-        if (lockupScheduleId != null)
-        {
-            lockupScheduleId.cancel();
-            playerdata.setLockupScheduleId(null);
-        }
-    }
+        adminAction(sender, "<aqua>Lifting lockup on <player>",
+                Placeholder.unparsed("player", entry.username()));
 
-    private void cancelLockup(final Player player)
-    {
-        cancelLockup(fplayer(player));
-    }
+        final int freed = plugin().services().require(LockupManager.class).release(entry.ip()).size();
 
-    private void startLockup(final Player player)
-    {
-        final FPlayer playerdata = fplayer(player);
-
-        cancelLockup(playerdata);
-
-        playerdata.setLockupScheduleId(new BukkitRunnable()
-        {
-            @Override
-            public void run()
-            {
-                FTask.run("Command_lockup/lockup", () ->
-                {
-                    if (player.isOnline())
-                        player.openInventory(player.getInventory());
-                    else
-                        cancelLockup(playerdata);
-                });
-            }
-        }.runTaskTimer(plugin(), 0L, 5L));
+        msg(sender, "<gray>Lifted lockup on <player>, freeing <count> online player<plural>.",
+                Placeholder.unparsed("player", entry.username()),
+                Formatter.number("count", freed),
+                Placeholder.unparsed("plural", freed == 1 ? "" : "s"));
     }
 }
