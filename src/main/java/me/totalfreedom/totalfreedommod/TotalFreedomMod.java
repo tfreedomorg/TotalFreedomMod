@@ -33,6 +33,7 @@ import me.totalfreedom.totalfreedommod.framework.ServiceManager;
 import me.totalfreedom.totalfreedommod.freeze.Freezer;
 import me.totalfreedom.totalfreedommod.fun.*;
 import me.totalfreedom.totalfreedommod.httpd.HTTPDaemon;
+import me.totalfreedom.totalfreedommod.lockup.LockupManager;
 import me.totalfreedom.totalfreedommod.player.FPlayer;
 import me.totalfreedom.totalfreedommod.player.PlayerList;
 import me.totalfreedom.totalfreedommod.rank.ConsoleSenderRegistry;
@@ -103,6 +104,7 @@ public class TotalFreedomMod extends JavaPlugin
     public Freezer fm; // Freezer - Freezes players in place
     public Orbiter or; // Orbiter - Makes players orbit around a point
     public Muter mu; // Muter - Mutes players
+    public LockupManager lu; // LockupManager - Locks up players and everyone on their address
     public SpectatorBlocker sb; // SpectatorBlocker - Blocks spectator teleports to players
     public Fuckoff fo; // Fuckoff - Kicks players with a message
     public AutoEject ae; // AutoEject - Automatically ejects players from vehicles
@@ -244,6 +246,7 @@ public class TotalFreedomMod extends JavaPlugin
         fm = services.registerService(Freezer.class);
         or = services.registerService(Orbiter.class);
         mu = services.registerService(Muter.class);
+        lu = services.registerService(LockupManager.class);
         sb = services.registerService(SpectatorBlocker.class);
         fo = services.registerService(Fuckoff.class);
         ae = services.registerService(AutoEject.class);
