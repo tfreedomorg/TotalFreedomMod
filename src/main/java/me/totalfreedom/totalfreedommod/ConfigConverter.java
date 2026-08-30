@@ -11,14 +11,17 @@ import java.util.Map;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 
+import me.totalfreedom.api.player.PlayerData;
+import me.totalfreedom.api.rank.RankRole;
 import me.totalfreedom.totalfreedommod.admin.Admin;
 import me.totalfreedom.totalfreedommod.admin.AdminList;
 import me.totalfreedom.totalfreedommod.banning.PermBan;
 import me.totalfreedom.totalfreedommod.banning.PermbanList;
 import me.totalfreedom.totalfreedommod.framework.PluginComponent;
-import me.totalfreedom.api.player.PlayerData;
+import me.totalfreedom.totalfreedommod.player.PlayerList;
 import me.totalfreedom.totalfreedommod.rank.CustomRank;
-import me.totalfreedom.api.rank.RankRole;
+import me.totalfreedom.totalfreedommod.rank.RankManager;
+import me.totalfreedom.totalfreedommod.title.TitleManager;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.JsonUtil;
 
@@ -211,8 +214,10 @@ public class ConfigConverter extends PluginComponent<TotalFreedomMod>
      */
     public void convertCosmeticRankHolders()
     {
-        if (plugin.admins() == null || plugin.ranks() == null || plugin.titles()
-                == null || plugin.players() == null)
+        if (plugin.services().get(AdminList.class).isEmpty()
+                || plugin.services().get(RankManager.class).isEmpty()
+                || plugin.services().get(TitleManager.class).isEmpty()
+                || plugin.services().get(PlayerList.class).isEmpty())
             return;
         
         final String senior = seniorRankId();

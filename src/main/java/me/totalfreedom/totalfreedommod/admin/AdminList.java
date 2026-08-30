@@ -394,7 +394,7 @@ public class AdminList extends FreedomService implements IAdminList
 
     public boolean isAdminImpostor(Player player)
     {
-        return getEntryByName(player.getName()) != null && !isAdmin(player);
+        return getEntryByName(player.getName()) != null && getAdmin(player) == null;
     }
 
     public boolean isIdentityMatched(Player player)
