@@ -4,6 +4,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -14,7 +15,6 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import me.totalfreedom.totalfreedommod.banning.Ban;
 import me.totalfreedom.totalfreedommod.cmd.internal.FuzzyMatch;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.cmd.resolver.DateOffsetArgumentResolver;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.player.PlayerData;
 import me.totalfreedom.totalfreedommod.util.FUtil;
@@ -26,6 +26,13 @@ import me.totalfreedom.totalfreedommod.util.FUtil;
 public class Command_tempban extends FCommand
 {
     private static final String DEFAULT_DURATION = "5m";
+    private static final long MAX_DURATION_MS = TimeUnit.HOURS.toMillis(24);
+
+    /**
+     * Offered in place of the resolver's full offset list, which runs out to 1y. Anything
+     * past 24h would only be capped back down.
+     */
+    private static final List<String> DURATIONS = List.of("30s", "5m", "15m", "30m", "1h", "6h", "12h", "24h");
 
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd 'at' HH:mm:ss z");
 
@@ -85,11 +92,18 @@ public class Command_tempban extends FCommand
     @Completer(value = "", position = 1)
     public List<String> completeDuration(CommandSender sender, String partial)
     {
-        return FuzzyMatch.filter(DateOffsetArgumentResolver.COMMON_OFFSETS, partial);
+        return FuzzyMatch.filter(DURATIONS, partial);
     }
 
-    private void tempBan(CommandSender sender, String name, Date expiry, String reason, boolean silent, boolean rollback)
+    private void tempBan(CommandSender sender, String name, Date requested, String reason, boolean silent, boolean rollback)
     {
+        final Date ceiling = new Date(System.currentTimeMillis() + MAX_DURATION_MS);
+        final boolean capped = requested.after(ceiling);
+        final Date expiry = capped ? ceiling : requested;
+
+        if (capped)
+            msg(sender, "<gray>Temporary bans are capped at 24 hours.");
+
         final Player player = server().getPlayer(name);
         final PlayerData data = BanCommandUtil.getData(plugin(), name, player);
         final String canonicalName = BanCommandUtil.getCanonicalName(name, player, data);
