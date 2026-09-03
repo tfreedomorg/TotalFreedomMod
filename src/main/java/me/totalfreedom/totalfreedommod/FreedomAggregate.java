@@ -118,6 +118,7 @@ public class FreedomAggregate
 
         services.register(RankManager.class, RankManager::new);
         services.register(TitleManager.class, TitleManager::new);
+        services.register(PlayerList.class, PlayerList::new);
 
         configConverter.convertCosmeticRankHolders();
 
@@ -147,7 +148,6 @@ public class FreedomAggregate
         services.register(AntiDrop.class, AntiDrop::new);
         services.register(AntiSpam.class, AntiSpam::new);
 
-        services.register(PlayerList.class, PlayerList::new);
         services.register(EcoManager.class, EcoManager::new);
         services.register(JoinLeaveMessages.class, JoinLeaveMessages::new);
         services.register(Announcer.class, Announcer::new);
