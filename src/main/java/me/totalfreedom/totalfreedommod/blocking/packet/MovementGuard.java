@@ -22,9 +22,7 @@ final class MovementGuard
     Decision recordAndCheck(UUID id, double x, double z)
     {
         if ((maxOversizedPerWindow <= 0 && maxBlocksPerSecond <= 0.0) || id == null)
-        {
             return Decision.ALLOW;
-        }
 
         final State state = states.computeIfAbsent(id, k -> new State());
         synchronized (state)
@@ -42,10 +40,11 @@ final class MovementGuard
             state.lastX = x;
             state.lastZ = z;
 
+            if (System.currentTimeMillis() < state.graceUntil)
+                return Decision.ALLOW;
+
             if (state.flagged)
-            {
                 return Decision.BLOCK;
-            }
 
             final double distSq = dx * dx + dz * dz;
 
@@ -60,9 +59,8 @@ final class MovementGuard
             if (distSq > maxHorizontalDeltaSq)
             {
                 if (maxOversizedPerWindow <= 0)
-                {
                     return Decision.ALLOW;
-                }
+
                 state.oversizedCount++;
                 if (state.oversizedCount >= maxOversizedPerWindow)
                 {
@@ -73,9 +71,8 @@ final class MovementGuard
             }
 
             if (maxBlocksPerSecond <= 0.0)
-            {
                 return Decision.ALLOW;
-            }
+
             state.windowDistance += Math.sqrt(distSq);
             if (state.windowDistance > maxBlocksPerSecond)
             {
@@ -86,13 +83,27 @@ final class MovementGuard
             return Decision.ALLOW;
         }
     }
+    
+    void grace(UUID id, long millis)
+    {
+        if (id == null || millis <= 0)
+            return;
+
+        final State state = states.computeIfAbsent(id, k -> new State());
+        synchronized (state)
+        {
+            state.hasLast = false;
+            state.flagged = false;
+            state.oversizedCount = 0;
+            state.windowDistance = 0.0;
+            state.graceUntil = System.currentTimeMillis() + millis;
+        }
+    }
 
     void forget(UUID id)
     {
         if (id != null)
-        {
             states.remove(id);
-        }
     }
 
     void clear()
@@ -116,5 +127,6 @@ final class MovementGuard
         private int oversizedCount;
         private double windowDistance;
         private boolean flagged;
+        private long graceUntil;
     }
 }
