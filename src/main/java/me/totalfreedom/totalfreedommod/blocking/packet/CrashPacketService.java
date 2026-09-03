@@ -6,6 +6,8 @@ import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.plugin.Plugin;
 
+import java.util.UUID;
+
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketListenerCommon;
 
@@ -207,7 +209,7 @@ public class CrashPacketService extends FreedomService
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event)
     {
-        final java.util.UUID id = event.getPlayer().getUniqueId();
+        final UUID id = event.getPlayer().getUniqueId();
         if (spamLimiter != null)
         {
             spamLimiter.forget(id);
@@ -233,6 +235,14 @@ public class CrashPacketService extends FreedomService
         if (movementGuard != null)
         {
             movementGuard.forget(event.getPlayer().getUniqueId());
+        }
+    }
+
+    public void graceMovement(UUID id, long millis)
+    {
+        if (movementGuard != null)
+        {
+            movementGuard.grace(id, millis);
         }
     }
 
