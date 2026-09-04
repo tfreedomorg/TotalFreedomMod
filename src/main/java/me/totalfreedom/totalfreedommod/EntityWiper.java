@@ -24,6 +24,7 @@ import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Minecart;
+import org.bukkit.entity.Mannequin;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.ThrownExpBottle;
 import org.bukkit.entity.ThrownPotion;
@@ -60,6 +61,7 @@ public class EntityWiper extends FreedomService
         wipables.add(Boat.class);
         wipables.add(FallingBlock.class);
         wipables.add(ArmorStand.class);
+        wipables.add(Mannequin.class);
     }
 
     @Override
