@@ -467,6 +467,8 @@ public class SQLiteAdapter extends DatabaseAdapter
                 last_join_unix INTEGER NOT NULL DEFAULT 0,
                 potion_spy_mode TEXT NOT NULL DEFAULT 'off',
                 command_spy_mode TEXT NOT NULL DEFAULT 'off',
+                command_spy_alert_sound TEXT NOT NULL DEFAULT 'entity.ender_dragon.growl',
+                command_spy_alert_regex TEXT,
                 sign_spy_mode TEXT NOT NULL DEFAULT 'off',
                 book_spy_mode TEXT NOT NULL DEFAULT 'off',
                 muted INTEGER NOT NULL DEFAULT 0,
@@ -483,6 +485,8 @@ public class SQLiteAdapter extends DatabaseAdapter
         addTimestampColumnIfMissing("players", "updated_at");
         addColumnIfMissing("players", "titles", "TEXT");
         addColumnIfMissing("players", "potion_spy_mode", "TEXT NOT NULL DEFAULT 'off'");
+        addColumnIfMissing("players", "command_spy_alert_sound", "TEXT NOT NULL DEFAULT 'entity.ender_dragon.growl'");
+        addColumnIfMissing("players", "command_spy_alert_regex", "TEXT");
         addColumnIfMissing("players", "sign_spy_mode", "TEXT NOT NULL DEFAULT 'off'");
         addColumnIfMissing("players", "book_spy_mode", "TEXT NOT NULL DEFAULT 'off'");
         addColumnIfMissing("players", "join_leave_messages", "INTEGER NOT NULL DEFAULT 1");

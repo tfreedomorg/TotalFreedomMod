@@ -4,8 +4,12 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import org.bukkit.Bukkit;
+import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
+import org.bukkit.Sound;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 
@@ -34,6 +38,9 @@ public class PlayerData implements ConfigLoadable, Validatable
     private SpyMode signSpyMode = SpyMode.OFF;
     private SpyMode bookSpyMode = SpyMode.OFF;
     private SpyMode commandSpyMode = SpyMode.OFF;
+    private String commandSpyAlertSound = "entity.ender_dragon.growl";
+    private String commandSpyAlertRegex;
+    private transient Pattern commandSpyAlertPattern;
     private boolean muted;
     private boolean frozen;
     private boolean commandsBlocked;
@@ -171,6 +178,9 @@ public class PlayerData implements ConfigLoadable, Validatable
         this.bookSpyMode = SpyMode.fromStorage(cs.getString("book_spy_mode", "off"));
         final boolean legacyCommandSpy = cs.getBoolean("command_spy", false);
         this.commandSpyMode = SpyMode.fromStorage(cs.getString("command_spy_mode", legacyCommandSpy ? "ops" : "off"));
+        this.commandSpyAlertSound = cs.getString("command_spy_alert_sound", "entity.ender_dragon.growl");
+        this.commandSpyAlertRegex = cs.getString("command_spy_alert_regex");
+        compileCommandSpyAlertRegex();
         this.muted = cs.getBoolean("muted", false);
         this.frozen = cs.getBoolean("frozen", false);
         this.commandsBlocked = cs.getBoolean("commands_blocked", false);
@@ -208,6 +218,70 @@ public class PlayerData implements ConfigLoadable, Validatable
     public void setCommandSpyMode(SpyMode commandSpyMode)
     {
         this.commandSpyMode = commandSpyMode == null ? SpyMode.OFF : commandSpyMode;
+    }
+
+    public Sound getCommandSpyAlertSound()
+    {
+        if (commandSpyAlertSound == null || commandSpyAlertSound.isBlank())
+        {
+            return Sound.ENTITY_ENDER_DRAGON_GROWL;
+        }
+
+        final NamespacedKey key = NamespacedKey.fromString(commandSpyAlertSound);
+        if (key == null)
+        {
+            return Sound.ENTITY_ENDER_DRAGON_GROWL;
+        }
+
+        final Sound sound = Registry.SOUNDS.get(key);
+        return sound == null ? Sound.ENTITY_ENDER_DRAGON_GROWL : sound;
+    }
+
+    public void setCommandSpyAlertSound(Sound commandSpyAlertSound)
+    {
+        this.commandSpyAlertSound = commandSpyAlertSound == null
+            ? "entity.ender_dragon.growl"
+                : Registry.SOUNDS.getKeyOrThrow(commandSpyAlertSound).asString();
+    }
+
+    public void setCommandSpyAlertRegex(String commandSpyAlertRegex)
+    {
+        this.commandSpyAlertRegex = commandSpyAlertRegex == null || commandSpyAlertRegex.isEmpty() ? null : commandSpyAlertRegex;
+        compileCommandSpyAlertRegex();
+    }
+
+    public String commandSpyAlertRegex()
+    {
+        return commandSpyAlertRegex;
+    }
+
+    public boolean commandSpyAlertMatches(String command)
+    {
+        if (commandSpyAlertPattern == null)
+        {
+            compileCommandSpyAlertRegex();
+        }
+
+        return commandSpyAlertPattern != null && commandSpyAlertPattern.matcher(command).find();
+    }
+
+    private void compileCommandSpyAlertRegex()
+    {
+        if (commandSpyAlertRegex == null || commandSpyAlertRegex.isEmpty())
+        {
+            this.commandSpyAlertPattern = null;
+            return;
+        }
+
+        try
+        {
+            this.commandSpyAlertPattern = Pattern.compile(commandSpyAlertRegex);
+        }
+        catch (IllegalArgumentException ex)
+        {
+            this.commandSpyAlertRegex = null;
+            this.commandSpyAlertPattern = null;
+        }
     }
 
     public boolean isSignSpy()

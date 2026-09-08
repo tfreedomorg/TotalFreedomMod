@@ -6,6 +6,9 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.*;
 
+import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
+
 import reactor.core.publisher.Mono;
 
 import me.totalfreedom.api.player.PlayerData;
@@ -30,6 +33,8 @@ public class GenericPlayerRepository implements PlayerRepository
     private final String colLastJoin;
     private final String colPotionSpyMode;
     private final String colCommandSpyMode;
+    private final String colCommandSpyAlertSound;
+    private final String colCommandSpyAlertRegex;
     private final String colSignSpyMode;
     private final String colBookSpyMode;
     private final String colMuted;
@@ -58,6 +63,8 @@ public class GenericPlayerRepository implements PlayerRepository
         this.colLastJoin = adapter.quoteIdentifier("last_join_unix");
         this.colPotionSpyMode = adapter.quoteIdentifier("potion_spy_mode");
         this.colCommandSpyMode = adapter.quoteIdentifier("command_spy_mode");
+        this.colCommandSpyAlertSound = adapter.quoteIdentifier("command_spy_alert_sound");
+        this.colCommandSpyAlertRegex = adapter.quoteIdentifier("command_spy_alert_regex");
         this.colSignSpyMode = adapter.quoteIdentifier("sign_spy_mode");
         this.colBookSpyMode = adapter.quoteIdentifier("book_spy_mode");
         this.colMuted = adapter.quoteIdentifier("muted");
@@ -72,16 +79,17 @@ public class GenericPlayerRepository implements PlayerRepository
         this.colPlayerUsername = adapter.quoteIdentifier("username");
         this.colIp = adapter.quoteIdentifier("ip");
         this.colUpdatedAt = adapter.quoteIdentifier("updated_at");
-        this.selectColumns = String.format("%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s",
-                colUsername, colFirstJoin, colLastJoin, colPotionSpyMode, colCommandSpyMode, colSignSpyMode,
-                colBookSpyMode, colMuted, colFrozen, colCommandsBlocked, colJoinLeaveMessages, colStrikes,
-                colSavedTag, colTitles) + ", " + colNickname;
+        this.selectColumns = String.format("%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s",
+            colUsername, colFirstJoin, colLastJoin, colPotionSpyMode, colCommandSpyMode,
+            colCommandSpyAlertSound, colCommandSpyAlertRegex, colSignSpyMode, colBookSpyMode,
+            colMuted, colFrozen, colCommandsBlocked, colJoinLeaveMessages, colStrikes, colSavedTag,
+            colTitles, colNickname);
     }
 
     @Override
     public void insert(PlayerData data) throws SQLException
     {
-        String sql = String.format("INSERT INTO %s (%s, %s) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, %s)",
+        String sql = String.format("INSERT INTO %s (%s, %s) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, %s)",
                 tblPlayers, selectColumns, colUpdatedAt, adapter.currentTimestamp());
 
         statementHandler.executeUpdate(sql,
@@ -90,6 +98,8 @@ public class GenericPlayerRepository implements PlayerRepository
                 data.getLastJoinUnix(),
                 data.getPotionSpyMode().getName(),
                 data.getCommandSpyMode().getName(),
+                Registry.SOUNDS.getKeyOrThrow(data.getCommandSpyAlertSound()).asString(),
+                data.commandSpyAlertRegex(),
                 data.getSignSpyMode().getName(),
                 data.getBookSpyMode().getName(),
                 data.isMuted(),
@@ -212,9 +222,10 @@ public class GenericPlayerRepository implements PlayerRepository
     @Override
     public boolean update(PlayerData data) throws SQLException
     {
-        String sql = String.format("UPDATE %s SET %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = %s WHERE %s = ?",
-                tblPlayers, colFirstJoin, colLastJoin, colPotionSpyMode, colCommandSpyMode, colSignSpyMode,
-                colBookSpyMode, colMuted, colFrozen, colCommandsBlocked, colJoinLeaveMessages, colStrikes, colSavedTag, colTitles,
+        String sql = String.format("UPDATE %s SET %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = %s WHERE %s = ?",
+            tblPlayers, colFirstJoin, colLastJoin, colPotionSpyMode, colCommandSpyMode, colCommandSpyAlertSound,
+            colCommandSpyAlertRegex, colSignSpyMode, colBookSpyMode, colMuted, colFrozen, colCommandsBlocked,
+            colJoinLeaveMessages, colStrikes, colSavedTag, colTitles,
                 colUpdatedAt, adapter.currentTimestamp(), colUsername);
 
         int rows = statementHandler.executeUpdate(sql,
@@ -222,6 +233,8 @@ public class GenericPlayerRepository implements PlayerRepository
                 data.getLastJoinUnix(),
                 data.getPotionSpyMode().getName(),
                 data.getCommandSpyMode().getName(),
+                Registry.SOUNDS.getKeyOrThrow(data.getCommandSpyAlertSound()).asString(),
+                data.commandSpyAlertRegex(),
                 data.getSignSpyMode().getName(),
                 data.getBookSpyMode().getName(),
                 data.isMuted(),
@@ -325,6 +338,7 @@ public class GenericPlayerRepository implements PlayerRepository
         data.setLastJoinUnix(rs.getLong("last_join_unix"));
         data.setPotionSpyMode(SpyMode.fromStorage(rs.getString("potion_spy_mode")));
         data.setCommandSpyMode(SpyMode.fromStorage(rs.getString("command_spy_mode")));
+        data.setCommandSpyAlertRegex(rs.getString("command_spy_alert_regex"));
         data.setSignSpyMode(SpyMode.fromStorage(rs.getString("sign_spy_mode")));
         data.setBookSpyMode(SpyMode.fromStorage(rs.getString("book_spy_mode")));
         data.setMuted(rs.getBoolean("muted"));
@@ -334,6 +348,16 @@ public class GenericPlayerRepository implements PlayerRepository
         data.setStrikes(rs.getInt("strikes"));
         data.setSavedTag(rs.getString("saved_tag"));
         data.setTitles(parseTitles(rs.getString("titles")));
+
+        final String alertSound = rs.getString("command_spy_alert_sound");
+        if (alertSound != null && !alertSound.isBlank())
+        {
+            final NamespacedKey key = NamespacedKey.fromString(alertSound);
+            if (key != null)
+            {
+                data.setCommandSpyAlertSound(Registry.SOUNDS.get(key));
+            }
+        }
 
         String rawNickname = rs.getString("nickname");
         if (rawNickname != null && !rawNickname.isEmpty())

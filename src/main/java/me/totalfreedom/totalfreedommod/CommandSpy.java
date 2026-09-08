@@ -1,18 +1,20 @@
 package me.totalfreedom.totalfreedommod;
 
 import me.totalfreedom.api.FreedomAPI;
+import me.totalfreedom.api.player.PlayerData;
 
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
+import org.bukkit.SoundCategory;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.format.NamedTextColor;
 
 import me.totalfreedom.api.display.Displayable;
 import me.totalfreedom.totalfreedommod.player.FPlayer;
-import me.totalfreedom.totalfreedommod.player.SpyMode;
 import me.totalfreedom.totalfreedommod.util.AdventureUtil;
 import me.totalfreedom.totalfreedommod.util.FUtil;
 
@@ -58,9 +60,20 @@ public class CommandSpy extends FreedomService
                 continue;
             }
 
+            final PlayerData data = plugin.players().getData(player);
+            final String command = event.getMessage();
+            final boolean alert = data.commandSpyAlertMatches(command);
+            final Component message = alert
+                    ? Component.text(commandSender.getName() + ": " + command, NamedTextColor.RED).decorate(TextDecoration.BOLD)
+                    : Component.text(commandSender.getName() + ": " + command, NamedTextColor.GRAY);
+
             if (!senderIsAdmin)
             {
-                FUtil.playerMsg(player, Component.text(commandSender.getName() + ": " + event.getMessage(), NamedTextColor.GRAY));
+                FUtil.playerMsg(player, message);
+                if (alert)
+                {
+                    player.playSound(player.getLocation(), data.getCommandSpyAlertSound(), SoundCategory.MASTER, 1.0F, 1.0F);
+                }
                 continue;
             }
 
@@ -72,14 +85,13 @@ public class CommandSpy extends FreedomService
                 prefix = tag != null ? tag : "";
             }
 
-            Component message = Component.empty();
-            if (!prefix.isEmpty())
+            FUtil.playerMsg(player, Component.empty()
+                    .append(prefix.isEmpty() ? Component.empty() : Component.text(prefix + " ", display.getColor()))
+                    .append(message));
+            if (alert)
             {
-                message = Component.text(prefix + " ", display.getColor());
+                player.playSound(player.getLocation(), data.getCommandSpyAlertSound(), SoundCategory.MASTER, 1.0F, 1.0F);
             }
-
-            message = message.append(Component.text(commandSender.getName() + ": " + event.getMessage(), NamedTextColor.GRAY));
-            FUtil.playerMsg(player, message);
         }
     }
 }

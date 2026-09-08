@@ -434,6 +434,8 @@ public class MySQLAdapter extends DatabaseAdapter
                 `last_join_unix` BIGINT NOT NULL DEFAULT 0,
                 `potion_spy_mode` VARCHAR(16) NOT NULL DEFAULT 'off',
                 `command_spy_mode` VARCHAR(16) NOT NULL DEFAULT 'off',
+                `command_spy_alert_sound` VARCHAR(128) NOT NULL DEFAULT 'entity.ender_dragon.growl',
+                `command_spy_alert_regex` TEXT,
                 `sign_spy_mode` VARCHAR(16) NOT NULL DEFAULT 'off',
                 `book_spy_mode` VARCHAR(16) NOT NULL DEFAULT 'off',
                 `muted` TINYINT(1) NOT NULL DEFAULT 0,
@@ -450,6 +452,8 @@ public class MySQLAdapter extends DatabaseAdapter
         addColumnIfMissing("players", "updated_at", "DATETIME NOT NULL DEFAULT NOW()");
         addColumnIfMissing("players", "titles", "TEXT");
         addColumnIfMissing("players", "potion_spy_mode", "VARCHAR(16) NOT NULL DEFAULT 'off'");
+        addColumnIfMissing("players", "command_spy_alert_sound", "VARCHAR(128) NOT NULL DEFAULT 'entity.ender_dragon.growl'");
+        addColumnIfMissing("players", "command_spy_alert_regex", "TEXT");
         addColumnIfMissing("players", "sign_spy_mode", "VARCHAR(16) NOT NULL DEFAULT 'off'");
         addColumnIfMissing("players", "book_spy_mode", "VARCHAR(16) NOT NULL DEFAULT 'off'");
         addColumnIfMissing("players", "join_leave_messages", "TINYINT(1) NOT NULL DEFAULT 1");

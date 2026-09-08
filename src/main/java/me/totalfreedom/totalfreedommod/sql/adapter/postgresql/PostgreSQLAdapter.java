@@ -433,6 +433,8 @@ public class PostgreSQLAdapter extends DatabaseAdapter
                 "last_join_unix" BIGINT NOT NULL DEFAULT 0,
                 "potion_spy_mode" VARCHAR(16) NOT NULL DEFAULT 'off',
                 "command_spy_mode" VARCHAR(16) NOT NULL DEFAULT 'off',
+                "command_spy_alert_sound" VARCHAR(128) NOT NULL DEFAULT 'entity.ender_dragon.growl',
+                "command_spy_alert_regex" TEXT,
                 "sign_spy_mode" VARCHAR(16) NOT NULL DEFAULT 'off',
                 "book_spy_mode" VARCHAR(16) NOT NULL DEFAULT 'off',
                 "muted" BOOLEAN NOT NULL DEFAULT FALSE,
@@ -449,6 +451,8 @@ public class PostgreSQLAdapter extends DatabaseAdapter
         statementHandler.executeUpdate("ALTER TABLE \"players\" ADD COLUMN IF NOT EXISTS \"updated_at\" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP");
         statementHandler.executeUpdate("ALTER TABLE \"players\" ADD COLUMN IF NOT EXISTS \"titles\" TEXT");
         statementHandler.executeUpdate("ALTER TABLE \"players\" ADD COLUMN IF NOT EXISTS \"potion_spy_mode\" VARCHAR(16) NOT NULL DEFAULT 'off'");
+        statementHandler.executeUpdate("ALTER TABLE \"players\" ADD COLUMN IF NOT EXISTS \"command_spy_alert_sound\" VARCHAR(128) NOT NULL DEFAULT 'entity.ender_dragon.growl'");
+        statementHandler.executeUpdate("ALTER TABLE \"players\" ADD COLUMN IF NOT EXISTS \"command_spy_alert_regex\" TEXT");
         statementHandler.executeUpdate("ALTER TABLE \"players\" ADD COLUMN IF NOT EXISTS \"sign_spy_mode\" VARCHAR(16) NOT NULL DEFAULT 'off'");
         statementHandler.executeUpdate("ALTER TABLE \"players\" ADD COLUMN IF NOT EXISTS \"book_spy_mode\" VARCHAR(16) NOT NULL DEFAULT 'off'");
         statementHandler.executeUpdate("ALTER TABLE \"players\" ADD COLUMN IF NOT EXISTS \"join_leave_messages\" BOOLEAN NOT NULL DEFAULT TRUE");
