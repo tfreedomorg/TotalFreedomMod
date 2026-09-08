@@ -222,7 +222,18 @@ public class PlayerData implements ConfigLoadable, Validatable
 
     public Sound getCommandSpyAlertSound()
     {
-        final Sound sound = Registry.SOUNDS.get(NamespacedKey.fromString(commandSpyAlertSound));
+        if (commandSpyAlertSound == null || commandSpyAlertSound.isBlank())
+        {
+            return Sound.ENTITY_ENDER_DRAGON_GROWL;
+        }
+
+        final NamespacedKey key = NamespacedKey.fromString(commandSpyAlertSound);
+        if (key == null)
+        {
+            return Sound.ENTITY_ENDER_DRAGON_GROWL;
+        }
+
+        final Sound sound = Registry.SOUNDS.get(key);
         return sound == null ? Sound.ENTITY_ENDER_DRAGON_GROWL : sound;
     }
 
@@ -246,6 +257,11 @@ public class PlayerData implements ConfigLoadable, Validatable
 
     public boolean commandSpyAlertMatches(String command)
     {
+        if (commandSpyAlertPattern == null)
+        {
+            compileCommandSpyAlertRegex();
+        }
+
         return commandSpyAlertPattern != null && commandSpyAlertPattern.matcher(command).find();
     }
 

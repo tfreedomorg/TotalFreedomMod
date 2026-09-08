@@ -5,10 +5,7 @@ import java.util.Locale;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import org.bukkit.NamespacedKey;
-import org.bukkit.Registry;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
+import org.bukkit.*;
 import org.bukkit.entity.Player;
 
 import me.totalfreedom.api.cmd.FCommand;
@@ -19,7 +16,7 @@ import me.totalfreedom.totalfreedommod.player.FPlayer;
 import me.totalfreedom.totalfreedommod.player.SpyMode;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
-@Command(name = "cmdspy", description = "Spy on commands", usage = "/cmdspy [ops | admins | all | off]", aliases = {"commandspy", "cspy"})
+@Command(name = "cmdspy", description = "Spy on commands", usage = "/cmdspy [ops | admins | all | off | sound | regex]", aliases = {"commandspy", "cspy"})
 @Permission(permission = "tfm.admin.cmdspy", source = SourceType.ONLY_IN_GAME)
 public class Command_cmdspy extends FCommand
 {
@@ -54,7 +51,14 @@ public class Command_cmdspy extends FCommand
     @Subcommand("sound")
     public void sound(final Player player, @Greedy final String soundName)
     {
-        final Sound sound = Registry.SOUNDS.get(NamespacedKey.fromString(soundName.toLowerCase(Locale.ROOT)));
+        if (soundName == null || soundName.isBlank())
+        {
+            msg(player, "<red>You must specify a sound.");
+            return;
+        }
+
+        final NamespacedKey key = NamespacedKey.fromString(soundName.toLowerCase(Locale.ROOT));
+        final Sound sound = key == null ? null : Registry.SOUNDS.get(key);
         if (sound == null)
         {
             msg(player, "<red>Unknown sound: <sound>", Placeholder.unparsed("sound", soundName));
@@ -74,6 +78,12 @@ public class Command_cmdspy extends FCommand
     @Subcommand("regex")
     public void regex(final Player player, @Greedy final String pattern)
     {
+        if (pattern == null || pattern.isBlank())
+        {
+            msg(player, "<red>Invalid regex: <pattern>", Placeholder.unparsed("pattern", ""));
+            return;
+        }
+
         try
         {
             Pattern.compile(pattern);
@@ -92,6 +102,16 @@ public class Command_cmdspy extends FCommand
                 Placeholder.unparsed("pattern", pattern));
     }
 
+    @Callback
+    @Subcommand("regex clear")
+    public void clearRegex(final Player player)
+    {
+        final PlayerData data = plugin().players().getData(player);
+        data.setCommandSpyAlertRegex(null);
+        plugin().players().saveData(data);
+        msg(player, "<gray>CommandSpy alert regex cleared.");
+    }
+
     @Completer(value = "", position = 0)
     public List<String> completeMode(final Player player, final String partial)
     {
@@ -108,7 +128,7 @@ public class Command_cmdspy extends FCommand
         final String lower = partial.toLowerCase(Locale.ROOT);
 
         return Registry.SOUNDS.stream()
-                              .map(sound -> Registry.SOUNDS.getKeyOrThrow(sound).asString())
+                              .map(sound -> Registry.SOUNDS.getKeyOrThrow(sound).value())
                               .filter(sound -> sound.startsWith(lower))
                               .toList();
     }

@@ -338,7 +338,6 @@ public class GenericPlayerRepository implements PlayerRepository
         data.setLastJoinUnix(rs.getLong("last_join_unix"));
         data.setPotionSpyMode(SpyMode.fromStorage(rs.getString("potion_spy_mode")));
         data.setCommandSpyMode(SpyMode.fromStorage(rs.getString("command_spy_mode")));
-        data.setCommandSpyAlertSound(Registry.SOUNDS.get(NamespacedKey.fromString(rs.getString("command_spy_alert_sound"))));
         data.setCommandSpyAlertRegex(rs.getString("command_spy_alert_regex"));
         data.setSignSpyMode(SpyMode.fromStorage(rs.getString("sign_spy_mode")));
         data.setBookSpyMode(SpyMode.fromStorage(rs.getString("book_spy_mode")));
@@ -349,6 +348,16 @@ public class GenericPlayerRepository implements PlayerRepository
         data.setStrikes(rs.getInt("strikes"));
         data.setSavedTag(rs.getString("saved_tag"));
         data.setTitles(parseTitles(rs.getString("titles")));
+
+        final String alertSound = rs.getString("command_spy_alert_sound");
+        if (alertSound != null && !alertSound.isBlank())
+        {
+            final NamespacedKey key = NamespacedKey.fromString(alertSound);
+            if (key != null)
+            {
+                data.setCommandSpyAlertSound(Registry.SOUNDS.get(key));
+            }
+        }
 
         String rawNickname = rs.getString("nickname");
         if (rawNickname != null && !rawNickname.isEmpty())
