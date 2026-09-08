@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
@@ -20,6 +21,7 @@ import org.bukkit.event.server.ServerCommandEvent;
 import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.blocking.command.CommandBlockerEntry.PatternToken;
 import me.totalfreedom.totalfreedommod.blocking.command.CommandBlockerEntry.TokenType;
+import me.totalfreedom.totalfreedommod.cmd.internal.CommandHolder;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FUtil;
@@ -134,13 +136,12 @@ public class CommandBlocker extends FreedomService
             final CommandBlockerEntry blockedCommandEntry = new CommandBlockerEntry(rank, action, commandName, patternTokens, message);
             registerEntry(commandName, blockedCommandEntry);
 
-            if (command != null)
-            {
-                for (String alias : command.getAliases())
-                {
-                    registerEntry(alias.toLowerCase(), blockedCommandEntry);
-                }
-            }
+            Stream.concat(command != null ? command.getAliases().stream() : Stream.empty(),
+                          CommandHolder.listAliases(commandName).stream())
+                  .map(String::toLowerCase)
+                  .distinct()
+                  .forEach(alias -> registerEntry(alias, blockedCommandEntry));
+
             loadedCount++;
         }
 
