@@ -90,7 +90,7 @@ public class CrashPacketService extends FreedomService
                     snapshot.maxHeldSwitches, snapshot.maxSuggestions, snapshot.maxGameModeSwitches);
         }
 
-        if (snapshot.movementGuardEnabled)
+        if (snapshot.movementGuardEnabled || snapshot.spawnMovementGuardEnabled)
         {
             movementGuard = new MovementGuard(snapshot.maxHorizontalDelta, snapshot.maxOversizedMovesPerSecond,
                     snapshot.maxBlocksPerSecond);
@@ -130,6 +130,7 @@ public class CrashPacketService extends FreedomService
             EntityMetaPacketGuard.Limits entityLimits,
             boolean rateLimit,
             boolean movementGuardEnabled,
+            boolean spawnMovementGuardEnabled,
             boolean emptyChatGuard,
             boolean signGuard,
             boolean signChunkGuard,
@@ -159,6 +160,7 @@ public class CrashPacketService extends FreedomService
                     entityMetadataGuard ? readEntityLimits() : null,
                     Boolean.TRUE.equals(ConfigEntry.CRASH_ITEMS_PACKET_RATE_LIMIT.getBoolean()),
                     Boolean.TRUE.equals(ConfigEntry.MOVE_GUARD_ENABLED.getBoolean()),
+                    Boolean.TRUE.equals(ConfigEntry.SPAWN_REQUIRE_MOVEMENT.getBoolean(true)),
                     ConfigEntry.ANTISPAM_ENABLED.getBoolean(true),
                     Boolean.TRUE.equals(ConfigEntry.CRASH_SIGNS_PACKET_GUARD.getBoolean()),
                     Boolean.TRUE.equals(ConfigEntry.CRASH_SIGNS_CHUNK_GUARD.getBoolean()),
@@ -195,7 +197,8 @@ public class CrashPacketService extends FreedomService
 
         private boolean anyHookEnabled()
         {
-            return itemGuard || entityMetadataGuard || rateLimit || movementGuardEnabled || emptyChatGuard
+            return itemGuard || entityMetadataGuard || rateLimit || movementGuardEnabled || spawnMovementGuardEnabled
+                    || emptyChatGuard
                     || signGuard || signChunkGuard
                     || blockAllSignPackets || spawnerGuard || spawnerChunkGuard || containerGuard || containerChunkGuard
                     || commandDepthGuard;
@@ -221,7 +224,15 @@ public class CrashPacketService extends FreedomService
     {
         if (movementGuard != null)
         {
-            movementGuard.forget(event.getPlayer().getUniqueId());
+            if (event.isCancelled() || event.getTo() == null)
+            {
+                movementGuard.forget(event.getPlayer().getUniqueId());
+            }
+            else
+            {
+                movementGuard.seedPosition(event.getPlayer().getUniqueId(), event.getTo().getX(),
+                        event.getTo().getY(), event.getTo().getZ());
+            }
         }
     }
 
@@ -230,7 +241,8 @@ public class CrashPacketService extends FreedomService
     {
         if (movementGuard != null)
         {
-            movementGuard.forget(event.getPlayer().getUniqueId());
+            movementGuard.seedPosition(event.getPlayer().getUniqueId(), event.getRespawnLocation().getX(),
+                    event.getRespawnLocation().getY(), event.getRespawnLocation().getZ());
         }
     }
 

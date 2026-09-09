@@ -370,6 +370,13 @@ final class CrashPacketListener extends PacketListenerAbstract
             return false;
         }
 
+        if (plugin.mv != null && plugin.mv.isMovementRequired(id)
+                && movementGuard.recordAndCheckPendingJump(id, position.getX(), position.getY(), position.getZ()))
+        {
+            event.setCancelled(true);
+            return true;
+        }
+
         final MovementGuard.Decision decision = movementGuard.recordAndCheck(id, position.getX(), position.getZ());
         if (decision == MovementGuard.Decision.ALLOW)
         {

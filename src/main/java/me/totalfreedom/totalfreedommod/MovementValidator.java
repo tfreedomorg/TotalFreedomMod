@@ -37,6 +37,11 @@ public class MovementValidator extends FreedomService
         super(plugin);
     }
 
+    public boolean isMovementRequired(UUID id)
+    {
+        return id != null && spawnLocations.containsKey(id);
+    }
+
     @Override
     protected void onStart()
     {
