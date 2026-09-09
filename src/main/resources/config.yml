@@ -150,6 +150,7 @@ blocked_commands:
 
   # Superadmin commands
   - 's:b:/save-all:_'
+  - 's:b:/ban:_'
   - 's:b:/kick:_'
   - 's:b:/socialspy:_'
   - 's:b:/replaceitem:_'
