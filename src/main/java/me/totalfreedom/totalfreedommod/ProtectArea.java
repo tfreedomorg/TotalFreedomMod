@@ -69,7 +69,7 @@ public class ProtectArea extends FreedomService
     // How often (in ticks) to sweep loose items out of protected areas.
     private static final long ITEM_SWEEP_RATE = 40L;
     //
-    private final Map<UUID, ProtectedRegion> areas = Maps.newHashMap();
+    private final Map<UUID, ProtectedRegion> areas = Maps.newConcurrentMap();
     private BukkitTask itemSweepTask;
 
     public ProtectArea(TotalFreedomMod plugin)
@@ -779,6 +779,22 @@ public class ProtectArea extends FreedomService
             .anyMatch(area -> area.within(min, max, world));
     }
 
+    /**
+     * Bounds of every protected area in {@code world}, one {minX, minY, minZ, maxX, maxY, maxZ} row per area.
+     * The WorldEdit hook resolves this once per operation instead of checking the live area map for every
+     * block it writes.
+     */
+    public int[][] getBoundsIn(final World world)
+    {
+        final UUID worldId = world.getUID();
+
+        return areas.values()
+                    .stream()
+                    .filter(area -> area.isIn(worldId))
+                    .map(ProtectedRegion::bounds)
+                    .toArray(int[][]::new);
+    }
+
     public ProtectedRegion addProtectedArea(final String name, final Location min, final Location max, final World world)
     {
         if (areas.values().stream().filter(area -> area.getName().equals(name)).count() != 0)
@@ -972,6 +988,24 @@ public class ProtectArea extends FreedomService
                 loc.getX() >= min.getX() &&
                 loc.getZ() <= max.getZ() &&
                 loc.getZ() >= min.getZ();
+        }
+
+        /**
+         * Raw bounds as {minX, minY, minZ, maxX, maxY, maxZ}. Snapshotted for callers that test
+         * many positions in a tight loop and must not touch the live region from another thread.
+         */
+        public int[] bounds()
+        {
+            return new int[]
+            {
+                min.getBlockX(), min.getBlockY(), min.getBlockZ(),
+                max.getBlockX(), max.getBlockY(), max.getBlockZ()
+            };
+        }
+
+        public boolean isIn(final UUID worldId)
+        {
+            return this.worldUUID.equals(worldId);
         }
 
         public boolean within(final Location min, final Location max, final World world)

@@ -1,6 +1,6 @@
 package me.totalfreedom.totalfreedommod.bridge;
 
-import com.google.common.eventbus.Subscribe;
+import com.sk89q.worldedit.util.eventbus.Subscribe;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.EmptyClipboardException;
 import com.sk89q.worldedit.IncompleteRegionException;
@@ -48,7 +48,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
-import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -80,6 +79,17 @@ public final class WorldEditHook implements Listener
 
     private static final String[] CLIPBOARD_PATTERNS = {"#clipboard", "#copy", "#fullcopy"};
 
+    /** Substring FAWE matches our extent class names against; see {@link #allowExtentsUnderFawe()}. */
+    private static final String EXTENT_PACKAGE = "me.totalfreedom.totalfreedommod.bridge";
+
+    /**
+     * Best-effort early abort for oversized radius commands (nothing more). This is NOT a security
+     * boundary and protected areas are deliberately not checked here: the list cannot cover brushes,
+     * tools, scripts, or API callers, and any flag that shifts argument positions makes the radius
+     * unparseable and skips the check. Protected areas are enforced per block by ProtectedAreaExtent,
+     * and the block budget by LimitExtent; both see every write regardless of where it came from. Do
+     * not reintroduce access control here.
+     */
     private static final Map<String, Integer> RADIUS_COMMANDS = new HashMap<>();
 
     static
@@ -193,10 +203,21 @@ public final class WorldEditHook implements Listener
                 final com.sk89q.worldedit.entity.Player wePlayer =
                     (com.sk89q.worldedit.entity.Player) event.getActor();
 
-                Extent wrapped = new ProtectedAreaExtent(event.getExtent(), wePlayer, event.getWorld());
-
                 final Player bukkitPlayer = Bukkit.getPlayer(wePlayer.getUniqueId());
-                if (bukkitPlayer != null && !plugin.al.isAdmin(bukkitPlayer))
+                final boolean admin = bukkitPlayer != null && plugin.al.isAdmin(bukkitPlayer);
+
+                Extent wrapped = event.getExtent();
+
+                if (!admin && ConfigEntry.PROTECTAREA_ENABLED.getBoolean())
+                {
+                    final World guarded = Bukkit.getWorld(event.getWorld().getName());
+                    final int[][] bounds = guarded != null ? plugin.pa.getBoundsIn(guarded) : new int[0][];
+
+                    if (bounds.length > 0)
+                        wrapped = new ProtectedAreaExtent(wrapped, wePlayer.getUniqueId(), bounds);
+                }
+
+                if (bukkitPlayer != null && !admin)
                 {
                     wrapped = new LimitExtent(wrapped, wePlayer.getUniqueId(), getLimitFor(wePlayer.getUniqueId()));
                     final int containerCap = getMaxContainers();
@@ -224,6 +245,7 @@ public final class WorldEditHook implements Listener
                 event.setExtent(wrapped);
             }
         };
+        allowExtentsUnderFawe();
         WorldEdit.getInstance().getEventBus().register(editSessionSubscriber);
 
         selectionPollTask = Bukkit.getScheduler().runTaskTimer(plugin,
@@ -236,6 +258,46 @@ public final class WorldEditHook implements Listener
         }
 
         FLog.info("WorldEdit hook registered.");
+    }
+
+    /**
+     * FAWE discards any extent a third party adds unless its class name substring-matches an entry in
+     * the FAWE config's extent.allowed-plugins: EditSessionBuilder#wrapExtent returns the unwrapped
+     * extent and warns the actor in chat, never the console, so the failure is invisible server-side.
+     * Registering our package at runtime keeps protected areas enforced without asking anyone to
+     * hand edit FAWE's config.yml. No-op on stock WorldEdit.
+     */
+    private static void allowExtentsUnderFawe()
+    {
+        try
+        {
+            final Class<?> settingsClass = Class.forName("com.fastasyncworldedit.core.configuration.Settings");
+            final Object settings = settingsClass.getMethod("settings").invoke(null);
+            final Object extent = settingsClass.getField("EXTENT").get(settings);
+            final java.lang.reflect.Field field = extent.getClass().getField("ALLOWED_PLUGINS");
+
+            @SuppressWarnings("unchecked")
+            final List<String> current = (List<String>) field.get(extent);
+
+            if (current != null && current.contains(EXTENT_PACKAGE))
+                return;
+
+            // Replaced rather than mutated: the config loader may hand back an immutable list
+            final List<String> updated = new ArrayList<>(current != null ? current : List.of());
+            updated.add(EXTENT_PACKAGE);
+            field.set(extent, updated);
+
+            FLog.info("Registered '" + EXTENT_PACKAGE + "' with FAWE's allowed-plugins; TFM extents will not be discarded.");
+        }
+        catch (ClassNotFoundException ignored)
+        {
+            // Stock WorldEdit, no FAWE: nothing to allow
+        }
+        catch (Throwable t)
+        {
+            FLog.warning("Could not register TFM with FAWE's allowed-plugins. Protected areas may not be "
+                + "enforced against WorldEdit operations: "+ t.getMessage());
+        }
     }
 
     /**
@@ -1002,21 +1064,6 @@ public final class WorldEditHook implements Listener
             return false;
         }
 
-        if (ConfigEntry.PROTECTAREA_ENABLED.getBoolean())
-        {
-            final Location playerLocation = player.getLocation();
-            final Location min = playerLocation.clone().subtract(radius, radius, radius);
-            final Location max = playerLocation.clone().add(radius, radius, radius);
-            if (plugin.pa.doesRegionOverlapWithProtectedArea(min, max, player.getWorld()))
-            {
-                event.setCancelled(true);
-                player.sendMessage(Component.text(
-                    "You cannot use a WorldEdit radius command that overlaps a protected area.",
-                    NamedTextColor.RED));
-                return true;
-            }
-        }
-
         final Integer maxObj = ConfigEntry.WORLDEDIT_RADIUS_MAX.getInteger();
         if (maxObj == null || maxObj < 0)
         {
@@ -1768,93 +1815,116 @@ public final class WorldEditHook implements Listener
         }
     }
 
+   /**
+    * Denies writes that land inside a protected area. Every position is tested: the previous
+    * implementation checked once on the first setBlock, when its bounding box was still a
+    * single block, so an operation whose first block fell outside a protected area was allowed
+    * to write straight through it.
+    */
     private final class ProtectedAreaExtent extends PathCompleteExtent
     {
+        private final UUID uuid;
+        private final int[][] bounds;
+        private final int[] union;
+        private final AtomicBoolean warned = new AtomicBoolean();
 
-        private final com.sk89q.worldedit.entity.Player wePlayer;
-        private final com.sk89q.worldedit.world.World weWorld;
-        private boolean checked = false;
-        private boolean denied = false;
-        private BlockVector3 minPos;
-        private BlockVector3 maxPos;
-
-        ProtectedAreaExtent(Extent parent,
-                            com.sk89q.worldedit.entity.Player wePlayer,
-                            com.sk89q.worldedit.world.World weWorld)
+        ProtectedAreaExtent(Extent parent, UUID uuid, int[][] bounds)
         {
             super(parent);
-            this.wePlayer = wePlayer;
-            this.weWorld = weWorld;
+            this.uuid = uuid;
+            this.bounds = bounds;
+            this.union = unionOf(bounds);
         }
 
         @Override
-        public <T extends BlockStateHolder<T>> boolean setBlock(BlockVector3 pos, T block)
-            throws WorldEditException
+        public <T extends BlockStateHolder<T>> boolean setBlock(BlockVector3 pos, T block) throws WorldEditException
         {
-            if (minPos == null)
+            if (isProtected(pos.x(), pos.y(), pos.z()))
             {
-                minPos = pos;
-            }
-            else if (pos.x() < minPos.x() || pos.y() < minPos.y() || pos.z() < minPos.z())
-            {
-                minPos = BlockVector3.at(
-                    Math.min(minPos.x(), pos.x()),
-                    Math.min(minPos.y(), pos.y()),
-                    Math.min(minPos.z(), pos.z()));
-            }
-
-            if (maxPos == null)
-            {
-                maxPos = pos;
-            }
-            else if (pos.x() > maxPos.x() || pos.y() > maxPos.y() || pos.z() > maxPos.z())
-            {
-                maxPos = BlockVector3.at(
-                    Math.max(maxPos.x(), pos.x()),
-                    Math.max(maxPos.y(), pos.y()),
-                    Math.max(maxPos.z(), pos.z()));
-            }
-
-            if (!checked)
-            {
-                checked = true;
-                denied = shouldDeny();
-            }
-            if (denied)
-            {
+                warnOnce();
                 return false;
             }
             return super.setBlock(pos, block);
         }
 
-        private boolean shouldDeny()
+        @Override
+        public boolean setBiome(BlockVector3 pos, com.sk89q.worldedit.world.biome.BiomeType biome)
         {
-            final Player bukkitPlayer = Bukkit.getPlayer(wePlayer.getUniqueId());
-            if (bukkitPlayer == null)
+            if (isProtected(pos.x(), pos.y(), pos.z()))
             {
+                warnOnce();
                 return false;
             }
-            if (plugin.al.isAdmin(bukkitPlayer))
-            {
-                return false;
-            }
+            return super.setBiome(pos, biome);
+        }
 
-            final World world = Bukkit.getWorld(weWorld.getName());
-            if (world == null || minPos == null || maxPos == null)
+        @Override
+        public com.sk89q.worldedit.entity.Entity createEntity(com.sk89q.worldedit.util.Location location,
+                                                              com.sk89q.worldedit.entity.BaseEntity entity)
+        {
+            final BlockVector3 pos = location.toVector().toBlockPoint();
+            if (isProtected(pos.x(), pos.y(), pos.z()))
             {
-                return false;
+                warnOnce();
+                return null;
             }
+            return super.createEntity(location, entity);
+        }
 
-            if (plugin.pa.doesRegionOverlapWithProtectedArea(
-                BukkitAdapter.adapt(world, minPos),
-                BukkitAdapter.adapt(world, maxPos),
-                world))
+        /**
+         * Indexed loops rather than streams: this runs once per block written, so a large //set
+         * calls it millions of times and a per-call stream allocation is not affordable.
+         */
+        private boolean isProtected(int x, int y, int z)
+        {
+            // Union reject first: on a large operation nearly every block stops here
+            if (x < union[0] || x > union[3] || y < union[1] || y > union[4] || z < union[2] || z > union[5])
+                return false;
+
+            for (int[] b : bounds)
             {
-                bukkitPlayer.sendMessage(Component.text("You cannot perform WorldEdit operations in a protected area!", NamedTextColor.RED));
-                return true;
+                if (x >= b[0] && x <= b[3] && y >= b[1] && y <= b[4] && z >= b[2] && z <= b[5])
+                    return true;
             }
             return false;
         }
+
+        private void warnOnce()
+        {
+            if (!warned.compareAndSet(false, true))
+                return;
+
+            Bukkit.getScheduler().runTask(plugin, () ->
+            {
+                final Player p = Bukkit.getPlayer(uuid);
+                if (p != null)
+                {
+                    p.sendMessage(Component.text(
+                         "You cannot perform WorldEdit operations in a protected area!",
+                         NamedTextColor.RED));
+                }
+            });
+        }
+    }
+
+    /**
+     * Bounding box enclosing every row of {@code bounds}. Never called with an empty array,
+     * the subscriber skips the wrapper entirely when the world has 0 protected areas.
+     */
+    private static int[] unionOf(int[][] bounds)
+    {
+        final int[] union = bounds[0].clone();
+
+        for (int[] b : bounds)
+        {
+            union[0] = Math.min(union[0], b[0]);
+            union[1] = Math.min(union[1], b[1]);
+            union[2] = Math.min(union[2], b[2]);
+            union[3] = Math.max(union[3], b[3]);
+            union[4] = Math.max(union[4], b[4]);
+            union[5] = Math.max(union[5], b[5]);
+        }
+        return union;
     }
 
     private final class LimitExtent extends PathCompleteExtent
