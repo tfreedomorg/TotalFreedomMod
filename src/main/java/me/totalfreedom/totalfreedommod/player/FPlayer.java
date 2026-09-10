@@ -389,7 +389,7 @@ public class FPlayer
             unmuteTask = plugin.getServer().getScheduler().runTaskLater(plugin,
                     FTask.guard("FPlayer/autoUnmute", () ->
                     {
-                        FUtil.adminAction("TotalFreedom", "Unmuting " + getPlayer().getName(), false);
+                        FUtil.adminAction("TotalFreedom", "Unmuting " + name, false);
                         setMuted(false);
                     }), AUTO_PURGE_TICKS);
         }
@@ -400,10 +400,8 @@ public class FPlayer
     private void persistMuted(boolean muted)
     {
         final Player p = getPlayer();
-        if (p == null)
-            return;
-        final PlayerData data = plugin.players().getData(p);
-        if (data.isMuted() != muted)
+        final PlayerData data = p != null ? plugin.players().getData(p) : plugin.players().getData(name);
+        if (data != null && data.isMuted() != muted)
         {
             data.setMuted(muted);
             plugin.players().saveData(data);
