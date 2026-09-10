@@ -125,14 +125,10 @@ public final class PermissionGate
         }
 
         String tfmPermission = perm.permission();
-        if (tfmPermission != null && !tfmPermission.isEmpty() && !repeatsParentNode(perm, parent))
+        if (tfmPermission != null && !tfmPermission.isEmpty() && !repeatsParentNode(perm, parent)
+                && plugin.rm.hasPermission(sender, tfmPermission))
         {
-            boolean result = plugin.rm.hasPermission(sender, tfmPermission);
-            if (!result && sendMsg)
-            {
-                sender.sendMessage(Component.text(perm.message(), NamedTextColor.RED));
-            }
-            return result;
+            return true;
         }
 
         if (player != null)
