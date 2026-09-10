@@ -271,6 +271,8 @@ public enum ConfigEntry
     AUTO_ENTITY_WIPE(Boolean.class, "auto_wipe"),
     AUTO_ENTITY_WIPE_INTERVAL(Integer.class, "auto_wipe_interval"),
     DISGUISES_FORBIDDEN_TYPES(List.class, "disguises.forbidden_types"),
+    DISGUISES_FORBIDDEN_OPTIONS(List.class, "disguises.forbidden_options"),
+    DISGUISES_MAX_TABLIST_NAME_LENGTH(Integer.class, "disguises.max_tablist_name_length"),
     //
     VAULT_CHAT_PROVIDER_ENABLED(Boolean.class, "chat.provider.enabled"),
     VAULT_CHAT_PROVIDER_OVERRIDE_EXISTING(Boolean.class, "chat.provider.override_existing"),

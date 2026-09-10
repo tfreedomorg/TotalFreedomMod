@@ -823,6 +823,14 @@ disguises:
     - AREA_EFFECT_CLOUD
     - WITHER
 
+  # Disguise options that may not be set on an applied disguise, named by their
+  # LibsDisguises getter.
+  forbidden_options:
+    - isDisplayedInTab
+
+  # Maximum length of a disguise's tab list name.
+  max_tablist_name_length: 32
+
 # HTTPD server
 httpd:
   enabled: false
