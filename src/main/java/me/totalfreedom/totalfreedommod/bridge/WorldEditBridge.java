@@ -9,6 +9,7 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.scheduler.BukkitTask;
 
 import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
@@ -19,6 +20,8 @@ public class WorldEditBridge extends FreedomService
 
     private WorldEditHook hook = null;
     private Plugin worldedit = null;
+
+    private BukkitTask attachTask = null;
 
     public WorldEditBridge(FreedomAPI plugin)
     {
@@ -36,11 +39,19 @@ public class WorldEditBridge extends FreedomService
 
         // Defer one tick so other plugins finish enabling first; if WorldEdit
         // still isn't present after that we exit silently.
-        server.getScheduler().runTaskLater(plugin, this::attachHook, 20L);
+        attachTask = server.getScheduler().runTaskLater(plugin, this::attachHook, 20L);
     }
 
     private void attachHook()
     {
+        attachTask = null;
+
+        if (hook != null)
+        {
+            // A previous attach already landed; never stack two hooks.
+            return;
+        }
+
         if (resolveWorldEditProvider() == null)
         {
             return;
@@ -79,6 +90,12 @@ public class WorldEditBridge extends FreedomService
     @Override
     public void onStop()
     {
+        if (attachTask != null)
+        {
+            attachTask.cancel();
+            attachTask = null;
+        }
+
         if (hook != null)
         {
             try
