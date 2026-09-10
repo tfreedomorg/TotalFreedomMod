@@ -9,6 +9,8 @@ import org.bukkit.entity.Player;
 final class MovementGuard
 {
 
+    private static final double PENDING_MOVEMENT_DISTANCE = 5.0;
+
     private final ConcurrentHashMap<UUID, State> states = new ConcurrentHashMap<>();
 
     private final double maxHorizontalDeltaSq;
@@ -119,7 +121,8 @@ final class MovementGuard
 
                 if ((x - state.lastPositionX) * (x - state.lastPositionX)
                     + (y - state.lastPositionY) * (y - state.lastPositionY)
-                    + (z - state.lastPositionZ) * (z - state.lastPositionZ) >= 25.0)
+                    + (z - state.lastPositionZ) * (z - state.lastPositionZ)
+                    >= PENDING_MOVEMENT_DISTANCE * PENDING_MOVEMENT_DISTANCE)
                 {
                     return true;
                 }
@@ -130,9 +133,10 @@ final class MovementGuard
                 return false;
             }
 
-                if ((x - state.lastPositionX) * (x - state.lastPositionX)
+            if ((x - state.lastPositionX) * (x - state.lastPositionX)
                     + (y - state.lastPositionY) * (y - state.lastPositionY)
-                    + (z - state.lastPositionZ) * (z - state.lastPositionZ) >= 25.0)
+                    + (z - state.lastPositionZ) * (z - state.lastPositionZ)
+                    >= PENDING_MOVEMENT_DISTANCE * PENDING_MOVEMENT_DISTANCE)
             {
                 return true;
             }

@@ -102,7 +102,8 @@ public class CrashPacketService extends FreedomService
 
         registeredListener = PacketEvents.getAPI().getEventManager()
                 .registerListener(new CrashPacketListener(plugin, snapshot.itemGuard, snapshot.entityMetadataGuard,
-                        snapshot.entityLimits, spamLimiter, movementGuard, commandDepthGuard,
+                    snapshot.entityLimits, spamLimiter, movementGuard, snapshot.movementGuardEnabled,
+                    commandDepthGuard,
                         snapshot.signGuard, snapshot.signChunkGuard, snapshot.blockAllSignPackets,
                         snapshot.spawnerGuard, snapshot.spawnerChunkGuard,
                         snapshot.containerGuard, snapshot.containerChunkGuard));
