@@ -5,6 +5,7 @@ import java.lang.reflect.Method;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.scheduler.BukkitTask;
 
 import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
@@ -24,6 +25,7 @@ public class LibsDisguisesBridge extends FreedomService
     private Method isDisguisedMethod = null;
     private Method undisguiseToAllMethod = null;
     private DisallowedDisguises disallowedDisguises = null;
+    private BukkitTask retryTask = null;
 
     public LibsDisguisesBridge(TotalFreedomMod plugin)
     {
@@ -45,7 +47,7 @@ public class LibsDisguisesBridge extends FreedomService
 
         // Schedule a delayed retry in case LibsDisguises loads after TFM
         // This handles the case where LibsDisguises is enabled but not fully initialized yet
-        plugin.getServer().getScheduler().runTaskLater(plugin, () ->
+        retryTask = plugin.getServer().getScheduler().runTaskLater(plugin, () ->
         {
             if (initializeAPI())
             {
@@ -161,6 +163,12 @@ public class LibsDisguisesBridge extends FreedomService
     @Override
     protected void onStop()
     {
+        if (retryTask != null)
+        {
+            retryTask.cancel();
+            retryTask = null;
+        }
+
         libsDisguisesPlugin = null;
         disguiseAPI = null;
         isDisguisedMethod = null;

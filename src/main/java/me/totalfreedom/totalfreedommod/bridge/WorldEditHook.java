@@ -319,9 +319,22 @@ public final class WorldEditHook implements Listener
             selectionPollTask = null;
         }
         HandlerList.unregisterAll(this);
-        // WorldEdit's EventBus offers no public remove(); dropping our reference
-        // lets the subscriber be GC'd once the bus releases it on shutdown.
-        editSessionSubscriber = null;
+
+        // EventBus.unregister does exist. Without it every reload leaves the old
+        // subscriber on the bus and each edit gets wrapped one extra time.
+        if (editSessionSubscriber != null)
+        {
+            try
+            {
+                WorldEdit.getInstance().getEventBus().unregister(editSessionSubscriber);
+            }
+            catch (Throwable t)
+            {
+                FLog.warning("Could not register the WorldEdit EditSession subscriber: " + t.getMessage());
+            }
+            editSessionSubscriber = null;
+        }
+        
         lastSelections.clear();
         opThrottles.clear();
 
