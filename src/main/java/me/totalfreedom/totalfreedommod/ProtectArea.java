@@ -19,9 +19,32 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.block.*;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.hanging.*;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockBurnEvent;
+import org.bukkit.event.block.BlockExplodeEvent;
+import org.bukkit.event.block.BlockFadeEvent;
+import org.bukkit.event.block.BlockFromToEvent;
+import org.bukkit.event.block.BlockFormEvent;
+import org.bukkit.event.block.BlockGrowEvent;
+import org.bukkit.event.block.BlockIgniteEvent;
+import org.bukkit.event.block.BlockPistonExtendEvent;
+import org.bukkit.event.block.BlockPistonRetractEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.BlockSpreadEvent;
+import org.bukkit.event.block.SignChangeEvent;
+import org.bukkit.event.entity.AreaEffectCloudApplyEvent;
+import org.bukkit.event.entity.EntityChangeBlockEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.entity.LingeringPotionSplashEvent;
+import org.bukkit.event.entity.PotionSplashEvent;
+import org.bukkit.event.hanging.HangingBreakByEntityEvent;
+import org.bukkit.event.hanging.HangingPlaceEvent;
 import org.bukkit.event.inventory.InventoryPickupItemEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
+import org.bukkit.event.world.StructureGrowEvent;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
@@ -497,14 +520,55 @@ public class ProtectArea extends FreedomService
             event.setCancelled(true);
     }
 
-    // Fire spread
+    // Spread into a protected area: fire, grass, mycelium, vines, and sculk
     @EventHandler(priority = EventPriority.NORMAL)
     public void onBlockSpread(BlockSpreadEvent event)
     {
         if (ConfigEntry.PROTECTAREA_ENABLED.getBoolean()
-                && (event.getSource().getType() == org.bukkit.Material.FIRE)
                 && isInProtectedArea(event.getBlock().getLocation()))
-                    event.setCancelled(true);
+        {
+            event.setCancelled(true);
+        }
+    }
+
+    // Trees and other multi-block structures in the area
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void onStructureGrow(StructureGrowEvent event)
+    {
+        if (!ConfigEntry.PROTECTAREA_ENABLED.getBoolean())
+        {
+            return;
+        }
+
+        final Player player = event.getPlayer();
+        if (player != null && plugin.admins().isAdmin(player))
+        {
+            return;
+        }
+
+        event.getBlocks().removeIf(state -> isInProtectedArea(state.getLocation()));
+    }
+
+    // Single-block growth: crops, sugar cane, cactus, bamboo
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void onBlockGrow(BlockGrowEvent event)
+    {
+        if (ConfigEntry.PROTECTAREA_ENABLED.getBoolean()
+                && isInProtectedArea(event.getBlock().getLocation()))
+        {
+            event.setCancelled(true);
+        }
+    }
+
+    // Blocks forming: snow layers, ice, concrete, frost walker trails, snow golem tracks
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void onBlockForm(BlockFormEvent event)
+    {
+        if (ConfigEntry.PROTECTAREA_ENABLED.getBoolean()
+                && isInProtectedArea(event.getBlock().getLocation()))
+        {
+            event.setCancelled(true);
+        }
     }
 
     // Blocks burning
