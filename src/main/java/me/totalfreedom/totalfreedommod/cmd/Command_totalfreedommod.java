@@ -36,8 +36,13 @@ public class Command_totalfreedommod extends FCommand
         DiscordBridge.reloading = true;
         try
         {
+            // Bridges own listeners and third-party hooks of their own; reloading services without
+            // them left WorldEdit and LibsDisguises bound to pre-reload state. Order mirrors
+            // TotalFreedomMod#onDisable: bridges down first, up last.
+            plugin().bridges.stop();
             plugin().services.stop();
             plugin().services.start();
+            plugin().bridges.start();
         }
         finally
         {
