@@ -49,7 +49,7 @@ public class TextFilterService extends FreedomService
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onAsyncChat(AsyncChatEvent event)
     {
-        if (!shouldFilter())
+        if (!shouldFilter(event.getPlayer()))
         {
             return;
         }
@@ -67,7 +67,7 @@ public class TextFilterService extends FreedomService
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event)
     {
-        if (!shouldFilter())
+        if (!shouldFilter(event.getPlayer()))
         {
             return;
         }
@@ -105,9 +105,9 @@ public class TextFilterService extends FreedomService
         FLog.info("Loaded " + filters.size() + " text filter regex pattern(s).");
     }
 
-    private boolean shouldFilter()
+    private boolean shouldFilter(Player player)
     {
-        return ConfigEntry.TEXT_FILTER_ENABLED.getBoolean(true) && !filters.isEmpty();
+        return ConfigEntry.TEXT_FILTER_ENABLED.getBoolean(true) && !filters.isEmpty() && !plugin.al.isAdmin(player);
     }
 
     private boolean matchesFilter(String text)
