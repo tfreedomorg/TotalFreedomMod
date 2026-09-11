@@ -10,6 +10,7 @@ final class MovementGuard
 {
 
     private static final double PENDING_MOVEMENT_DISTANCE = 5.0;
+    private static final long PENDING_MOVEMENT_WINDOW_MILLIS = 350L;
 
     private final ConcurrentHashMap<UUID, State> states = new ConcurrentHashMap<>();
 
@@ -26,7 +27,15 @@ final class MovementGuard
 
     Decision recordAndCheck(UUID id, double x, double z)
     {
-        if ((maxOversizedPerWindow <= 0 && maxBlocksPerSecond <= 0.0) || id == null)
+        if (id == null)
+        {
+            return Decision.ALLOW;
+        }
+        if (!Double.isFinite(x) || !Double.isFinite(z))
+        {
+            return Decision.PUNISH;
+        }
+        if (maxOversizedPerWindow <= 0 && maxBlocksPerSecond <= 0.0)
         {
             return Decision.ALLOW;
         }
@@ -98,6 +107,10 @@ final class MovementGuard
         {
             return false;
         }
+        if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z))
+        {
+            return true;
+        }
 
         final State state = states.computeIfAbsent(id, ignored -> new State());
         synchronized (state)
@@ -117,6 +130,8 @@ final class MovementGuard
                     state.lastPositionY = y;
                     state.lastPositionZ = z;
                 }
+                state.pendingWindowStart = System.currentTimeMillis();
+                state.pendingWindowDistance = 0.0;
                 state.hasLastPosition = true;
 
                 if ((x - state.lastPositionX) * (x - state.lastPositionX)
@@ -133,10 +148,23 @@ final class MovementGuard
                 return false;
             }
 
-            if ((x - state.lastPositionX) * (x - state.lastPositionX)
+            final long now = System.currentTimeMillis();
+            if (now - state.pendingWindowStart > PENDING_MOVEMENT_WINDOW_MILLIS)
+            {
+                state.pendingWindowStart = now;
+                state.pendingWindowDistance = 0.0;
+            }
+
+            final double distanceSquared = (x - state.lastPositionX) * (x - state.lastPositionX)
                     + (y - state.lastPositionY) * (y - state.lastPositionY)
-                    + (z - state.lastPositionZ) * (z - state.lastPositionZ)
-                    >= PENDING_MOVEMENT_DISTANCE * PENDING_MOVEMENT_DISTANCE)
+                    + (z - state.lastPositionZ) * (z - state.lastPositionZ);
+            if (distanceSquared >= PENDING_MOVEMENT_DISTANCE * PENDING_MOVEMENT_DISTANCE)
+            {
+                return true;
+            }
+
+            state.pendingWindowDistance += Math.sqrt(distanceSquared);
+            if (state.pendingWindowDistance >= PENDING_MOVEMENT_DISTANCE)
             {
                 return true;
             }
@@ -163,6 +191,8 @@ final class MovementGuard
             state.lastPositionX = x;
             state.lastPositionY = y;
             state.lastPositionZ = z;
+            state.pendingWindowStart = System.currentTimeMillis();
+            state.pendingWindowDistance = 0.0;
             state.hasLast = true;
             state.hasLastPosition = true;
         }
@@ -197,6 +227,8 @@ final class MovementGuard
         private double lastPositionX;
         private double lastPositionY;
         private double lastPositionZ;
+        private long pendingWindowStart;
+        private double pendingWindowDistance;
         private long windowSecond;
         private int oversizedCount;
         private double windowDistance;
