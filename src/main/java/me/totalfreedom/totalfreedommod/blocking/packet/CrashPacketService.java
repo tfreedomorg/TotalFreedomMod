@@ -225,15 +225,7 @@ public class CrashPacketService extends FreedomService
     {
         if (movementGuard != null)
         {
-            if (event.isCancelled() || event.getTo() == null)
-            {
-                movementGuard.forget(event.getPlayer().getUniqueId());
-            }
-            else
-            {
-                movementGuard.seedPosition(event.getPlayer().getUniqueId(), event.getTo().getX(),
-                        event.getTo().getY(), event.getTo().getZ());
-            }
+            movementGuard.forget(event.getPlayer().getUniqueId());
         }
     }
 
@@ -242,8 +234,7 @@ public class CrashPacketService extends FreedomService
     {
         if (movementGuard != null)
         {
-            movementGuard.seedPosition(event.getPlayer().getUniqueId(), event.getRespawnLocation().getX(),
-                    event.getRespawnLocation().getY(), event.getRespawnLocation().getZ());
+            movementGuard.forget(event.getPlayer().getUniqueId());
         }
     }
 
