@@ -57,7 +57,7 @@ public class TextFilterService extends FreedomService
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onAsyncChat(AsyncChatEvent event)
     {
-        if (isFilterDisabled())
+        if (isFilterDisabled(event.getPlayer()))
         {
             return;
         }
@@ -73,7 +73,7 @@ public class TextFilterService extends FreedomService
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event)
     {
-        if (isFilterDisabled())
+        if (isFilterDisabled(event.getPlayer()))
             return;
 
         if (!matchesFilter(event.getMessage()))
@@ -86,7 +86,7 @@ public class TextFilterService extends FreedomService
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onSignEdit(SignChangeEvent event)
     {
-        if (isFilterDisabled())
+        if (isFilterDisabled(event.getPlayer()))
             return;
 
         final StringBuilder builder = new StringBuilder();
@@ -113,7 +113,7 @@ public class TextFilterService extends FreedomService
         final BookMeta meta = event.getNewBookMeta();
         final StringBuilder builder = new StringBuilder();
 
-        if (isFilterDisabled())
+        if (isFilterDisabled(event.getPlayer()))
             return;
 
         if (meta.hasTitle())
@@ -159,9 +159,9 @@ public class TextFilterService extends FreedomService
         FLog.info("Loaded " + filters.size() + " text filter regex pattern(s).");
     }
 
-    private boolean isFilterDisabled()
+    private boolean isFilterDisabled(Player player)
     {
-        return !ConfigEntry.TEXT_FILTER_ENABLED.getBoolean(true) || filters.isEmpty();
+        return !ConfigEntry.TEXT_FILTER_ENABLED.getBoolean(true) || filters.isEmpty() || plugin.admins().isAdmin(player);
     }
 
     private boolean matchesFilter(String text)
