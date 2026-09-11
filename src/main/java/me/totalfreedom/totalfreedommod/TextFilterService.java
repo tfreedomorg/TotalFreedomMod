@@ -1,7 +1,9 @@
 package me.totalfreedom.totalfreedommod;
 
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -26,6 +28,11 @@ import me.totalfreedom.totalfreedommod.util.FUtil;
 
 public class TextFilterService extends FreedomService
 {
+    private static final Map<Character, Character> LEET = Map.ofEntries(
+        Map.entry('0', 'O'), Map.entry('1', 'I'), Map.entry('3', 'E'),
+        Map.entry('4', 'A'), Map.entry('5', 'S'), Map.entry('7', 'T'),
+        Map.entry('!', 'I'), Map.entry('|', 'I'), Map.entry('+', 'T'));
+
     private List<Pattern> filters = List.of();
 
     public TextFilterService(TotalFreedomMod plugin)
@@ -162,8 +169,27 @@ public class TextFilterService extends FreedomService
             return false;
         }
 
+        final String folded = fold(text);
+        final String deleeted = deleet(folded);
+
         return filters.stream()
-                .anyMatch(filter -> filter.matcher(text).find());
+                      .anyMatch(filter -> filter.matcher(text).find()
+                                        || filter.matcher(folded).find()
+                                        || filter.matcher(deleeted).find());
+    }
+
+    private static String fold(String text)
+    {
+        return Normalizer.normalize(text, Normalizer.Form.NFKD)
+                         .replaceAll("\\p{M}+", "");
+    }
+
+    private static String deleet(String text)
+    {
+        final StringBuilder out = new StringBuilder(text.length());
+        text.chars().forEach(c -> out.append(LEET.getOrDefault((char) c, (char) c)));
+
+        return out.toString();
     }
 
     private void temporarilyBan(Player player)
