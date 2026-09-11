@@ -156,6 +156,7 @@ public enum ConfigEntry
     //
     TEXT_FILTER_ENABLED(Boolean.class, "text_filter.enabled"),
     TEXT_FILTER_REGEX_FILTERS(List.class, "text_filter.regex_filters"),
+    TEXT_FILTER_USERNAME_FILTERS(List.class, "text_filter.username_filters"),
     //
     MOVE_GUARD_ENABLED(Boolean.class, "move_guard.enabled"),
     MOVE_GUARD_SPEED_MAX_HORIZONTAL_DELTA(Integer.class, "move_guard.speed.max_horizontal_delta"),

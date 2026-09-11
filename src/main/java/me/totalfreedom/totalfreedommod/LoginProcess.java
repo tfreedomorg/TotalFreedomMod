@@ -109,6 +109,15 @@ public class LoginProcess extends FreedomService
             return;
         }
 
+        // Check username against username filter
+        final TextFilterService textFilter = plugin.services.getService(TextFilterService.class);
+        if (textFilter != null && textFilter.matchesUsername(username))
+        {
+            event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER,
+                MessageUtils.parse("Your username contains prohibited language."));
+            return;
+        }
+
         // Check force-IP match
         if (ConfigEntry.FORCE_IP_ENABLED.getBoolean()) 
         {

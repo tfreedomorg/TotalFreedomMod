@@ -28,6 +28,7 @@ public class TextFilterService extends FreedomService
         Map.entry('!', 'I'), Map.entry('|', 'I'), Map.entry('+', 'T'));
 
     private List<Pattern> filters = List.of();
+    private List<Pattern> usernameFilters = List.of();
 
     public TextFilterService(TotalFreedomMod plugin)
     {
@@ -44,6 +45,7 @@ public class TextFilterService extends FreedomService
     protected void onStop()
     {
         filters = List.of();
+        usernameFilters = List.of();
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
@@ -83,8 +85,18 @@ public class TextFilterService extends FreedomService
 
     private void reloadFilters()
     {
-        final List<Pattern> compiledFilters = new ArrayList<>();
-        for (String filter : ConfigEntry.TEXT_FILTER_REGEX_FILTERS.getStringList())
+        filters = compile(ConfigEntry.TEXT_FILTER_REGEX_FILTERS.getStringList());
+        usernameFilters = compile(ConfigEntry.TEXT_FILTER_USERNAME_FILTERS.getStringList());
+
+        FLog.info("Loaded " + filters.size() + " text filter regex pattern(s) and "
+            + usernameFilters.size() + " username pattern(s).");
+    }
+
+    private static List<Pattern> compile(List<String> raw)
+    {
+        final List<Pattern> compiled = new ArrayList<>();
+
+        for (String filter : raw)
         {
             if (filter == null || filter.isBlank())
             {
@@ -93,7 +105,7 @@ public class TextFilterService extends FreedomService
 
             try
             {
-                compiledFilters.add(Pattern.compile(filter, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE));
+                compiled.add(Pattern.compile(filter, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE));
             }
             catch (PatternSyntaxException ex)
             {
@@ -101,8 +113,7 @@ public class TextFilterService extends FreedomService
             }
         }
 
-        filters = List.copyOf(compiledFilters);
-        FLog.info("Loaded " + filters.size() + " text filter regex pattern(s).");
+        return List.copyOf(compiled);
     }
 
     private boolean shouldFilter(Player player)
@@ -112,7 +123,17 @@ public class TextFilterService extends FreedomService
 
     private boolean matchesFilter(String text)
     {
-        if (text == null || text.isEmpty())
+        return matchesAny(filters, text);
+    }
+
+    public boolean matchesUsername(String username)
+    {
+        return ConfigEntry.TEXT_FILTER_ENABLED.getBoolean(true) && matchesAny(usernameFilters, username);
+    }
+
+    private static boolean matchesAny(List<Pattern> patterns, String text)
+    {
+        if (text == null || text.isEmpty() || patterns.isEmpty())
         {
             return false;
         }
@@ -120,8 +141,8 @@ public class TextFilterService extends FreedomService
         final String folded = fold(text);
         final String deleeted = deleet(folded);
 
-        return filters.stream()
-                      .anyMatch(filter -> filter.matcher(text).find()
+        return patterns.stream()
+                       .anyMatch(filter -> filter.matcher(text).find()
                                         || filter.matcher(folded).find()
                                         || filter.matcher(deleeted).find());
     }

@@ -251,6 +251,7 @@ antispam:
 text_filter:
   enabled: true
   regex_filters: []
+  username_filters: []
 
 # MovementGuard
 # Used to monitor inbound movement packets (requires packetevents).
