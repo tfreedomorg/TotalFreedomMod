@@ -27,15 +27,7 @@ final class MovementGuard
 
     Decision recordAndCheck(UUID id, double x, double z)
     {
-        if (id == null)
-        {
-            return Decision.ALLOW;
-        }
-        if (!Double.isFinite(x) || !Double.isFinite(z))
-        {
-            return Decision.PUNISH;
-        }
-        if (maxOversizedPerWindow <= 0 && maxBlocksPerSecond <= 0.0)
+        if ((maxOversizedPerWindow <= 0 && maxBlocksPerSecond <= 0.0) || id == null)
         {
             return Decision.ALLOW;
         }
@@ -106,10 +98,6 @@ final class MovementGuard
         if (id == null)
         {
             return false;
-        }
-        if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z))
-        {
-            return true;
         }
 
         final State state = states.computeIfAbsent(id, ignored -> new State());
