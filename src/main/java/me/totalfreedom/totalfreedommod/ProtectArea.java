@@ -17,9 +17,33 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.block.*;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.hanging.*;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockBurnEvent;
+import org.bukkit.event.block.BlockExplodeEvent;
+import org.bukkit.event.block.BlockFadeEvent;
+import org.bukkit.event.block.BlockFromToEvent;
+import org.bukkit.event.block.BlockFormEvent;
+import org.bukkit.event.block.BlockGrowEvent;
+import org.bukkit.event.block.BlockIgniteEvent;
+import org.bukkit.event.block.BlockPistonExtendEvent;
+import org.bukkit.event.block.BlockPistonRetractEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.BlockSpreadEvent;
+import org.bukkit.event.block.SignChangeEvent;
+import org.bukkit.event.world.StructureGrowEvent;
+import org.bukkit.event.entity.AreaEffectCloudApplyEvent;
+import org.bukkit.event.entity.EntityChangeBlockEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.entity.LingeringPotionSplashEvent;
+import org.bukkit.event.entity.PotionSplashEvent;
+import org.bukkit.event.hanging.HangingBreakByEntityEvent;
+import org.bukkit.event.hanging.HangingPlaceEvent;
 import org.bukkit.event.inventory.InventoryPickupItemEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
+import org.bukkit.event.world.StructureGrowEvent;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
@@ -47,12 +71,13 @@ public class ProtectArea extends FreedomService
     public static final String LEGACY_DATA_FILENAME = "protectedareas.dat";
     public static final double MAX_RADIUS = 50.0;
 
-    private final Map<UUID, ProtectedRegion> areas = Maps.newHashMap();
+    private final Map<UUID, ProtectedRegion> areas = Maps.newConcurrentMap();
 
     private final PersistenceQueue writes = new PersistenceQueue("protected area");
 
     private File dataFile;
     private boolean usingSql = false;
+
     private BukkitTask itemSweepTask;
 
     public ProtectArea(TotalFreedomMod plugin)
@@ -495,14 +520,55 @@ public class ProtectArea extends FreedomService
             event.setCancelled(true);
     }
 
-    // Fire spread
+    // Spread into a protected area: fire, grass, mycelium, vines, and sculk
     @EventHandler(priority = EventPriority.NORMAL)
     public void onBlockSpread(BlockSpreadEvent event)
     {
         if (ConfigEntry.PROTECTAREA_ENABLED.getBoolean()
-                && (event.getSource().getType() == org.bukkit.Material.FIRE)
                 && isInProtectedArea(event.getBlock().getLocation()))
-                    event.setCancelled(true);
+        {
+            event.setCancelled(true);
+        }
+    }
+
+    // Trees and other multi-block structures in the area
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void onStructureGrow(StructureGrowEvent event)
+    {
+        if (!ConfigEntry.PROTECTAREA_ENABLED.getBoolean())
+        {
+            return;
+        }
+
+        final Player player = event.getPlayer();
+        if (player != null && plugin.al.isAdmin(player))
+        {
+            return;
+        }
+
+        event.getBlocks().removeIf(state -> isInProtectedArea(state.getLocation()));
+    }
+
+    // Single-block growth: crops, sugar cane, cactus, bamboo
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void onBlockGrow(BlockGrowEvent event)
+    {
+        if (ConfigEntry.PROTECTAREA_ENABLED.getBoolean()
+                && isInProtectedArea(event.getBlock().getLocation()))
+        {
+            event.setCancelled(true);
+        }
+    }
+
+    // Blocks forming: snow layers, ice, concrete, frost walker trails, snow golem tracks
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void onBlockForm(BlockFormEvent event)
+    {
+        if (ConfigEntry.PROTECTAREA_ENABLED.getBoolean()
+                && isInProtectedArea(event.getBlock().getLocation()))
+        {
+            event.setCancelled(true);
+        }
     }
 
     // Blocks burning
@@ -767,6 +833,22 @@ public class ProtectArea extends FreedomService
             .anyMatch(area -> area.within(min, max, world));
     }
 
+    /**
+     * Bounds of every protected area in {@code world}, one {minX, minY, minZ, maxX, maxY, maxZ} row per area.
+     * The WorldEdit hook resolves this once per operation instead of checking the live area map for every
+     * block it writes.
+     */
+    public int[][] getBoundsIn(final World world)
+    {
+        final UUID worldId = world.getUID();
+
+        return areas.values()
+                    .stream()
+                    .filter(area -> area.isIn(worldId))
+                    .map(ProtectedRegion::bounds)
+                    .toArray(int[][]::new);
+    }
+
     public ProtectedRegion addProtectedArea(final String name, final Location min, final Location max, final World world)
     {
         if (areas.values().stream().filter(area -> area.getName().equals(name)).count() != 0)
@@ -995,6 +1077,24 @@ public class ProtectArea extends FreedomService
                 loc.getX() >= min.getX() &&
                 loc.getZ() <= max.getZ() &&
                 loc.getZ() >= min.getZ();
+        }
+
+        /**
+         * Raw bounds as {minX, minY, minZ, maxX, maxY, maxZ}. Snapshotted for callers that test
+         * many positions in a tight loop and must not touch the live region from another thread.
+         */
+        public int[] bounds()
+        {
+            return new int[]
+            {
+                min.getBlockX(), min.getBlockY(), min.getBlockZ(),
+                max.getBlockX(), max.getBlockY(), max.getBlockZ()
+            };
+        }
+
+        public boolean isIn(final UUID worldId)
+        {
+            return this.worldUUID.equals(worldId);
         }
 
         public boolean within(final Location min, final Location max, final World world)

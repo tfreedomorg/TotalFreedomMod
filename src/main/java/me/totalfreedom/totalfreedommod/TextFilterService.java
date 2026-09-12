@@ -1,7 +1,9 @@
 package me.totalfreedom.totalfreedommod;
 
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -26,6 +28,11 @@ import me.totalfreedom.totalfreedommod.util.FUtil;
 
 public class TextFilterService extends FreedomService
 {
+    private static final Map<Character, Character> LEET = Map.ofEntries(
+        Map.entry('0', 'O'), Map.entry('1', 'I'), Map.entry('3', 'E'),
+        Map.entry('4', 'A'), Map.entry('5', 'S'), Map.entry('7', 'T'),
+        Map.entry('!', 'I'), Map.entry('|', 'I'), Map.entry('+', 'T'));
+
     private List<Pattern> filters = List.of();
 
     public TextFilterService(TotalFreedomMod plugin)
@@ -48,7 +55,7 @@ public class TextFilterService extends FreedomService
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onAsyncChat(AsyncChatEvent event)
     {
-        if (isFilterDisabled())
+        if (isFilterDisabled(event.getPlayer()))
         {
             return;
         }
@@ -64,7 +71,7 @@ public class TextFilterService extends FreedomService
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event)
     {
-        if (isFilterDisabled())
+        if (isFilterDisabled(event.getPlayer()))
             return;
 
         if (!matchesFilter(event.getMessage()))
@@ -77,7 +84,7 @@ public class TextFilterService extends FreedomService
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onSignEdit(SignChangeEvent event)
     {
-        if (isFilterDisabled())
+        if (isFilterDisabled(event.getPlayer()))
             return;
 
         final StringBuilder builder = new StringBuilder();
@@ -104,7 +111,7 @@ public class TextFilterService extends FreedomService
         final BookMeta meta = event.getNewBookMeta();
         final StringBuilder builder = new StringBuilder();
 
-        if (isFilterDisabled())
+        if (isFilterDisabled(event.getPlayer()))
             return;
 
         if (meta.hasTitle())
@@ -150,9 +157,9 @@ public class TextFilterService extends FreedomService
         FLog.info("Loaded " + filters.size() + " text filter regex pattern(s).");
     }
 
-    private boolean isFilterDisabled()
+    private boolean isFilterDisabled(Player player)
     {
-        return !ConfigEntry.TEXT_FILTER_ENABLED.getBoolean(true) || filters.isEmpty();
+        return !ConfigEntry.TEXT_FILTER_ENABLED.getBoolean(true) || filters.isEmpty() || plugin.al.isAdmin(player);
     }
 
     private boolean matchesFilter(String text)
@@ -162,8 +169,27 @@ public class TextFilterService extends FreedomService
             return false;
         }
 
+        final String folded = fold(text);
+        final String deleeted = deleet(folded);
+
         return filters.stream()
-                .anyMatch(filter -> filter.matcher(text).find());
+                      .anyMatch(filter -> filter.matcher(text).find()
+                                        || filter.matcher(folded).find()
+                                        || filter.matcher(deleeted).find());
+    }
+
+    private static String fold(String text)
+    {
+        return Normalizer.normalize(text, Normalizer.Form.NFKD)
+                         .replaceAll("\\p{M}+", "");
+    }
+
+    private static String deleet(String text)
+    {
+        final StringBuilder out = new StringBuilder(text.length());
+        text.chars().forEach(c -> out.append(LEET.getOrDefault((char) c, (char) c)));
+
+        return out.toString();
     }
 
     private void temporarilyBan(Player player)

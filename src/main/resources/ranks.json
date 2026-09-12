@@ -101,6 +101,7 @@
       "tfm.admin.vanish",
       "tfm.vanish.see",
       "tfm.admin.kick",
+      "tfm.admin.lockup",
       "tfm.admin.mute",
       "tfm.admin.myadmin",
       "tfm.admin.nickclean",

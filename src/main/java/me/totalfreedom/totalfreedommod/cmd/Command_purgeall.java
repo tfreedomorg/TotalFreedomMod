@@ -18,6 +18,7 @@ public class Command_purgeall extends FCommand
         adminAction(sender, "<red>Purging all player data");
 
         plugin().ew.wipeEntities(true);
+        plugin().lu.purge();
 
         server().getOnlinePlayers().forEach(player -> 
         {

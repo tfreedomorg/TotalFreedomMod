@@ -1,15 +1,23 @@
 package me.totalfreedom.totalfreedommod.bridge;
 
 import java.lang.reflect.Method;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.event.*;
+import org.bukkit.scheduler.BukkitTask;
+
+import net.kyori.adventure.text.format.NamedTextColor;
 
 import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import me.totalfreedom.totalfreedommod.disguise.DisallowedDisguises;
 import me.totalfreedom.totalfreedommod.util.FLog;
+import me.totalfreedom.totalfreedommod.util.FUtil;
 
 /**
  * Bridge to LibsDisguises plugin.
@@ -24,6 +32,9 @@ public class LibsDisguisesBridge extends FreedomService
     private Method isDisguisedMethod = null;
     private Method undisguiseToAllMethod = null;
     private DisallowedDisguises disallowedDisguises = null;
+    private BukkitTask retryTask = null;
+    private final Listener disguiseListener = new Listener() {};
+    private boolean disguiseListenerRegistered = false;
 
     public LibsDisguisesBridge(TotalFreedomMod plugin)
     {
@@ -41,15 +52,17 @@ public class LibsDisguisesBridge extends FreedomService
         if (initializeAPI())
         {
             FLog.info("LibsDisguises bridge initialized successfully.");
+            registerDisguiseListener();
         }
 
         // Schedule a delayed retry in case LibsDisguises loads after TFM
         // This handles the case where LibsDisguises is enabled but not fully initialized yet
-        plugin.getServer().getScheduler().runTaskLater(plugin, () ->
+        retryTask = plugin.getServer().getScheduler().runTaskLater(plugin, () ->
         {
             if (initializeAPI())
             {
                 FLog.info("LibsDisguises bridge initialized successfully (delayed initialization).");
+                registerDisguiseListener();
             }
         }, 40L);
     }
@@ -158,9 +171,143 @@ public class LibsDisguisesBridge extends FreedomService
         }
     }
 
+    /**
+     * Registers a listener for LibsDisguises's DisguiseEvent so every disguise is judged when it is
+     * applied. The event class is loaded from LD's own classloader and the listener registered
+     * dynamically, because TFM has no compile-time dependency on LibsDisguises.
+     */
+    @SuppressWarnings("unchecked")
+    private boolean registerDisguiseListener()
+    {
+        if (disguiseListenerRegistered || libsDisguisesPlugin == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            final ClassLoader loader = libsDisguisesPlugin.getClass().getClassLoader();
+            final Class<? extends Event> eventClass = (Class<? extends Event>)
+                Class.forName("me.libraryaddict.disguise.events.DisguiseEvent", true, loader);
+
+            server.getPluginManager().registerEvent(
+                eventClass, disguiseListener, EventPriority.HIGHEST,
+                (listener, event) -> onDisguiseApplied(event), plugin, true);
+
+            disguiseListenerRegistered = true;
+            FLog.info("Apply-time disguise checks registered.");
+            return true;
+        }
+        catch (ClassNotFoundException ex)
+        {
+            FLog.warning("LibsDisguises is loaded but DisguiseEvent was not found; apply-time disguise "
+                + "checks are INACTIVE and only command filtering applies.");
+        }
+        catch (Exception ex)
+        {
+            FLog.severe("Failed to register apply-time disguise checks: " + ex.getMessage());
+            FLog.severe(ex);
+        }
+        return false;
+    }
+
+    /**
+     * Judges a disguise as LibsDisguise applies it, cancelling the event when the resolved
+     * disguise is not permitted. Admins are exempt.
+     */
+    private void onDisguiseApplied(final Event event)
+    {
+        if (disallowedDisguises == null || !(event instanceof Cancellable cancellable))
+        {
+            return;
+        }
+
+        final Object disguise = invokeNoArg(event, "getDisguise");
+        if (disguise == null)
+        {
+            return;
+        }
+
+        final Player player = invokeNoArg(event, "getEntity") instanceof Player p ? p : null;
+        if (player != null && plugin.al.isAdmin(player))
+        {
+            return;
+        }
+
+        final Object type = invokeNoArg(disguise, "getType");
+        final Object watcher = invokeNoArg(disguise, "getWatcher");
+        final Object tablistName = invokeNoArg(watcher, "getTablistName");
+
+        final Optional<String> reason = disallowedDisguises.denyReason(
+            type instanceof Enum<?> constant ? constant.name() : null,
+            setOptions(watcher),
+            tablistName instanceof String name ? name : null);
+
+        if (reason.isEmpty())
+        {
+            return;
+        }
+
+        cancellable.setCancelled(true);
+
+        if (player != null)
+        {
+            FUtil.playerMsg(player, reason.get(), NamedTextColor.RED);
+        }
+
+        FLog.info(String.format("Blocked disguise for %s: %s",
+            player != null ? player.getName() : "an entity", reason.get()));
+    }
+
+    /**
+     * Which of the configured forbidden options are set on this disguise. Each entry is a
+     * LibsDisguises watcher getter name; a watcher that does not expose one is simply skipped,
+     * so a mob disguise has none of the player-only options.
+     */
+    private Set<String> setOptions(final Object watcher)
+    {
+        if (watcher == null)
+        {
+            return Set.of();
+        }
+
+        return disallowedDisguises.getForbiddenOptions()
+                                  .stream()
+                                  .filter(option -> Boolean.TRUE.equals(invokeNoArg(watcher, option)))
+                                  .collect(Collectors.toSet());
+    }
+
+    /**
+     * Calls a no-argument method by name, yielding null when the target is null or does not expose
+     * it. A miss is normal rather than an error: only PlayerWatcher carries the tab list methods,
+     * so a mob or misc disguise simply has none.
+     */
+    private Object invokeNoArg(final Object target, final String method)
+    {
+        if (target == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return target.getClass().getMethod(method).invoke(target);
+        }
+        catch (Exception ex)
+        {
+            return null;
+        }
+    }
+
     @Override
     protected void onStop()
     {
+        if (retryTask != null)
+        {
+            retryTask.cancel();
+            retryTask = null;
+        }
+
         libsDisguisesPlugin = null;
         disguiseAPI = null;
         isDisguisedMethod = null;

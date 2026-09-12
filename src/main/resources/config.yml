@@ -113,7 +113,7 @@ allow:
 # Examples:
 #   - 'n:b:/mail sendall:&4You can't send mails to everyone!'
 #   - 's:a:/stop'
-#   - 'n:b:/ban:_'
+#   - 'n:b:/pardon:_'
 #   - 's:b:/clear {*}:_'           # allow "/clear" but block "/clear <anything>"
 #   - 's:b:/clear inventory {*}:_' # allow "/clear inventory" but block "/clear inventory <x>"
 #   - 's:b:/clear {?} {*}:_'       # allow "/clear" and "/clear x" but block "/clear x y..."
@@ -122,7 +122,6 @@ allow:
 blocked_commands:
     # Disabled commands
   - 'n:b:/time:Server-side time changing is disabled. Please use /ptime to set your own personal time.'
-  - 'n:b:/ban:_'
   - 'n:b:/pardon:_'
   - 'n:b:/ban-ip:_'
   - 'n:b:/pardon-ip:_'
@@ -151,6 +150,7 @@ blocked_commands:
 
   # Superadmin commands
   - 's:b:/save-all:_'
+  - 's:b:/ban:_'
   - 's:b:/kick:_'
   - 's:b:/socialspy:_'
   - 's:b:/replaceitem:_'
@@ -794,6 +794,14 @@ disguises:
     - ENDER_CRYSTAL
     - AREA_EFFECT_CLOUD
     - WITHER
+
+  # Disguise options that may not be set on an applied disguise, named by their
+  # LibsDisguises getter.
+  forbidden_options:
+    - isDisplayedInTab
+
+  # Maximum length of a disguise's tab list name.
+  max_tablist_name_length: 32
 
 # HTTPD server
 httpd:
