@@ -6,7 +6,6 @@ import java.util.Optional;
 import java.util.Set;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.bukkit.Bukkit;
 import org.bukkit.generator.ChunkGenerator;
 
 import com.google.gson.JsonObject;
@@ -55,18 +54,7 @@ public final class GenerationService extends FreedomService
     @Override
     protected void onStart()
     {
-        final Map<String, JsonObject> biomeLibrary;
-
-        try 
-        {
-            biomeLibrary = this.loader.biomeLibrary();
-        }
-        catch (final ProfileException ex)
-        {
-            FLog.severe("Failed to load biome library: " + ExceptionUtils.getRootCauseMessage(ex));
-            Bukkit.getPluginManager().disablePlugin(plugin); // we don't want to load TFM because no worlds can be loaded.
-            return;
-        }
+        final Map<String, JsonObject> biomeLibrary = loadBiomeLibrary();
 
         this.loader
             .available()
@@ -78,6 +66,25 @@ public final class GenerationService extends FreedomService
             this.loader
                 .available()
                 .forEach(name -> this.loadProfile(name, biomeLibrary));
+        }
+    }
+
+    /**
+     * The full biome library, or an empty one if it failed to load. Only a profile using
+     * {@code "ref"} to name a library biome is affected by an empty result; inline definitions and
+     * plain vanilla names parse fine either way, and {@link #loadProfile} already isolates a
+     * per-world failure from every other profile.
+     */
+    private Map<String, JsonObject> loadBiomeLibrary()
+    {
+        try
+        {
+            return this.loader.biomeLibrary();
+        }
+        catch (final ProfileException ex)
+        {
+            FLog.warning("Failed to load biome library: " + ExceptionUtils.getRootCauseMessage(ex));
+            return Map.of();
         }
     }
 

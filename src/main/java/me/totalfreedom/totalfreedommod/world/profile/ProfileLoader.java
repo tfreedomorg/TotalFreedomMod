@@ -204,22 +204,29 @@ public final class ProfileLoader
     {
         final Map<String, JsonObject> result = new HashMap<>();
 
-        try (final FileSystem zipFs = FileSystems.newFileSystem(Path.of(this.plugin.getClass().getProtectionDomain().getCodeSource().getLocation().toURI()));
-             final Stream<Path> walk = Files.walk(zipFs.getPath("/" + jarPath), 1))
+        try (final FileSystem zipFs = FileSystems.newFileSystem(Path.of(this.plugin.getClass().getProtectionDomain().getCodeSource().getLocation().toURI())))
         {
-            walk.filter(Files::isRegularFile)
-                .filter(path -> path.getFileName().toString().endsWith(JSON_EXTENSION))
-                .forEach(path ->
-                {
-                    try (final Reader reader = Files.newBufferedReader(path))
+            final Path root = zipFs.getPath("/" + jarPath);
+
+            if (!Files.isDirectory(root))
+                return result;
+
+            try (final Stream<Path> walk = Files.walk(root, 1))
+            {
+                walk.filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().endsWith(JSON_EXTENSION))
+                    .forEach(path ->
                     {
-                        result.put(stripExtension(path.getFileName().toString()), JsonParser.parseReader(reader).getAsJsonObject());
-                    }
-                    catch (final IOException | JsonSyntaxException | IllegalStateException ex)
-                    {
-                        FLog.warning("Failed to read bundled resource " + path + ": " + ex.getMessage());
-                    }
-                });
+                        try (final Reader reader = Files.newBufferedReader(path))
+                        {
+                            result.put(stripExtension(path.getFileName().toString()), JsonParser.parseReader(reader).getAsJsonObject());
+                        }
+                        catch (final IOException | JsonSyntaxException | IllegalStateException ex)
+                        {
+                            FLog.warning("Failed to read bundled resource " + path + ": " + ex.getMessage());
+                        }
+                    });
+            }
         }
         catch (final IOException | URISyntaxException ex)
         {

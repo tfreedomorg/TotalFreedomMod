@@ -23,8 +23,7 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
 
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.function.Consumer;
 
 @Command(name = "crash", description = "Crashes the specified player", usage = "/crash <player> [method]", aliases = {"fuckup"})

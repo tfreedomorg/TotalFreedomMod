@@ -71,7 +71,7 @@ public sealed interface FeatureDetail
         @Override
         public Anchor anchor()
         {
-            return Anchor.RANGE;
+            return Anchor.SURFACE;
         }
     }
 

@@ -151,30 +151,44 @@ public final class CustomWorld extends PluginComponent<TotalFreedomMod>
      * freely. If this world already has data on disk carrying a marker from a different generation
      * fingerprint than {@code currentFingerprint}, moves that data aside to {@code <name>_OLD} (or a
      * numbered variant if that is taken too) rather than growing new chunks against old ones
-     * generated under different settings, which seams visibly at the border.
+     * generated under different settings, which seams visibly at the border. Data with no marker at
+     * all is treated the same as a mismatch, since it predates this fingerprint and cannot be
+     * assumed to match it.
      */
     private void archiveIfProfileChanged(final String currentFingerprint)
     {
-        final File worldFolder = new File("./" + this.name);
+        final File worldFolder = worldFolder();
         if (!worldFolder.isDirectory())
             return;
 
         final File marker = new File(worldFolder, PROFILE_MARKER_FILENAME);
-        if (!marker.isFile())
-            return;
 
-        try
+        if (marker.isFile())
         {
-            if (Files.readString(marker.toPath()).equals(currentFingerprint))
+            try
+            {
+                if (Files.readString(marker.toPath()).equals(currentFingerprint))
+                    return;
+            }
+            catch (final IOException ex)
+            {
+                FLog.warning("Could not read the profile marker for world \"" + name + "\", leaving its data as is: " + ex.getMessage());
                 return;
-        }
-        catch (final IOException ex)
-        {
-            FLog.warning("Could not read the profile marker for world \"" + name + "\", leaving its data as is: " + ex.getMessage());
-            return;
+            }
         }
 
         archiveStaleWorld(worldFolder);
+    }
+
+    /**
+     * Where this world's data actually lives on disk. A profile-driven world is created through
+     * {@link WorldCreator#ofKey} with a {@code minecraft} namespace, so Paper stores it as a
+     * dimension nested under the primary world rather than as a sibling folder.
+     */
+    private File worldFolder()
+    {
+        final File primary = Bukkit.getWorlds().get(0).getWorldFolder();
+        return new File(primary, "dimensions/minecraft/" + this.name);
     }
 
     private void archiveStaleWorld(final File worldFolder)
@@ -203,7 +217,7 @@ public final class CustomWorld extends PluginComponent<TotalFreedomMod>
     {
         try
         {
-            Files.writeString(new File("./" + this.name, PROFILE_MARKER_FILENAME).toPath(), currentFingerprint);
+            Files.writeString(new File(worldFolder(), PROFILE_MARKER_FILENAME).toPath(), currentFingerprint);
         }
         catch (final IOException ex)
         {
@@ -234,7 +248,7 @@ public final class CustomWorld extends PluginComponent<TotalFreedomMod>
 
         FLog.info("Wiping " + this.name + ".");
         plugin.sf.setSavedFlag(flagKey, false);
-        FileUtils.deleteQuietly(new File("./" + this.name));
+        FileUtils.deleteQuietly(worldFolder());
     }
 
     private void placeWelcomeSign(final World world)

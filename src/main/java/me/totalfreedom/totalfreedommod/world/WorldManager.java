@@ -133,12 +133,13 @@ public class WorldManager extends FreedomService
     /**
      * Runs the destination world's own {@link CustomWorld#validateMovement}, whatever that world
      * turns out to be. A no-op for a world with no {@code access} section, and for one with no
-     * profile at all, since {@link CustomWorld#canAccessWorld} returns true either way.
+     * profile at all, checked here so a world TFM doesn't manage never gets a {@link CustomWorld}
+     * wrapper (and the generation attempt that comes with one) in the first place.
      */
     private void validateDestination(final PlayerMoveEvent event)
     {
         final World destination = event.getTo().getWorld();
-        if (destination == null)
+        if (destination == null || !plugin.gs.available().contains(destination.getName()))
         {
             return;
         }

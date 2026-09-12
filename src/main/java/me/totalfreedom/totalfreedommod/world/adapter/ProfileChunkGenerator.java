@@ -290,9 +290,10 @@ public final class ProfileChunkGenerator extends ChunkGenerator
                                               c.maxY()));
     }
 
-    /** 
-     * The Optional a profile's own {@link Shape.Caves#floodLevel} lives in, whatever mode the shape is. 
-     * Flat is intentionally unused because 
+    /**
+     * The Optional a profile's own {@link Shape.Caves#floodLevel} lives in, whatever mode the shape is.
+     * Flat carries no {@link Shape.Caves} at all, fixed layers with no noise means nothing to carve,
+     * so that branch has no floodLevel to return.
      */
     private static Optional<Integer> caveFloodLevel(final Shape shape)
     {
