@@ -63,7 +63,12 @@ public class TextFilterService extends FreedomService
         }
 
         event.setCancelled(true);
-        Bukkit.getScheduler().runTask(plugin, () -> temporarilyBan(event.getPlayer()));
+        final Player player = event.getPlayer();
+        Bukkit.getScheduler().runTask(plugin, () ->
+        {
+            notifyAdmins(player, message);
+            temporarilyBan(player);
+        });
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
@@ -186,6 +191,16 @@ public class TextFilterService extends FreedomService
         FLog.warning("[TextFilter] Temporarily banned " + player.getName() + " for prohibited language.", true);
 
         player.kick(tempbanKickMessage());
+    }
+
+    private void notifyAdmins(Player player, String message)
+    {
+        final Component feedback = MessageUtils.parse(
+                "<red>[Text Filter]</red> <yellow><player></yellow>: <gray><message></gray>",
+                Placeholder.unparsed("player", player.getName()),
+                Placeholder.unparsed("message", message));
+
+        plugin.al.getOnlineAdmins().forEach(admin -> admin.sendMessage(feedback));
     }
 
     private Component tempbanKickMessage()
