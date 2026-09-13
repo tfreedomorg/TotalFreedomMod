@@ -12,10 +12,11 @@ import org.bukkit.command.CommandSender;
 import me.totalfreedom.totalfreedommod.banning.Ban;
 import me.totalfreedom.totalfreedommod.banning.PermBan;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+import me.totalfreedom.totalfreedommod.rank.Rank;
 import me.totalfreedom.totalfreedommod.util.FUtil;
 
 @Command(name = "baninfo", description = "Show info about a ban by username or the first match to a (partial) IP.", usage = "/baninfo <name|ip>", aliases = {"checkban"})
-@Permission(permission = "tfm.admin.baninfo")
+@Permission(permission = "tfm.admin.baninfo", level = Rank.SUPER_ADMIN)
 public class Command_baninfo extends FCommand
 {
     @Completer(value = "", position = 0)
