@@ -8,6 +8,7 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Difficulty;
 import org.bukkit.Location;
+import org.bukkit.entity.Enemy;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.CreatureSpawnEvent;
@@ -25,7 +26,9 @@ public class Command_spawnmob extends FCommand
     @Callback
     public void spawnAmount(Player sender, EntityType type, Integer amount)
     {
-        if (sender.getWorld().getDifficulty().equals(Difficulty.PEACEFUL))
+        if (sender.getWorld().getDifficulty().equals(Difficulty.PEACEFUL)
+                && type.getEntityClass() != null
+                && Enemy.class.isAssignableFrom(type.getEntityClass()))
         {
             msg(sender, "<red>The difficulty is currently set to peaceful.");
             return;
