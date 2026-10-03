@@ -58,7 +58,6 @@ dependencies {
 
     compileOnly 'com.github.retrooper:packetevents-spigot:2.13.0'
 
-    compileOnly "net.coreprotect:coreprotect:24.0"
 }
 
 configurations.all {

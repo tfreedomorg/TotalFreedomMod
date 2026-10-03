@@ -5,7 +5,7 @@ api-version: '26.2'
 load: STARTUP
 description: Plugin for the Total Freedom server.
 softdepend: [Vault, WorldEdit, TF-WorldEdit, BukkitTelnet, Essentials, LibsDisguises]
-depend: [CoreProtect]
+depend: [Spyglass]
 authors: [Madgeek1450, Prozza]
 
 # plugin.yml is no longer used to define commands.

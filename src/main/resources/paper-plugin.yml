@@ -39,9 +39,9 @@ dependencies:
       load: BEFORE
       required: false
       join-classpath: true
-    CoreProtect:
+    Spyglass:
       load: AFTER
-      required: false
+      required: true
       join-classpath: true
     WorldGuard:
       load: AFTER

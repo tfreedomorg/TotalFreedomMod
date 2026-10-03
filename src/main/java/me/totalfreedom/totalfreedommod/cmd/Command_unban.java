@@ -57,7 +57,7 @@ public class Command_unban extends FCommand
 
         if (restore)
         {
-            plugin().cpb.restore(name);
+            plugin().sgb.restore(name);
         }
     }
 }

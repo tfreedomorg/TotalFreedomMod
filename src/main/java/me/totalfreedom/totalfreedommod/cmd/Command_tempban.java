@@ -121,7 +121,7 @@ public class Command_tempban extends FCommand
         }
 
         if (rollback)
-            plugin().cpb.rollback(canonicalName);
+            plugin().sgb.rollback(canonicalName);
 
         if (data != null && plugin().al.getEntryByName(canonicalName) == null)
         {

@@ -27,7 +27,7 @@ import me.totalfreedom.totalfreedommod.blocking.packet.CrashPacketService;
 import me.totalfreedom.totalfreedommod.blocking.item.ItemValidator;
 import me.totalfreedom.totalfreedommod.blocking.sign.SignValidator;
 import me.totalfreedom.totalfreedommod.blocking.spawner.SpawnerValidator;
-import me.totalfreedom.totalfreedommod.bridge.CoreProtectBridge;
+import me.totalfreedom.totalfreedommod.bridge.SpyglassBridge;
 import me.totalfreedom.totalfreedommod.bridge.EssentialsBridge;
 import me.totalfreedom.totalfreedommod.bridge.LibsDisguisesBridge;
 import me.totalfreedom.totalfreedommod.bridge.WorldEditBridge;
@@ -130,7 +130,7 @@ public class TotalFreedomMod extends JavaPlugin
     //
     // Bridges
     public ServiceManager<TotalFreedomMod> bridges;
-    public CoreProtectBridge cpb;
+    public SpyglassBridge sgb;
     public EssentialsBridge esb; // EssentialsBridge - Bridge to Essentials plugin
     public LibsDisguisesBridge ldb; // LibsDisguisesBridge - Bridge to LibsDisguises plugin
     public WorldEditBridge web; // WorldEditBridge - Bridge to WorldEdit plugin
@@ -278,7 +278,7 @@ public class TotalFreedomMod extends JavaPlugin
 
         // Start bridges
         bridges = new ServiceManager<>(this);
-        cpb = bridges.registerService(CoreProtectBridge.class);
+        sgb = bridges.registerService(SpyglassBridge.class);
         esb = bridges.registerService(EssentialsBridge.class);
         ldb = bridges.registerService(LibsDisguisesBridge.class);
         web = bridges.registerService(WorldEditBridge.class);
