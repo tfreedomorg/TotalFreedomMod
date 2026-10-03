@@ -548,6 +548,9 @@ worldedit:
 
   block_clipboard_pattern: true
 
+  # Whether ops may create entities through WorldEdit.
+  allow_entities: false
+
   # Rate limits the number of WorldEdit operations for an operator.
   throttle:
     enabled: true

@@ -134,6 +134,7 @@ public enum ConfigEntry
     WORLDEDIT_MAX_BLOCK_ENTITIES_PER_OP(Integer.class, "worldedit.max_block_entities_per_op"),
     WORLDEDIT_MAX_SCHEM_SAVE_KB(Integer.class, "worldedit.max_schem_save_kb"),
     WORLDEDIT_SCHEM_SAVE_COOLDOWN(Integer.class, "worldedit.schem_save_cooldown_seconds"),
+    WORLDEDIT_ALLOW_ENTITIES(Boolean.class, "worldedit.allow_entities"),
     //
     NUKE_MONITOR_ENABLED(Boolean.class, "nukemonitor.enabled"),
     NUKE_MONITOR_COUNT_BREAK(Integer.class, "nukemonitor.count_break"),

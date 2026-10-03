@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -235,6 +236,10 @@ public final class WorldEditHook implements Listener
                     if (!blockedTypes.isEmpty())
                     {
                         wrapped = new BlockedTypeExtent(wrapped, wePlayer.getUniqueId(), blockedTypes);
+                    }
+                    if (!ConfigEntry.WORLDEDIT_ALLOW_ENTITIES.getBoolean())
+                    {
+                        wrapped = new EntityDenyExtent(wrapped, wePlayer.getUniqueId());
                     }
                 }
 
@@ -2117,6 +2122,47 @@ public final class WorldEditHook implements Listener
                 return false;
             }
             return super.setBlock(pos, block);
+        }
+    }
+
+    private final class EntityDenyExtent extends PathCompleteExtent
+    {
+
+        private final UUID uuid;
+        private final AtomicBoolean warned = new AtomicBoolean();
+
+        EntityDenyExtent(Extent parent, UUID uuid)
+        {
+            super(parent);
+            this.uuid = uuid;
+        }
+
+        @Override
+        public com.sk89q.worldedit.entity.Entity createEntity(com.sk89q.worldedit.util.Location location,
+                                                              com.sk89q.worldedit.entity.BaseEntity entity)
+        {
+            warnOnce();
+            return null;
+        }
+
+        public com.sk89q.worldedit.entity.Entity createEntity(com.sk89q.worldedit.util.Location location,
+                                                              com.sk89q.worldedit.entity.BaseEntity entity,
+                                                              UUID entityUuid)
+        {
+            warnOnce();
+            return null;
+        }
+
+        private void warnOnce()
+        {
+            if (!warned.compareAndSet(false, true))
+                return;
+
+            Bukkit.getScheduler().runTask(plugin, () ->
+                Optional.ofNullable(Bukkit.getPlayer(uuid))
+                        .ifPresent(player -> player.sendMessage(Component.text(
+                            "Entities are not allowed in WorldEdit operations and were skipped.",
+                            NamedTextColor.RED))));
         }
     }
 
