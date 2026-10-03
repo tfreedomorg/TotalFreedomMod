@@ -16,6 +16,7 @@ public class Command_potionspy extends FCommand
     {
         final PlayerData data = plugin().pl.getData(player);
         data.setPotionSpy(!data.isPotionSpy());
+        plugin().pl.saveAsync();
         msg(
             player, 
             "<gray>PotionSpy <status:enabled:disabled>.",
