@@ -148,7 +148,7 @@ public class SpawnerValidator extends FreedomService
 
     private void blockHangingFromSpawner(EntitySpawnEvent event, String reason, String label)
     {
-        if (Boolean.TRUE.equals(ConfigEntry.DISABLE_SPAWNERS.getBoolean()))
+        if (plugin.gs.blocking(event.getEntity().getWorld().getName()).spawners())
         {
             return;
         }

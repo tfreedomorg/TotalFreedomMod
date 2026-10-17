@@ -1,5 +1,7 @@
 package me.totalfreedom.totalfreedommod.blocking;
 
+import java.util.Optional;
+
 import io.papermc.paper.event.block.BlockPreDispenseEvent;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
@@ -241,7 +243,7 @@ public class EventBlocker extends FreedomService
     @EventHandler(priority = EventPriority.HIGH)
     public void onSpawnerSpawn(SpawnerSpawnEvent event)
     {
-        if (ConfigEntry.DISABLE_SPAWNERS.getBoolean())
+        if (plugin.gs.blocking(event.getEntity().getWorld().getName()).spawners())
         {
             event.setCancelled(true);
         }
@@ -250,7 +252,22 @@ public class EventBlocker extends FreedomService
     @EventHandler(priority = EventPriority.HIGH)
     public void onTrialSpawnerSpawn(TrialSpawnerSpawnEvent event)
     {
-        if (ConfigEntry.DISABLE_SPAWNERS.getBoolean())
+        if (plugin.gs.blocking(event.getEntity().getWorld().getName()).spawners())
+        {
+            event.setCancelled(true);
+        }
+    }
+
+    /** Reads {@code blocking.monsters} live on every natural spawn attempt rather than pushing it onto the world once at creation, so editing a profile takes effect on the very next spawn with nothing to reload. */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onCreatureSpawn(CreatureSpawnEvent event)
+    {
+        if (event.getSpawnReason() != CreatureSpawnEvent.SpawnReason.NATURAL)
+        {
+            return;
+        }
+
+        if (event.getEntity() instanceof Monster && plugin.gs.blocking(event.getEntity().getWorld().getName()).monsters())
         {
             event.setCancelled(true);
         }
@@ -259,7 +276,7 @@ public class EventBlocker extends FreedomService
     @EventHandler(priority = EventPriority.HIGH)
     public void onPortalCreate(PortalCreateEvent event)
     {
-        if (ConfigEntry.DISABLE_PORTAL_CREATE.getBoolean())
+        if (plugin.gs.blocking(event.getWorld().getName()).portalCreate())
         {
             event.setCancelled(true);
         }
@@ -268,7 +285,7 @@ public class EventBlocker extends FreedomService
     @EventHandler(priority = EventPriority.HIGH)
     public void onPistonExtend(BlockPistonExtendEvent event)
     {
-        if (ConfigEntry.DISABLE_PISTONS.getBoolean() || redstoneBlocked())
+        if (plugin.gs.blocking(event.getBlock().getWorld().getName()).pistons() || redstoneBlocked())
         {
             event.setCancelled(true);
         }
@@ -277,7 +294,7 @@ public class EventBlocker extends FreedomService
     @EventHandler(priority = EventPriority.HIGH)
     public void onPistonRetract(BlockPistonRetractEvent event)
     {
-        if (ConfigEntry.DISABLE_PISTONS.getBoolean() || redstoneBlocked())
+        if (plugin.gs.blocking(event.getBlock().getWorld().getName()).pistons() || redstoneBlocked())
         {
             event.setCancelled(true);
         }
@@ -286,7 +303,8 @@ public class EventBlocker extends FreedomService
     @EventHandler(priority = EventPriority.NORMAL)
     public void onEntitySpawn(EntitySpawnEvent event)
     {
-        if (!ConfigEntry.DISABLE_ENTITY_SPAM.getBoolean())
+        final Optional<Integer> max = plugin.gs.blocking(event.getLocation().getWorld().getName()).entitySpamMax();
+        if (max.isEmpty())
         {
             return;
         }
@@ -303,8 +321,7 @@ public class EventBlocker extends FreedomService
             return;
         }
 
-        final int max = ConfigEntry.DISABLE_ENTITY_SPAM_MAX.getInteger();
-        if (max > 0 && event.getLocation().getWorld().getEntities().size() > max)
+        if (max.get() > 0 && event.getLocation().getWorld().getEntities().size() > max.get())
         {
             event.setCancelled(true);
         }

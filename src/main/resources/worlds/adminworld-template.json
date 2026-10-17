@@ -1,0 +1,47 @@
+{
+  "shape": {
+    "mode": "flat",
+    "bounds": { "minY": 0, "maxY": 320 },
+    "layers": "1|bedrock|59|stone|3|dirt|1|grass_block"
+  },
+
+  "palette": {
+    "materials": {
+      "defaultBlock": "stone",
+      "fluidBlock": "water",
+      "bedrockBlock": "bedrock",
+      "bedrock": "FLOOR"
+    },
+    "surface": [
+      { "depthFrom": 0, "block": "grass_block" }
+    ],
+    "climate": {
+      "temperature": { "type": "simplex", "octaves": 1, "frequency": 0.001, "persistence": 0.5, "lacunarity": 2.0, "ridged": false },
+      "humidity":    { "type": "simplex", "octaves": 1, "frequency": 0.001, "persistence": 0.5, "lacunarity": 2.0, "ridged": false },
+      "scale": 1.0
+    },
+    "fallback": "plains"
+  },
+
+  "features": [],
+
+  "world": {
+    "environment": "normal",
+    "generateStructures": false,
+    "access": {
+      "permission": "tfm.world.adminworld"
+    },
+    "roExempt": true,
+    "weatherDisabled": true,
+    "blocking": {
+      "monsters": true
+    },
+    "vanilla": {
+      "surface": false,
+      "caves": false,
+      "decorations": false,
+      "mobs": false,
+      "structures": false
+    }
+  }
+}

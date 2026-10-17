@@ -9,6 +9,7 @@ import org.bukkit.permissions.Permission;
 import org.bukkit.permissions.PermissionAttachment;
 import org.bukkit.permissions.PermissionAttachmentInfo;
 import org.bukkit.plugin.Plugin;
+import org.jetbrains.annotations.NotNull;
 
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.audience.ForwardingAudience;
@@ -55,7 +56,7 @@ public final class AttributedConsoleSender implements CommandSender, ForwardingA
     }
 
     @Override
-    public Audience audience()
+    public @NotNull Audience audience()
     {
         return delegate;
     }
@@ -73,7 +74,7 @@ public final class AttributedConsoleSender implements CommandSender, ForwardingA
     }
 
     @Override
-    public void sendMessage(final SignedMessage signedMessage, final ChatType.Bound boundChatType)
+    public void sendMessage(final @NotNull SignedMessage signedMessage, final @NotNull ChatType.Bound boundChatType)
     {
         delegate.sendMessage(signedMessage, boundChatType);
     }
