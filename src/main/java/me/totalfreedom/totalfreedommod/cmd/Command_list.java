@@ -7,19 +7,19 @@ import java.util.List;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.dispatch.RemoteDispatchContext;
-import me.totalfreedom.totalfreedommod.rank.Displayable;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-import me.totalfreedom.totalfreedommod.util.PlayerListUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.dispatch.RemoteDispatchContext;
+import me.totalfreedom.totalfreedommod.display.Displayable;
+import me.totalfreedom.totalfreedommod.util.PlayerListUtil;
+
 @Command(name = "list", description = "Lists the real names of all online players.", usage = "/list [-a | -i | -f]", aliases = {"who"})
-@Permission(permission = "tfm.player.list", level = Rank.IMPOSTOR)
+@Permission(permission = "tfm.player.list")
 public class Command_list extends FCommand
 {
     private enum ListFilter
@@ -57,8 +57,9 @@ public class Command_list extends FCommand
         final List<Player> admList = new ArrayList<>();
         final List<Player> players = new ArrayList<>();
         final List<Player> filteredPlayers = new ArrayList<>();
+        final List<Player> visiblePlayers = plugin().vs.visiblePlayersFor(sender);
 
-        for (Player player : server().getOnlinePlayers())
+        for (Player player : visiblePlayers)
         {
             if (filter == ListFilter.PLAYERS)
             {
@@ -103,7 +104,7 @@ public class Command_list extends FCommand
         msg(
             sender,
             "<gray>Online: <green><online><dark_gray>/<green><max>",
-            Formatter.number("online", server().getOnlinePlayers().size()),
+            Formatter.number("online", visiblePlayers.size()),
             Formatter.number("max", server().getMaxPlayers())
         );
 

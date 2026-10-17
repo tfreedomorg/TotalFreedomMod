@@ -11,6 +11,13 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+
+import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
 import me.totalfreedom.totalfreedommod.admin.Admin;
 import me.totalfreedom.totalfreedommod.cmd.internal.FuzzyMatch;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Callback;
@@ -20,79 +27,30 @@ import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Permission;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Subcommand;
 import me.totalfreedom.totalfreedommod.player.FPlayer;
 import me.totalfreedom.totalfreedommod.rank.CustomRank;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-
-import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import org.bukkit.Bukkit;
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
 
 @Command(name = "saconfig", description = "Manage admins.",
-    usage = "/<command> <list | clean | reload | setrank <username> <rank> | <add | remove | info> <username>>")
-// The read-only subcommands sit at SUPER_ADMIN, so they cannot be gated behind a tfm.manage.*
-// node: RankManager#checkLegacyPermission maps that whole namespace to SENIOR_ADMIN for ranks
-// that hold no explicit grant, which vetoes the level declared here and hides the command from
-// super admins entirely. tfm.admin.* legacy-maps to SUPER_ADMIN and matches this gate. The
-// mutating handlers below keep tfm.manage.saconfig, which now differs from this node and so is
-// actually tested rather than skipped as a repeat of the parent.
-@Permission(level = Rank.SUPER_ADMIN, permission = "tfm.admin.saconfig")
+        usage = "/<command> <list | clean | reload | setrank <username> <rank> | <add | remove | info> <username>>")
+@Permission(permission = "tfm.admin.saconfig")
 public class Command_saconfig extends FCommand
 {
 
     @Callback
     @Subcommand("setrank")
-    @Permission(permission = "tfm.manage.saconfig", source = SourceType.ONLY_CONSOLE, level = Rank.SENIOR_ADMIN)
-    public void setRank(CommandSender sender, Player target, String rankInput) 
+    @Permission(permission = "tfm.manage.saconfig", source = SourceType.ONLY_CONSOLE)
+    public void setRank(CommandSender sender, Player target, String rankInput)
     {
-        final CustomRank custom = plugin().rm != null ? plugin().rm.getCustomRank(rankInput) : null;
-        final Rank rank;
-        final String displayName;
+        final CustomRank rank = plugin().rm == null ? null : plugin().rm.getCustomRank(rankInput);
 
-        if (custom != null) 
+        if (rank == null)
         {
-            if (custom.isConsoleOnly()) 
-            {
-                msg(sender, "<red>You cannot set players to a console rank");
-                return;
-            }
-            if (!custom.isAdmin()) 
-            {
-                msg(sender, "<red>Rank \"<rank>\" is not an admin rank.",
-                        Placeholder.unparsed("rank", custom.getName()));
-                return;
-            }
-            rank = resolveLegacyTier(custom);
-            if (rank == null) 
-            {
-                msg(sender, "<red>Rank \"<rank>\" has no legacy tier; set or inherit from super_admin or senior_admin.",
-                        Placeholder.unparsed("rank", custom.getName()));
-                return;
-            }
-            displayName = custom.getName();
-        } 
-        else 
-        {
-            try 
-            {
-                rank = Rank.valueOf(rankInput.toUpperCase());
-            } 
-            catch (IllegalArgumentException ignored) 
-            {
-                msg(sender, "<red>Unknown rank: <rank>", Placeholder.unparsed("rank", rankInput));
-                return;
-            }
-            if (rank.isConsole()) 
-            {
-                msg(sender, "<red>You cannot set players to a console rank");
-                return;
-            }
-            displayName = rank.getName();
+            msg(sender, "<red>Unknown rank: <rank>", Placeholder.unparsed("rank", rankInput));
+            return;
         }
 
-        if (!rank.isAtLeast(Rank.SUPER_ADMIN)) 
+        if (!rank.isAdmin())
         {
-            msg(sender, "<red>Rank must be superadmin or higher.");
+            msg(sender, "<red>Rank \"<rank>\" is not an admin rank.",
+                    Placeholder.unparsed("rank", rank.getName()));
             return;
         }
 
@@ -106,17 +64,16 @@ public class Command_saconfig extends FCommand
 
         adminAction(sender, "<red>Setting <player>'s rank to <rank>",
                 Placeholder.unparsed("player", admin.getName()),
-                Placeholder.unparsed("rank", displayName));
+                Placeholder.unparsed("rank", rank.getName()));
 
-        admin.setRank(rank);
-        admin.setCustomRankId(custom != null ? custom.getId() : null);
+        admin.setRankId(rank.getId());
         plugin().al.updateTables();
         plugin().al.saveAdminAsync(admin);
         plugin().rm.updatePlayerTeam(target);
 
         msg(sender, "<gray>Set <player>'s rank to <rank>.",
                 Placeholder.unparsed("player", admin.getName()),
-                Placeholder.unparsed("rank", displayName));
+                Placeholder.unparsed("rank", rank.getName()));
     }
 
     @Callback
@@ -140,7 +97,7 @@ public class Command_saconfig extends FCommand
 
     @Callback
     @Subcommand("add")
-    @Permission(permission = "tfm.manage.saconfig", source = SourceType.ONLY_CONSOLE, level = Rank.SENIOR_ADMIN)
+    @Permission(permission = "tfm.manage.saconfig", source = SourceType.ONLY_CONSOLE)
     public boolean addUser(CommandSender sender, Player target) 
     {
         if (plugin().al.isAdmin(target)) 
@@ -200,7 +157,7 @@ public class Command_saconfig extends FCommand
 
     @Callback
     @Subcommand("remove")
-    @Permission(permission = "tfm.manage.saconfig", source = SourceType.ONLY_CONSOLE, level = Rank.SENIOR_ADMIN)
+    @Permission(permission = "tfm.manage.saconfig", source = SourceType.ONLY_CONSOLE)
     public boolean removeUser(CommandSender sender, String username) 
     {
         final Admin admin = plugin().al.getEntryByName(username);
@@ -239,7 +196,7 @@ public class Command_saconfig extends FCommand
 
     @Callback
     @Subcommand("clean")
-    @Permission(permission = "tfm.manage.saconfig", level = Rank.SENIOR_ADMIN, source = SourceType.ONLY_CONSOLE)
+    @Permission(permission = "tfm.manage.saconfig", source = SourceType.ONLY_CONSOLE)
     public boolean clean(CommandSender sender) 
     {
         adminAction(sender, "<red>Cleaning admin list");
@@ -265,17 +222,12 @@ public class Command_saconfig extends FCommand
     @Completer(value = "setrank", position = 1)
     public List<String> completeSetrankRank(CommandSender sender, String partial) 
     {
-        final Stream<String> rankNames = Stream.of(Rank.values())
-                                         .filter(rank -> rank.isAdmin() && !rank.isConsole())
-                                         .map(rank -> rank.name().toLowerCase(Locale.ROOT));
-
-        final Stream<String> customRankIds = plugin().rm.getCustomRanks()
-                                                .values()
-                                                .stream()
-                                                .filter(custom -> custom.isAdmin() && !custom.isConsoleOnly())
-                                                .map(CustomRank::getId);
-
-        final List<String> candidates = Stream.concat(rankNames, customRankIds).toList();
+        final List<String> candidates = plugin().rm.getCustomRanks()
+                                                   .values()
+                                                   .stream()
+                                                   .filter(CustomRank::isAdmin)
+                                                   .map(CustomRank::getId)
+                                                   .toList();
 
         return FuzzyMatch.filter(candidates, partial);
     }
@@ -319,52 +271,28 @@ public class Command_saconfig extends FCommand
             return;
         }
 
-        final Map<Rank, List<Admin>> byRank = activeAdmins.stream().collect(
-            Collectors.groupingBy(a -> a.getRank(), () -> new EnumMap<>(Rank.class), Collectors.toList())
-        );
+        // Group by the rank each admin actually holds. Ranks come from the registry rather than a
+        // fixed set, so a custom defined rank gets its own line instead of being folded into a
+        // tier that happens to sit near it.
+        final Map<CustomRank, List<Admin>> byRank = activeAdmins.stream()
+            .filter(admin -> plugin().rm.getCustomRank(admin.getRankId()) != null)
+            .collect(Collectors.groupingBy(admin -> plugin().rm.getCustomRank(admin.getRankId()),
+                     Collectors.toList()));
 
-        Stream.of(Rank.values())
-              .filter(r -> r.isAdmin() && !r.isConsole())
-              .filter(byRank::containsKey)
-              .sorted(Comparator.comparingInt(Rank::getLevel).reversed())
-              .forEach(rank -> {
-                List<Admin> bucket = byRank.get(rank);
-                String joinedAdmins = bucket.stream()
-                        .sorted(Comparator.comparing(a -> a.getName().toLowerCase()))
-                        .map(admin -> {
-                            CustomRank customRank = admin.getCustomRankId() == null
-                                    ? null
-                                    : plugin().rm.getCustomRank(admin.getCustomRankId());
-                                    
-                            if (customRank != null) {
-                                String tagText = customRank.getName();
-                                String colorTag = customRank.getColor().asHexString();
-                                return String.format("<%s>%s <white>%s", colorTag, tagText, admin.getName());
-                            }
-                            return String.format("<white>%s", admin.getName());
-                        })
-                        .collect(Collectors.joining("<white>, "));
+        byRank.keySet()
+              .stream()
+              .sorted(Comparator.comparingInt(CustomRank::getLevel).reversed())
+              .forEach(rank ->
+              {
+                  final String joinedAdmins = byRank.get(rank)
+                          .stream()
+                          .sorted(Comparator.comparing(admin -> admin.getName().toLowerCase()))
+                          .map(admin -> String.format("<white>%s", admin.getName()))
+                          .collect(Collectors.joining("<white>, "));
 
-                String rankColorTag = "<" + rank.getColor().asHexString() + ">";
-                String line = rankColorTag + rank.getName() + "s: " + joinedAdmins;
-
-                msg(sender, line);
-            });
+                  msg(sender, String.format("<%s>%ss: %s",
+                          rank.getColor().asHexString(), rank.getName(), joinedAdmins));
+              });
     }
 
-    private Rank resolveLegacyTier(CustomRank custom) 
-    {
-        return Stream.iterate(custom, Objects::nonNull, current -> plugin().rm.getCustomRank(current.getInheritFrom()))
-            .limit(32)
-            .map(current -> {
-                try {
-                    return Rank.valueOf(current.getId().toUpperCase(Locale.ROOT));
-                } catch (IllegalArgumentException ignored) {
-                    return null;
-                }
-            })
-            .filter(Objects::nonNull)
-            .findFirst()
-            .orElse(null);
-    }
 }

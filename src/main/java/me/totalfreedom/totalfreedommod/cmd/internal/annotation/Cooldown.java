@@ -1,12 +1,8 @@
 package me.totalfreedom.totalfreedommod.cmd.internal.annotation;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.CooldownUnit;
+import java.lang.annotation.*;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import me.totalfreedom.totalfreedommod.cmd.internal.CooldownUnit;
 
 /**
  * Applies a per-player cooldown to the annotated subcommand handler.

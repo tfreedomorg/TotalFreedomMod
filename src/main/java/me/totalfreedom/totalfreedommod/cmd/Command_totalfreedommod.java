@@ -1,5 +1,9 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
+import org.bukkit.command.CommandSender;
+
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Callback;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Command;
@@ -8,19 +12,16 @@ import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Subcommand;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.discord.DiscordBridge;
 import me.totalfreedom.totalfreedommod.player.FPlayer;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import org.bukkit.command.CommandSender;
 
 /*
  * See https://github.com/TotalFreedom/License - This file may not be edited or removed.
  */
 @Command(name = "totalfreedommod", description = "Shows information about TotalFreedomMod or reloads it", usage = "/totalfreedommod [reload]", aliases = {"tfm"})
-@Permission(permission = "tfm.server.info", level = Rank.NON_OP)
+@Permission(permission = "tfm.server.info")
 public class Command_totalfreedommod extends FCommand
 {
     @Subcommand("reload")
-    @Permission(level = Rank.SUPER_ADMIN, permission = "tfm.server.info")
+    @Permission(permission = "tfm.server.reload")
     @Callback
     public void reloadPlugin(CommandSender sender)
     {

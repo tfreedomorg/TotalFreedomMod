@@ -16,7 +16,7 @@ dependencies:
       required: false
       join-classpath: true
     WorldEdit:
-      load: BEFORE
+      load: AFTER
       required: false
       join-classpath: true
     TF-WorldEdit:

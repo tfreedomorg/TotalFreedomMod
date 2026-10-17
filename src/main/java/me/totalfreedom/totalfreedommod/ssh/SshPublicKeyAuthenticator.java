@@ -1,13 +1,14 @@
 package me.totalfreedom.totalfreedommod.ssh;
 
+import java.security.PublicKey;
+
 import me.totalfreedom.totalfreedommod.util.FLog;
+
 import org.apache.sshd.common.config.keys.AuthorizedKeyEntry;
 import org.apache.sshd.common.config.keys.KeyUtils;
 import org.apache.sshd.common.config.keys.PublicKeyEntryResolver;
 import org.apache.sshd.server.auth.pubkey.PublickeyAuthenticator;
 import org.apache.sshd.server.session.ServerSession;
-
-import java.security.PublicKey;
 
 public class SshPublicKeyAuthenticator implements PublickeyAuthenticator
 {

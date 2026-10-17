@@ -2,18 +2,18 @@ package me.totalfreedom.totalfreedommod.cmd;
 
 import java.util.List;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.rank.Rank;
+import org.bukkit.Material;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 
-import org.bukkit.Material;
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
 
-@Permission(level = Rank.SUPER_ADMIN, permission = "tfm.admin.whohas")
+@Permission(permission = "tfm.admin.whohas")
 @Command(name = "whohas", aliases = "wh", description = "See who has a block and optionally clears the item.", usage = "/<command> [-clear] <item>")
 public class Command_whohas extends FCommand
 {

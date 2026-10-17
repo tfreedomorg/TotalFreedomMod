@@ -17,6 +17,7 @@ import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCreativeEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
@@ -32,10 +33,12 @@ import org.bukkit.inventory.meta.ItemMeta;
 import com.destroystokyo.paper.event.entity.EntityAddToWorldEvent;
 
 import io.papermc.paper.event.player.AsyncChatEvent;
+import me.totalfreedom.totalfreedommod.banning.Ban;
 import me.totalfreedom.totalfreedommod.cmd.MessageUtils;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FTask;
+import me.totalfreedom.totalfreedommod.util.FUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
@@ -75,37 +78,54 @@ public class TextFilterService extends FreedomService
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onAsyncChat(AsyncChatEvent event)
     {
-        if (!shouldFilter(event.getPlayer()))
+        if (isFilterDisabled(event.getPlayer()))
         {
             return;
         }
 
         final String message = MessageUtils.toPlainText(event.message());
         if (!matchesFilter(message))
-        {
             return;
-        }
 
         event.setCancelled(true);
-        final Player player = event.getPlayer();
-        Bukkit.getScheduler().runTask(plugin, () -> handleBlockedMessage(player, message));
+        Bukkit.getScheduler().runTask(plugin, () -> temporarilyBan(event.getPlayer()));
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event)
     {
-        if (!shouldFilter(event.getPlayer()))
-        {
+        if (isFilterDisabled(event.getPlayer()))
             return;
-        }
 
         if (!matchesFilter(event.getMessage()))
-        {
             return;
-        }
 
         event.setCancelled(true);
-        handleBlockedMessage(event.getPlayer(), event.getMessage());
+        temporarilyBan(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onSignEdit(SignChangeEvent event)
+    {
+        if (isFilterDisabled(event.getPlayer()))
+            return;
+
+        final StringBuilder builder = new StringBuilder();
+
+        for (int i = 0; i < event.lines().size(); i++)
+        {
+            if (!builder.isEmpty())
+            {
+                builder.append(Component.newline());
+            }
+            builder.append(event.line(i));
+        }
+
+        if (!matchesFilter(builder.toString()))
+            return;
+
+        event.setCancelled(true);
+        temporarilyBan(event.getPlayer());
     }
 
     @SuppressWarnings("removal")
@@ -337,6 +357,11 @@ public class TextFilterService extends FreedomService
         return List.copyOf(compiled);
     }
 
+    private boolean isFilterDisabled(Player player)
+    {
+        return !ConfigEntry.TEXT_FILTER_ENABLED.getBoolean(true) || filters.isEmpty() || plugin.al.isAdmin(player);
+    }
+
     private boolean shouldFilter(Player player)
     {
         return filterEnabled() && !plugin.al.isAdmin(player);
@@ -423,16 +448,41 @@ public class TextFilterService extends FreedomService
         return out.toString();
     }
 
-    private void handleBlockedMessage(Player player, String message)
+    private void temporarilyBan(Player player)
     {
-        final Component feedback = MessageUtils.parse(
-                "<red>[Text Filter]</red> <yellow><player></yellow>: <gray><message></gray>",
-                Placeholder.unparsed("player", player.getName()),
-                Placeholder.unparsed("message", message));
+        if (!player.isOnline())
+        {
+            return;
+        }
 
-        player.sendMessage(MessageUtils.parse("<red>Your message was blocked by the text filter."));
-        plugin.al.getOnlineAdmins().forEach(admin -> admin.sendMessage(feedback));
-        FLog.warning(String.format("[TextFilter] Blocked message from %s: %s", player.getName(), message), true);
+        if (plugin.bm.getByUsername(player.getName()) != null)
+        {
+            player.kick(tempbanKickMessage());
+            return;
+        }
+
+        final Ban ban = Ban.forPlayer(player, Bukkit.getConsoleSender(), FUtil.parseDateOffset("1d"), "Use of prohibited language");
+
+        ban.addIp(player.getAddress().getAddress().getHostAddress());
+        plugin.pl.getData(player).getIps().forEach(ban::addIp);
+
+        plugin.bm.addBan(ban);
+
+        MessageUtils.broadcast("<red><player> has been temporarily banned for prohibited language.",
+            Placeholder.unparsed("player", player.getName()));
+        FLog.warning("[TextFilter] Temporarily banned " + player.getName() + " for prohibited language.", true);
+
+        player.kick(tempbanKickMessage());
+    }
+
+    private Component tempbanKickMessage()
+    {
+        final String message = """
+            <red>Your username is temporarily banned from this server.
+            Release procedures are available at
+            </red><gold><url></gold>""";
+
+        return MessageUtils.parse(message, MessageUtils.unparsed("url", ConfigEntry.SERVER_BAN_URL.getString()));
     }
 
     private void notifyAdmins(Player player, ItemStack item, String message)

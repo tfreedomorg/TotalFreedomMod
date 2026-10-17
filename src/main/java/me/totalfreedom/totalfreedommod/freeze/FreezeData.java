@@ -1,16 +1,19 @@
 package me.totalfreedom.totalfreedommod.freeze;
 
-import lombok.Getter;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.player.FPlayer;
-import me.totalfreedom.totalfreedommod.player.PlayerData;
-import static me.totalfreedom.totalfreedommod.player.FPlayer.AUTO_PURGE_TICKS;
-import me.totalfreedom.totalfreedommod.util.FLog;
-import me.totalfreedom.totalfreedommod.util.FUtil;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
+
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.player.FPlayer;
+import me.totalfreedom.totalfreedommod.player.PlayerData;
+import me.totalfreedom.totalfreedommod.util.FLog;
+import me.totalfreedom.totalfreedommod.util.FUtil;
+
+import lombok.Getter;
+
+import static me.totalfreedom.totalfreedommod.player.FPlayer.AUTO_PURGE_TICKS;
 
 public class FreezeData
 {

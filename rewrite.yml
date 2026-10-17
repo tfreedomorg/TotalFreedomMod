@@ -1,0 +1,42 @@
+---
+type: specs.openrewrite.org/v1beta/style
+name: me.totalfreedom.totalfreedommod.WildcardStyle
+styleConfigs:
+  - org.openrewrite.java.style.ImportLayoutStyle:
+      # anything lower than 5 will cause conflicts, 5 or higher is a good standard.
+      classCountToUseStarImport: 5
+      nameCountToUseStarImport: 5
+      layout:
+        # JDK
+        - import java.*
+        - import javax.*
+        - <blank line>
+        # server platform
+        - import com.destroystokyo.*
+        - import com.mojang.*
+        - import io.papermc.*
+        - import org.bukkit.*
+        - <blank line>
+        # adventure
+        - import net.kyori.*
+        - <blank line>
+        # third-party plugins
+        - import com.sk89q.*
+        - import net.coreprotect.*
+        - import net.milkbowl.*
+        - <blank line>
+        # github imports
+        - import com.github.*
+        - <blank line>
+        # reactive
+        - import discord4j.*
+        - import io.netty.*
+        - import reactor.*
+        - <blank line>
+        # project
+        - import me.totalfreedom.*
+        - <blank line>
+        # everything else
+        - import all other imports
+        - <blank line>
+        - import static all other imports

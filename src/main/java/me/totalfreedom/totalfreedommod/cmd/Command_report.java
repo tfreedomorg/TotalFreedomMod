@@ -2,10 +2,11 @@ package me.totalfreedom.totalfreedommod.cmd;
 
 import java.util.List;
 
-import me.totalfreedom.totalfreedommod.admin.Admin;
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
+
+import me.totalfreedom.totalfreedommod.admin.Admin;
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
 
 @Permission(source = SourceType.ONLY_IN_GAME, permission = "tfm.player.report")
 @Command(name = "report", description = "Report a player for admins to see.", usage = "/report <player> <reason>")
@@ -56,6 +57,12 @@ public class Command_report extends FCommand
     public List<String> completeTarget(Player sender, String partial)
     {
         return NameCandidates.online(server(), partial);
+    }
+
+    @Completer(value = "", position = 1)
+    public List<String> completeReason(Player sender, String partial)
+    {
+        return NameCandidates.onlineTyped(server(), partial);
     }
 
     @Callback

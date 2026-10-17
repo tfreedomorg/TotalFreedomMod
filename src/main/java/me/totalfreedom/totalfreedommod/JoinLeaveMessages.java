@@ -1,14 +1,18 @@
 package me.totalfreedom.totalfreedommod;
 
-import me.totalfreedom.totalfreedommod.cmd.MessageUtils;
-import me.totalfreedom.totalfreedommod.util.FUtil;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.util.AdventureUtil;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
+import me.totalfreedom.totalfreedommod.cmd.MessageUtils;
+import me.totalfreedom.totalfreedommod.util.FUtil;
 
 public class JoinLeaveMessages extends FreedomService
 {
@@ -44,9 +48,14 @@ public class JoinLeaveMessages extends FreedomService
         broadcast(player, "<dark_gray>[<red>-<dark_gray>] <yellow><italic><player> has left the game.");
     }
 
+    /**
+      * Whether this player's join and leave are worth announcing: staff, or anyone carrying an
+      * announceable title. Titles replaced the hardcoded developer list this used to consult.
+      */
     private boolean isAdminOrDeveloper(final Player player)
     {
-        return plugin.al.isAdmin(player) || FUtil.DEVELOPERS.contains(player.getName());
+        return plugin.al.isAdmin(player)
+               || (plugin.tm != null && plugin.tm.getDisplayTitle(player) != null);
     }
 
     /**
@@ -57,11 +66,16 @@ public class JoinLeaveMessages extends FreedomService
     private void broadcast(final Player subject, final String miniMessage)
     {
         final boolean subjectIsAdmin = isAdminOrDeveloper(subject);
-        final Component message = MessageUtils.parse(miniMessage, Placeholder.unparsed("player", subject.getName()));
+        final Component message = AdventureUtil.formatWithPlaceholders(miniMessage, Placeholder.unparsed("player", subject.getName()));
 
         for (final Player viewer : server.getOnlinePlayers())
         {
             final boolean isSubject = viewer.getUniqueId().equals(subject.getUniqueId());
+            if (!isSubject && !plugin.vs.canSee(viewer, subject))
+            {
+                continue;
+            }
+
             if (isSubject || subjectIsAdmin || plugin.pl.getPlayer(viewer).joinLeaveMessagesEnabled())
             {
                 FUtil.playerMsg(viewer, message);

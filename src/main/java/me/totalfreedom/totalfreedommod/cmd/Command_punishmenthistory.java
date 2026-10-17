@@ -5,7 +5,6 @@ import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Command;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Permission;
 import me.totalfreedom.totalfreedommod.admin.Admin;
 import me.totalfreedom.totalfreedommod.rank.CustomRank;
-import me.totalfreedom.totalfreedommod.rank.Rank;
 import me.totalfreedom.totalfreedommod.sql.PunishmentHistoryEntry;
 import me.totalfreedom.totalfreedommod.sql.adapter.PunishmentHistoryRepository;
 import net.kyori.adventure.text.Component;
@@ -27,7 +26,7 @@ import java.util.List;
 import java.util.Locale;
 
 @Command(name = "punishmenthistory", description = "Shows a player's punishment history.", usage = "/<command> <player|ip> [page]", aliases = {"ph"})
-@Permission(level = Rank.SUPER_ADMIN, permission = "tfm.admin.punishmenthistory")
+@Permission(permission = "tfm.admin.punishmenthistory")
 public class Command_punishmenthistory extends FCommand
 {
     private static final int ENTRIES_PER_PAGE = 10;
@@ -182,9 +181,8 @@ public class Command_punishmenthistory extends FCommand
             return actor;
         }
 
-        final String customRankId = admin.getCustomRankId();
-        final CustomRank customRank = customRankId == null ? null : plugin().rm.getCustomRank(customRankId);
-        return actor.color(customRank == null ? admin.getRank().getColor() : customRank.getColor());
+        final CustomRank customRank = plugin().rm.getCustomRank(admin.getRankId());
+        return customRank == null ? actor : actor.color(customRank.getColor());
     }
 
     private void sendNavigation(CommandSender sender, String target, int page, int totalPages)

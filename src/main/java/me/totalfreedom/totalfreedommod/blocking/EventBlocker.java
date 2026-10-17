@@ -1,10 +1,6 @@
 package me.totalfreedom.totalfreedommod.blocking;
 
 import io.papermc.paper.event.block.BlockPreDispenseEvent;
-import me.totalfreedom.totalfreedommod.EntityWiper;
-import me.totalfreedom.totalfreedommod.FreedomService;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.Particle;
@@ -32,20 +28,16 @@ import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.BlockRedstoneEvent;
 import org.bukkit.event.block.BlockSpreadEvent;
 import org.bukkit.event.block.LeavesDecayEvent;
-import org.bukkit.event.entity.EntityCombustEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.EntityDeathEvent;
-import org.bukkit.event.entity.EntityRegainHealthEvent;
-import org.bukkit.event.entity.EntityExplodeEvent;
-import org.bukkit.event.entity.EntitySpawnEvent;
-import org.bukkit.event.entity.ExplosionPrimeEvent;
-import org.bukkit.event.entity.ProjectileHitEvent;
-import org.bukkit.event.entity.SpawnerSpawnEvent;
-import org.bukkit.event.entity.TrialSpawnerSpawnEvent;
+import org.bukkit.event.entity.*;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.inventory.InventoryPickupItemEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.world.PortalCreateEvent;
+
+import me.totalfreedom.totalfreedommod.EntityWiper;
+import me.totalfreedom.totalfreedommod.FreedomService;
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 
 public class EventBlocker extends FreedomService
 {
@@ -198,6 +190,7 @@ public class EventBlocker extends FreedomService
                     return;
                 }
             }
+            default: break;
         }
 
         if (ConfigEntry.ENABLE_PET_PROTECT.getBoolean())

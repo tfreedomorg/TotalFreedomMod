@@ -1,13 +1,14 @@
 package me.totalfreedom.totalfreedommod.sql.adapter;
 
-import me.totalfreedom.totalfreedommod.admin.Admin;
-
 import java.sql.SQLException;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
+
+import reactor.core.publisher.Mono;
+
+import me.totalfreedom.totalfreedommod.admin.Admin;
 
 /**
  * Abstract repository interface for Admin data.
@@ -160,35 +161,41 @@ public interface AdminRepository
      */
     void deleteAllSync() throws SQLException;
 
+    /**
+     * Epoch millis of the most recently updated admin row, or null if the table is empty.
+     * Used to compare SQL freshness against the admins.json snapshot's last-modified time.
+     */
+    Long getMaxUpdatedAt() throws SQLException;
+
     // ============================================
     // Async Operations
     // ============================================
 
-    CompletableFuture<Map<String, Admin>> loadAllAsync();
+    Mono<Map<String, Admin>> loadAllAsync();
 
-    CompletableFuture<Integer> insertAsync(UUID uuid, Admin admin);
+    Mono<Integer> insertAsync(UUID uuid, Admin admin);
 
-    CompletableFuture<Boolean> updateAsync(UUID uuid, Admin admin);
+    Mono<Boolean> updateAsync(UUID uuid, Admin admin);
 
-    CompletableFuture<Boolean> deleteAsync(UUID uuid);
-    
+    Mono<Boolean> deleteAsync(UUID uuid);
+
     /**
      * Save admin asynchronously (upsert).
      */
-    CompletableFuture<Integer> save(UUID uuid, Admin admin);
-    
+    Mono<Integer> save(UUID uuid, Admin admin);
+
     /**
      * Find all admins asynchronously.
      */
-    CompletableFuture<List<Admin>> findAll();
-    
+    Mono<List<Admin>> findAll();
+
     /**
      * Delete admin by UUID asynchronously.
      */
-    CompletableFuture<Boolean> deleteByUuid(UUID uuid);
-    
+    Mono<Boolean> deleteByUuid(UUID uuid);
+
     /**
      * Delete all admins asynchronously.
      */
-    CompletableFuture<Void> deleteAll();
+    Mono<Void> deleteAll();
 }

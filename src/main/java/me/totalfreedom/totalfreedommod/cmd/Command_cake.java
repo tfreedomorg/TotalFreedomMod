@@ -10,10 +10,9 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.rank.Rank;
 
 @Command(name = "cake", description = "For the people that are still alive.", usage = "/cake")
-@Permission(level = Rank.SUPER_ADMIN, source = SourceType.BOTH, permission = "tfm.fun.cake")
+@Permission(source = SourceType.BOTH, permission = "tfm.fun.cake")
 public class Command_cake extends FCommand 
 {
     public static final String CAKE_LYRICS = "But there's no sense crying over every mistake. You just keep on trying till you run out of cake.";

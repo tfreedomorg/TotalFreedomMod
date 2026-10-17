@@ -1,36 +1,38 @@
 package me.totalfreedom.totalfreedommod.ssh;
 
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.dispatch.RemoteDispatchContext;
-import me.totalfreedom.totalfreedommod.dispatch.RemoteDispatchSession;
-import me.totalfreedom.totalfreedommod.util.CallbackLogAppender;
-import me.totalfreedom.totalfreedommod.util.FLog;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
-
-import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.Logger;
-import org.apache.sshd.server.Environment;
-import org.apache.sshd.server.ExitCallback;
-import org.apache.sshd.server.session.ServerSession;
-import org.apache.sshd.server.channel.ChannelSession;
-import org.apache.sshd.server.command.Command;
-import org.apache.sshd.server.shell.ShellFactory;
-import org.bukkit.Bukkit;
-import org.jline.reader.LineReader;
-import org.jline.reader.LineReaderBuilder;
-import org.jline.reader.UserInterruptException;
-import org.jline.reader.EndOfFileException;
-import org.jline.terminal.Terminal;
-import org.jline.terminal.impl.ExternalTerminal;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+
+import org.bukkit.Bukkit;
+
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.dispatch.RemoteDispatchContext;
+import me.totalfreedom.totalfreedommod.dispatch.RemoteDispatchSession;
+import me.totalfreedom.totalfreedommod.util.CallbackLogAppender;
+import me.totalfreedom.totalfreedommod.util.FLog;
+
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.Logger;
+import org.apache.sshd.server.Environment;
+import org.apache.sshd.server.ExitCallback;
+import org.apache.sshd.server.channel.ChannelSession;
+import org.apache.sshd.server.command.Command;
+import org.apache.sshd.server.session.ServerSession;
+import org.apache.sshd.server.shell.ShellFactory;
+import org.jline.reader.EndOfFileException;
+import org.jline.reader.LineReader;
+import org.jline.reader.LineReaderBuilder;
+import org.jline.reader.UserInterruptException;
+import org.jline.terminal.Terminal;
+import org.jline.terminal.impl.ExternalTerminal;
 
 /**
  * Creates interactive console shell sessions for SSH clients.

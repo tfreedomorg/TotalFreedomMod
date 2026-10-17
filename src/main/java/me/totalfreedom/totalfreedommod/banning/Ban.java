@@ -1,6 +1,5 @@
 package me.totalfreedom.totalfreedommod.banning;
 
-import com.google.common.collect.Lists;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
@@ -9,59 +8,111 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import lombok.Getter;
-import lombok.Setter;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.util.ConfigInterfaces.ConfigLoadable;
-import me.totalfreedom.totalfreedommod.util.ConfigInterfaces.ConfigSavable;
-import me.totalfreedom.totalfreedommod.util.ConfigInterfaces.Validatable;
-import me.totalfreedom.totalfreedommod.util.FUtil;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 
-public class Ban implements ConfigLoadable, ConfigSavable, Validatable
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.util.ConfigInterfaces.ConfigLoadable;
+import me.totalfreedom.totalfreedommod.util.ConfigInterfaces.Validatable;
+import me.totalfreedom.totalfreedommod.util.FUtil;
+
+import com.google.common.collect.Lists;
+
+public class Ban implements ConfigLoadable, Validatable
 {
 
     public static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd \'at\' HH:mm:ss z");
 
     // UUID support for SQL storage
-    @Getter
-    @Setter
     private UUID uuid = null;
-    
-    @Getter
-    @Setter
     private UUID bannedByUuid = null;
-
-    @Getter
-    @Setter
     private String username = null;
-    @Getter
     private final List<String> ips = Lists.newArrayList();
-    @Getter
-    @Setter
     private String by = null;
-    @Getter
-    @Setter
     private String reason = null; // Unformatted, &[0-9,a-f] instead of ChatColor
-    @Getter
-    @Setter
     private long expiryUnix = -1;
+
+    public UUID getUuid()
+    {
+        return uuid;
+    }
+
+    public void setUuid(UUID uuid)
+    {
+        this.uuid = uuid;
+    }
+
+    public UUID getBannedByUuid()
+    {
+        return bannedByUuid;
+    }
+
+    public void setBannedByUuid(UUID bannedByUuid)
+    {
+        this.bannedByUuid = bannedByUuid;
+    }
+
+    public String getUsername()
+    {
+        return username;
+    }
+
+    public void setUsername(String username)
+    {
+        this.username = username;
+    }
+
+    public List<String> getIps()
+    {
+        return ips;
+    }
+
+    public String getBy()
+    {
+        return by;
+    }
+
+    public void setBy(String by)
+    {
+        this.by = by;
+    }
+
+    public String getReason()
+    {
+        return reason;
+    }
+
+    public void setReason(String reason)
+    {
+        this.reason = reason;
+    }
+
+    public long getExpiryUnix()
+    {
+        return expiryUnix;
+    }
+
+    public void setExpiryUnix(long expiryUnix)
+    {
+        this.expiryUnix = expiryUnix;
+    }
 
     // SQL repository alias accessors
     public String getBannedBy()
     {
         return by;
     }
-    
+
     public void setBannedBy(String bannedBy)
     {
         this.by = bannedBy;
     }
-    
+
     public Date getExpireAt()
     {
         return expiryUnix > 0 ? FUtil.getUnixDate(expiryUnix) : null;
@@ -284,17 +335,6 @@ public class Ban implements ConfigLoadable, ConfigSavable, Validatable
         this.reason = cs.getString("reason", null);
         this.expiryUnix = cs.getLong("expiry_unix", 0);
         dedupeIps();
-    }
-
-    @Override
-    public void saveTo(ConfigurationSection cs)
-    {
-        dedupeIps();
-        cs.set("username", username);
-        cs.set("ips", ips.isEmpty() ? null : ips);
-        cs.set("by", by);
-        cs.set("reason", reason);
-        cs.set("expiry_unix", expiryUnix > 0 ? expiryUnix : null);
     }
 
     @Override

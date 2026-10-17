@@ -3,14 +3,15 @@ package me.totalfreedom.totalfreedommod.cmd;
 import java.util.Comparator;
 import java.util.List;
 
+import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
+import org.bukkit.command.CommandSender;
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import org.bukkit.NamespacedKey;
-import org.bukkit.Registry;
-import org.bukkit.command.CommandSender;
 
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
 

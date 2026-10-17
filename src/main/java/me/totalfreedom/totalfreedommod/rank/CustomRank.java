@@ -1,25 +1,26 @@
 package me.totalfreedom.totalfreedommod.rank;
 
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
-import lombok.Getter;
-import lombok.Setter;
-import me.totalfreedom.totalfreedommod.util.AdventureUtil;
+
+import org.bukkit.configuration.ConfigurationSection;
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
-import org.bukkit.configuration.ConfigurationSection;
+
+import me.totalfreedom.totalfreedommod.display.Displayable;
+import me.totalfreedom.totalfreedommod.util.AdventureUtil;
 
 /**
  * Represents a configurable rank in the TFM permission system.
  * Unlike the built-in Rank enum, CustomRank instances can be created,
  * modified, and persisted at runtime.
- * 
+ *
  * The permission system is internal and does NOT use Bukkit permission nodes,
  * because all players on TotalFreedom servers have OP status.
  */
-@Getter
-@Setter
 public class CustomRank implements Displayable, Comparable<CustomRank>
 {
     /**
@@ -59,11 +60,6 @@ public class CustomRank implements Displayable, Comparable<CustomRank>
     private boolean admin = false;
     
     /**
-     * Whether this rank is a console-only variant.
-     */
-    private boolean consoleOnly = false;
-    
-    /**
      * Internal permissions granted to this rank.
      * These are TFM-specific permission strings, NOT Bukkit permission nodes.
      * Examples: "tfm.admin.ban", "tfm.fun.smite", "tfm.manage.ranks"
@@ -79,11 +75,20 @@ public class CustomRank implements Displayable, Comparable<CustomRank>
      * ID of parent rank to inherit permissions from.
      */
     private String inheritFrom = null;
+
+    /**
+     * Jobs this rank fills for the plugin, declared in configuration so that no rank has to be
+     * named in code. Roles are not inherited: a role names exactly one rank, and letting a child
+     * pick one up from its parent would make two ranks claim it.
+     */
+    private Set<RankRole> roles = EnumSet.noneOf(RankRole.class);
     
     /**
-     * Flattened permissions including inherited permissions.
+     * Flattened permissions including inherited permissions. Computed at runtime by
+     * RankManager.resolveInheritance(), not raw stored data, so it's excluded from
+     * JSON serialization.
      */
-    private Set<String> resolvedPermissions = new HashSet<>();
+    private transient Set<String> resolvedPermissions = new HashSet<>();
     
     // Cached components for performance
     private transient Component cachedColoredTag;
@@ -95,28 +100,43 @@ public class CustomRank implements Displayable, Comparable<CustomRank>
      */
     public CustomRank(String id)
     {
-        this.id = id.toLowerCase().replace(" ", "_");
+        this.id = normalizeId(id);
         this.name = id;
         this.abbreviation = id.length() > 3 ? id.substring(0, 3).toUpperCase() : id.toUpperCase();
         this.level = 0;
         invalidateCache();
     }
-    
-    /**
-     * Creates a CustomRank from an existing Rank enum (for migration).
-     */
-    public static CustomRank fromLegacyRank(Rank rank)
-    {
-        CustomRank custom = new CustomRank(rank.name().toLowerCase());
-        custom.setName(rank.getName());
-        custom.setDeterminer(rank.getDeterminer());
-        custom.setAbbreviation(rank.getTag().replace("[", "").replace("]", ""));
-        custom.setLevel(rank.getLevel());
-        custom.setColor(rank.getColor());
-        custom.setAdmin(rank.isAdmin());
-        custom.setConsoleOnly(rank.isConsole());
 
-        return custom;
+    /**
+     * Gson deserialises through this constructor rather than allocating the object unsafely, which
+     * is what keeps the field initialisers above running. Without it an entry that omits
+     * {@code determiner}, {@code color}, {@code permissions} or {@code roles} comes back null
+     * instead of carrying its documented default.
+     * <p>
+     * The id is deliberately left unset here: a rank carries its id as the key it is filed under
+     * rather than as a property of the entry, so {@link #assignId(String)} stamps it after the read.
+     */
+    private CustomRank() {}
+
+    /**
+     * Stamps the id this rank was filed under, normalising it exactly as the public constructor
+     * does so that a rank's id always matches the key it is stored against.
+     */
+    public void assignId(final String key)
+    {
+        this.id = normalizeId(key);
+        invalidateCache();
+    }
+
+    /**
+     * Ids reach SQL as a primary key and are used to build scoreboard team names, so anything
+     * outside the safe set is stripped rather than stored.
+     */
+    public static String normalizeId(final String raw)
+    {
+        return raw.toLowerCase()
+                  .replace(' ', '_')
+                  .replaceAll("[^a-z0-9_\\-]", "");
     }
     
     /**
@@ -133,7 +153,6 @@ public class CustomRank implements Displayable, Comparable<CustomRank>
         this.color = parseColor(colorName);
         
         this.admin = cs.getBoolean("admin", false);
-        this.consoleOnly = cs.getBoolean("console_only", false);
         this.prefix = cs.getString("prefix", null);
         this.inheritFrom = cs.getString("inherit", null);
         
@@ -144,23 +163,6 @@ public class CustomRank implements Displayable, Comparable<CustomRank>
         }
         
         invalidateCache();
-    }
-    
-    /**
-     * Save rank data to a configuration section.
-     */
-    public void saveTo(ConfigurationSection cs)
-    {
-        cs.set("name", name);
-        cs.set("determiner", determiner);
-        cs.set("abbreviation", abbreviation);
-        cs.set("level", level);
-        cs.set("color", color.toString());
-        cs.set("admin", admin);
-        cs.set("console_only", consoleOnly);
-        cs.set("prefix", prefix);
-        cs.set("inherit", inheritFrom);
-        cs.set("permissions", permissions.isEmpty() ? null : permissions.stream().toList());
     }
     
     /**
@@ -233,15 +235,6 @@ public class CustomRank implements Displayable, Comparable<CustomRank>
     {
         if (other == null) return true;
         return this.level >= other.level;
-    }
-    
-    /**
-     * Check if this rank is at least as high as a legacy Rank.
-     */
-    public boolean isAtLeast(Rank legacyRank)
-    {
-        if (legacyRank == null) return true;
-        return this.level >= legacyRank.getLevel();
     }
     
     // ========================================================================
@@ -357,32 +350,57 @@ public class CustomRank implements Displayable, Comparable<CustomRank>
     {
         return id;
     }
-    
+
+    public void setName(String name)
+    {
+        this.name = name;
+    }
+
     public String getDeterminer()
     {
         return determiner;
     }
-    
+
+    public void setDeterminer(String determiner)
+    {
+        this.determiner = determiner;
+    }
+
     public String getAbbreviation()
     {
         return abbreviation;
     }
-    
+
+    public void setAbbreviation(String abbreviation)
+    {
+        this.abbreviation = abbreviation;
+    }
+
     public int getLevel()
     {
         return level;
     }
-    
+
+    public void setLevel(int level)
+    {
+        this.level = level;
+    }
+
+    public void setColor(NamedTextColor color)
+    {
+        this.color = color;
+    }
+
     public boolean isAdmin()
     {
         return admin;
     }
-    
-    public boolean isConsoleOnly()
+
+    public void setAdmin(boolean admin)
     {
-        return consoleOnly;
+        this.admin = admin;
     }
-    
+
     public Set<String> getPermissions()
     {
         return permissions;
@@ -410,6 +428,21 @@ public class CustomRank implements Displayable, Comparable<CustomRank>
     public String getInheritFrom()
     {
         return inheritFrom;
+    }
+
+    public Set<RankRole> getRoles()
+    {
+        return roles == null ? EnumSet.noneOf(RankRole.class) : roles;
+    }
+
+    public void setRoles(Set<RankRole> roles)
+    {
+        this.roles = roles == null ? EnumSet.noneOf(RankRole.class) : EnumSet.copyOf(roles);
+    }
+
+    public boolean hasRole(RankRole role)
+    {
+        return roles != null && roles.contains(role);
     }
     
     public void setInheritFrom(String inheritFrom)

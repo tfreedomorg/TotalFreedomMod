@@ -1,6 +1,7 @@
 package me.totalfreedom.totalfreedommod.util;
 
 import java.util.regex.Pattern;
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;

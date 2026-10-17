@@ -1,6 +1,5 @@
 package me.totalfreedom.totalfreedommod.httpd.module;
 
-import com.google.common.collect.Lists;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -9,18 +8,24 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.cmd.CommandRegistry;
-import me.totalfreedom.totalfreedommod.cmd.FCommand;
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Permission;
-import static me.totalfreedom.totalfreedommod.httpd.HTMLGenerationTools.heading;
-import static me.totalfreedom.totalfreedommod.httpd.HTMLGenerationTools.paragraph;
-import me.totalfreedom.totalfreedommod.httpd.NanoHTTPD;
-import me.totalfreedom.totalfreedommod.rank.Displayable;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandMap;
 import org.bukkit.command.PluginIdentifiableCommand;
 import org.bukkit.command.SimpleCommandMap;
+
+import me.totalfreedom.totalfreedommod.PluginProvider;
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.cmd.CommandRegistry;
+import me.totalfreedom.totalfreedommod.cmd.FCommand;
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Permission;
+import me.totalfreedom.totalfreedommod.display.Displayable;
+import me.totalfreedom.totalfreedommod.httpd.NanoHTTPD;
+import me.totalfreedom.totalfreedommod.rank.CustomRank;
+
+import com.google.common.collect.Lists;
+
+import static me.totalfreedom.totalfreedommod.httpd.HTMLGenerationTools.heading;
+import static me.totalfreedom.totalfreedommod.httpd.HTMLGenerationTools.paragraph;
 
 public class Module_help extends HTTPDModule
 {
@@ -87,7 +92,15 @@ public class Module_help extends HTTPDModule
                     continue;
                 }
 
-                Displayable tfmCommandLevel = perm.level();
+                // The tier is derived from ranks.json rather than declared, so a command whose node
+                // no rank grants has no heading to sit under and is listed without one.
+                Displayable tfmCommandLevel = requiredRank(perm);
+                if (tfmCommandLevel == null)
+                {
+                    responseBody.append(buildDescription(command));
+                    continue;
+                }
+
                 if (lastTfmCommandLevel == null || lastTfmCommandLevel != tfmCommandLevel)
                 {
                     responseBody.append("</ul>\r\n").append(heading(tfmCommandLevel.getName(), 3)).append("<ul>\r\n");
@@ -100,6 +113,19 @@ public class Module_help extends HTTPDModule
         }
 
         return responseBody.toString();
+    }
+
+    /**
+     * The least privileged rank that grants {@code perm}'s node, which is the tier the command
+     * actually requires, or {@code null} when no rank grants it.
+     */
+    private static CustomRank requiredRank(Permission perm)
+    {
+        final TotalFreedomMod plugin = PluginProvider.get();
+
+        return plugin == null || plugin.rm == null
+                ? null
+                : plugin.rm.getRegistry().requiredFor(perm.permission()).orElse(null);
     }
 
     private static String buildDescription(Command command)
@@ -183,7 +209,15 @@ public class Module_help extends HTTPDModule
                 return a.getName().compareTo(b.getName());
             }
 
-            return pa.level().getName().compareTo(pb.level().getName());
+            final CustomRank ra = requiredRank(pa);
+            final CustomRank rb = requiredRank(pb);
+
+            if (ra == null || rb == null)
+            {
+                return a.getName().compareTo(b.getName());
+            }
+
+            return Integer.compare(ra.getLevel(), rb.getLevel());
         }
     }
 }

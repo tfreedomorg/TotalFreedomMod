@@ -1,12 +1,13 @@
 package me.totalfreedom.totalfreedommod.cmd.resolver;
 
-import me.totalfreedom.totalfreedommod.cmd.FCommand;
+import java.util.List;
+import java.util.UUID;
+
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 
-import java.util.List;
-import java.util.UUID;
+import me.totalfreedom.totalfreedommod.cmd.FCommand;
 
 public class OfflinePlayerArgumentResolver implements AbstractArgumentResolver<OfflinePlayer>
 {
