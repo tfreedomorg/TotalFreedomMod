@@ -28,7 +28,8 @@ import me.totalfreedom.totalfreedommod.util.FUtil;
 
 @Command(name = "banish",
         description = "Restricts a player to spectator mode until released or the duration expires.",
-        usage = "/banish [-rb] <player> [duration] [reason] | off <player> | list")
+        usage = "/banish [-rb] <player> [duration] [reason] | list",
+        aliases = {"exile", "ex"})
 @Permission(permission = "tfm.admin.ban")
 public class Command_banish extends FCommand
 {
@@ -41,18 +42,6 @@ public class Command_banish extends FCommand
     public List<String> completeDuration(CommandSender sender, String partial)
     {
         return FuzzyMatch.filter(DURATIONS, partial);
-    }
-
-    @Completer(value = "off", position = 0)
-    public List<String> completeRelease(CommandSender sender, String partial)
-    {
-        final BanishManager manager = banishManager();
-        return FuzzyMatch.filter(manager.getBanishments()
-                        .stream()
-                        .map(BanishEntry::username)
-                        .distinct()
-                        .sorted()
-                        .toList(), partial);
     }
 
     @Callback
@@ -127,30 +116,6 @@ public class Command_banish extends FCommand
                     Placeholder.unparsed("reason", reason == null ? "" : reason)));
             plugin().database().recordPunishment(target, sender, "BANISH", reason,
                     expiresAt, "manual-banish");
-        }
-        catch (IllegalStateException ex)
-        {
-            msg(sender, "<red><error>", Placeholder.unparsed("error", ex.getMessage()));
-        }
-    }
-
-    @Callback
-    @Subcommand("off")
-    public void release(CommandSender sender, String target)
-    {
-        try
-        {
-            final BanishEntry entry = banishManager().release(target).orElse(null);
-            if (entry == null)
-            {
-                msg(sender, "<gray>No banishment is active for that player.");
-                return;
-            }
-
-            adminAction(sender, "<aqua>Lifting banishment on <player>",
-                    Placeholder.unparsed("player", entry.username()));
-            msg(sender, "<gray>Released the banishment for <player>.",
-                    Placeholder.unparsed("player", entry.username()));
         }
         catch (IllegalStateException ex)
         {
