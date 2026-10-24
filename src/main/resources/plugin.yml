@@ -4,7 +4,7 @@ version: ${tfm.build.version}
 api-version: '26.2'
 load: STARTUP
 description: Plugin for the Total Freedom server.
-softdepend: [Vault, WorldEdit, TF-WorldEdit, BukkitTelnet, Essentials, LibsDisguises]
+softdepend: [Vault, WorldEdit, TF-WorldEdit, BukkitTelnet, Essentials, LibsDisguises, PacketEvents]
 depend: [CoreProtect]
 authors: [Madgeek1450, Prozza]
 
