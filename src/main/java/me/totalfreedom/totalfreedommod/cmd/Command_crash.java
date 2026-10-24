@@ -56,7 +56,7 @@ public class Command_crash extends FCommand
         {
             return;
         }
-
+		
         msg(sender, method.performOperationIfAllowed(player) ?
                 "<gray>Crashed <player> using method <method>." :
                 "<red>Method <method> has a set of requirements which aren't currently met.",

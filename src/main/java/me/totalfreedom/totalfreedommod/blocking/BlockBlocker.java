@@ -127,7 +127,7 @@ public class BlockBlocker extends FreedomService
             }
             case SPAWNER:
             {
-                if (ConfigEntry.DISABLE_SPAWNER_PLACE.getBoolean())
+                if (plugin.gs.blocking(event.getBlock().getWorld().getName()).spawnerPlace())
                 {
                     player.sendMessage(Component.text("Spawners are currently disabled.", NamedTextColor.GRAY));
 

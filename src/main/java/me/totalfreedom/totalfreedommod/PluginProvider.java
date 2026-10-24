@@ -37,8 +37,7 @@ public final class PluginProvider
      * caching the variable as in `var plugin = PluginProvider.get()` like in FCommand is fine, since the bind never changes during lifetime
      * and binding is the first thing that happens in the plugins lifecycle in onLoad() and everything else is registered and initialized in the onEnable() method.
      * 
-     * This however should be avoided moving forward; I will replace plugin and server variable with overload getters that just return this get method instead.
-     * There are many locations in the code where this occurs, FCommand is the only one thats feasibly fixable in this scope. 
+     * This however should be avoided moving forward.
      * 
      * @return the live plugin instance.
      * @throws IllegalStateException if the plugin is not currently bound.

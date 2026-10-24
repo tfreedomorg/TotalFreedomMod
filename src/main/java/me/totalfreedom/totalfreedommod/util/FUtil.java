@@ -400,6 +400,14 @@ public class FUtil
         return null;
     }
 
+    /**
+    * Interpolates between two points.
+    */
+    public static final double lerp(final double progress, final double from, final double to)
+    {
+        return from * (1.0D - progress) + to * progress;
+    }
+
     public static NamedTextColor randomChatColor()
     {
         return CHAT_COLOR_POOL.get(RANDOM.nextInt(CHAT_COLOR_POOL.size()));
