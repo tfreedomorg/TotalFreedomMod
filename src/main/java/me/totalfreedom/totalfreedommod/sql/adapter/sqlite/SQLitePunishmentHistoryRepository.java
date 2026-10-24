@@ -36,7 +36,7 @@ public class SQLitePunishmentHistoryRepository implements PunishmentHistoryRepos
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
 
-        long historyId = statementHandler.executeInsert(sql,
+        long historyId = statementHandler.executeUpdateReturnKey(sql,
                 entry.targetUuid(),
                 entry.targetName(),
                 entry.actorUuid(),

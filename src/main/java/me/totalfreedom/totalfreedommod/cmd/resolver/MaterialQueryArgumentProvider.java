@@ -1,12 +1,12 @@
 package me.totalfreedom.totalfreedommod.cmd.resolver;
 
-import org.bukkit.Material;
-import org.bukkit.Registry;
-
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+
+import org.bukkit.Material;
+import org.bukkit.Registry;
 
 public class MaterialQueryArgumentProvider implements AbstractParameterizedArgumentResolver<List<Material>>
 {

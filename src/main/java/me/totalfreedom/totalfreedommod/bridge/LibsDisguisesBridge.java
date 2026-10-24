@@ -4,17 +4,20 @@ import java.lang.reflect.Method;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import me.totalfreedom.totalfreedommod.FreedomService;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.disguise.DisallowedDisguises;
-import me.totalfreedom.totalfreedommod.util.FLog;
-import me.totalfreedom.totalfreedommod.util.FUtil;
-import net.kyori.adventure.text.format.NamedTextColor;
+
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.event.*;
 import org.bukkit.scheduler.BukkitTask;
+
+import net.kyori.adventure.text.format.NamedTextColor;
+
+import me.totalfreedom.totalfreedommod.FreedomService;
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.disguise.DisallowedDisguises;
+import me.totalfreedom.totalfreedommod.util.FLog;
+import me.totalfreedom.totalfreedommod.util.FUtil;
 
 /**
  * Bridge to LibsDisguises plugin.

@@ -1,10 +1,5 @@
 package me.totalfreedom.totalfreedommod.bridge;
 
-import me.totalfreedom.totalfreedommod.FreedomService;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.util.FLog;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
@@ -13,6 +8,11 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
+
+import me.totalfreedom.totalfreedommod.FreedomService;
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.util.FLog;
 
 public class WorldEditBridge extends FreedomService
 {

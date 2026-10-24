@@ -1,14 +1,7 @@
 package me.totalfreedom.totalfreedommod;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.util.FTask;
-import me.totalfreedom.totalfreedommod.util.FUtil;
+import java.util.*;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.World;
@@ -32,6 +25,10 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.ItemSpawnEvent;
 import org.bukkit.scheduler.BukkitTask;
+
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.util.FTask;
+import me.totalfreedom.totalfreedommod.util.FUtil;
 
 public class EntityWiper extends FreedomService
 {

@@ -6,15 +6,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-import me.totalfreedom.totalfreedommod.FreedomService;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.util.FLog;
-import me.totalfreedom.totalfreedommod.util.FUtil;
-import net.coreprotect.CoreProtect;
-import net.coreprotect.CoreProtectAPI;
-import net.coreprotect.utility.Util;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -23,6 +14,18 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+
+import net.coreprotect.CoreProtect;
+import net.coreprotect.CoreProtectAPI;
+import net.coreprotect.utility.Util;
+
+import me.totalfreedom.totalfreedommod.FreedomService;
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.util.FLog;
+import me.totalfreedom.totalfreedommod.util.FUtil;
 
 public class CoreProtectBridge extends FreedomService
 {

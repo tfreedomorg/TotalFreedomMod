@@ -2,11 +2,14 @@ package me.totalfreedom.totalfreedommod.util;
 
 import java.util.function.Consumer;
 import java.util.function.LongSupplier;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 
 public final class DetectionReporter
 {

@@ -14,17 +14,6 @@ import java.util.stream.Stream;
 
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
-import me.totalfreedom.totalfreedommod.FreedomService;
-import me.totalfreedom.totalfreedommod.ProtectArea.ProtectedRegion;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.cmd.internal.*;
-import me.totalfreedom.totalfreedommod.cmd.resolver.*;
-import me.totalfreedom.totalfreedommod.util.FLog;
-import me.totalfreedom.totalfreedommod.world.WorldTime;
-import me.totalfreedom.totalfreedommod.world.WorldWeather;
-import net.kyori.adventure.key.Key;
-
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
@@ -34,6 +23,19 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.EntityType;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.potion.PotionEffectType;
+
+import net.kyori.adventure.key.Key;
+
+import me.totalfreedom.totalfreedommod.FreedomService;
+import me.totalfreedom.totalfreedommod.ProtectArea.ProtectedRegion;
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.cmd.internal.*;
+import me.totalfreedom.totalfreedommod.cmd.resolver.*;
+import me.totalfreedom.totalfreedommod.util.FLog;
+import me.totalfreedom.totalfreedommod.world.WorldTime;
+import me.totalfreedom.totalfreedommod.world.WorldWeather;
+
+import org.apache.commons.lang3.exception.ExceptionUtils;
 
 /**
  * Registers the custom argument resolvers into the {@link ResolverRegistry} and auto-discovers {@link FCommand} declarations.

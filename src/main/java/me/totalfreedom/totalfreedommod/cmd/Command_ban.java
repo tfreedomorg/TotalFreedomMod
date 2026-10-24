@@ -2,21 +2,20 @@ package me.totalfreedom.totalfreedommod.cmd;
 
 import java.util.List;
 
-import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.GameMode;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
 import me.totalfreedom.totalfreedommod.banning.Ban;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.player.PlayerData;
-import me.totalfreedom.totalfreedommod.rank.Rank;
 import me.totalfreedom.totalfreedommod.util.FUtil;
 
 @Command(name = "ban", description = "Bans an online or previously known player and their known IP addresses.", usage = "/<command> [-s] [-nrb] <player> [reason]", aliases = {"gtfo"})
-@Permission(permission = "tfm.admin.ban", level = Rank.SUPER_ADMIN)
+@Permission(permission = "tfm.admin.ban")
 public class Command_ban extends FCommand
 {
 
@@ -24,6 +23,12 @@ public class Command_ban extends FCommand
     public List<String> completeTarget(CommandSender sender, String partial)
     {
         return NameCandidates.online(server(), partial);
+    }
+
+    @Completer(value = "", position = 1)
+    public List<String> completeReason(CommandSender sender, String partial)
+    {
+        return NameCandidates.onlineTyped(server(), partial);
     }
 
     @Callback
@@ -51,6 +56,9 @@ public class Command_ban extends FCommand
 
         name = BanCommandUtil.getCanonicalName(name, player, data);
 
+        if (isProtectedAdminByName(sender, name))
+            return;
+
         if (plugin().bm.getByUsername(name) != null)
         {
             msg(sender, "<gray><player> is already banned.",
@@ -75,7 +83,7 @@ public class Command_ban extends FCommand
                     Formatter.booleanChoice("include_reason", reason != null && !reason.isEmpty()),
                     Placeholder.unparsed("reason", reason != null ? reason : ""));
 
-            plugin().db.sendActionMessage(sender.getName(), name, reason, ConfigEntry.DISCORD_PLAYER_BAN_MESSAGE);
+            plugin().db.sendBanMessage(sender.getName(), name, reason);
         }
 
         if (!noRollback)

@@ -1,17 +1,21 @@
 package me.totalfreedom.totalfreedommod.blocking.packet;
 
-import com.github.retrooper.packetevents.PacketEvents;
-import com.github.retrooper.packetevents.event.PacketListenerCommon;
-import me.totalfreedom.totalfreedommod.FreedomService;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.blocking.entity.EntityMetaPacketGuard;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.util.FLog;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.plugin.Plugin;
+
+import java.util.UUID;
+
+import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.event.PacketListenerCommon;
+
+import me.totalfreedom.totalfreedommod.FreedomService;
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.blocking.entity.EntityMetaPacketGuard;
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.util.FLog;
 
 public class CrashPacketService extends FreedomService
 {
@@ -209,7 +213,7 @@ public class CrashPacketService extends FreedomService
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event)
     {
-        final java.util.UUID id = event.getPlayer().getUniqueId();
+        final UUID id = event.getPlayer().getUniqueId();
         if (spamLimiter != null)
         {
             spamLimiter.forget(id);
@@ -235,6 +239,14 @@ public class CrashPacketService extends FreedomService
         if (movementGuard != null)
         {
             movementGuard.forget(event.getPlayer().getUniqueId());
+        }
+    }
+
+    public void graceMovement(UUID id, long millis)
+    {
+        if (movementGuard != null)
+        {
+            movementGuard.grace(id, millis);
         }
     }
 

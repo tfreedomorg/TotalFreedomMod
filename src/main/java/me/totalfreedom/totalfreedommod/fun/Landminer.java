@@ -3,10 +3,7 @@ package me.totalfreedom.totalfreedommod.fun;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import lombok.Getter;
-import me.totalfreedom.totalfreedommod.FreedomService;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -16,6 +13,12 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.util.Vector;
+
+import me.totalfreedom.totalfreedommod.FreedomService;
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+
+import lombok.Getter;
 
 public class Landminer extends FreedomService
 {

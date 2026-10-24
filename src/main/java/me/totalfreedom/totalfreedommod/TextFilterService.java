@@ -17,6 +17,7 @@ import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCreativeEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
@@ -82,9 +83,7 @@ public class TextFilterService extends FreedomService
 
         final String message = MessageUtils.toPlainText(event.message());
         if (!matchesFilter(message))
-        {
             return;
-        }
 
         event.setCancelled(true);
         final Player player = event.getPlayer();
@@ -95,17 +94,31 @@ public class TextFilterService extends FreedomService
     public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event)
     {
         if (!shouldFilter(event.getPlayer()))
-        {
             return;
-        }
 
         if (!matchesFilter(event.getMessage()))
-        {
             return;
-        }
 
         event.setCancelled(true);
         handleBlockedMessage(event.getPlayer(), event.getMessage());
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onSignEdit(SignChangeEvent event)
+    {
+        if (!shouldFilter(event.getPlayer()))
+            return;
+
+        final String text = event.lines()
+                                 .stream()
+                                 .map(MessageUtils::toPlainText)
+                                 .collect(Collectors.joining("\n"));
+
+        if (!matchesFilter(text))
+            return;
+
+        event.setCancelled(true);
+        handleBlockedMessage(event.getPlayer(), text);
     }
 
     @SuppressWarnings("removal")
@@ -423,6 +436,10 @@ public class TextFilterService extends FreedomService
         return out.toString();
     }
 
+    /**
+     * Tells the sender their message was blocked and lets online admins see what it said. The
+     * filter only blocks; any punishment is left to an admin.
+     */
     private void handleBlockedMessage(Player player, String message)
     {
         final Component feedback = MessageUtils.parse(

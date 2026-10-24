@@ -1,11 +1,13 @@
 package me.totalfreedom.totalfreedommod.vault;
 
-import me.totalfreedom.totalfreedommod.ChatManager;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import net.milkbowl.vault.chat.Chat;
-import net.milkbowl.vault.permission.Permission;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
+
+import net.milkbowl.vault.chat.Chat;
+import net.milkbowl.vault.permission.Permission;
+
+import me.totalfreedom.totalfreedommod.ChatManager;
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 
 /**
  * Vault Chat Provider implementation for TotalFreedomMod.

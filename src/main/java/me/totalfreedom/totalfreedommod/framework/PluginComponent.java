@@ -1,7 +1,8 @@
 package me.totalfreedom.totalfreedommod.framework;
 
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import org.bukkit.Server;
+
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 
 /**
  * Base class for plugin components.

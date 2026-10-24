@@ -2,9 +2,11 @@ package me.totalfreedom.totalfreedommod.framework;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import org.bukkit.event.Listener;
+
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import me.totalfreedom.totalfreedommod.util.FLog;
-import org.bukkit.event.Listener;
 
 /**
  * Manages the lifecycle of services.

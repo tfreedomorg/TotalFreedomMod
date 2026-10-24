@@ -23,19 +23,6 @@ public class ConfigInterfaces
     }
 
     /**
-     * Interface for objects that can be saved to a configuration section.
-     */
-    public interface ConfigSavable
-    {
-        /**
-         * Saves data to a configuration section.
-         *
-         * @param cs The configuration section to save to
-         */
-        void saveTo(ConfigurationSection cs);
-    }
-
-    /**
      * Interface for objects that can validate their own state.
      */
     public interface Validatable

@@ -1,12 +1,13 @@
 package me.totalfreedom.totalfreedommod.vault;
 
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-import net.milkbowl.vault.permission.Permission;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 
-import java.util.Arrays;
+import net.milkbowl.vault.permission.Permission;
+
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.rank.CustomRank;
+
 
 public class PermissionService extends Permission {
 	private final TotalFreedomMod plugin;
@@ -68,8 +69,8 @@ public class PermissionService extends Permission {
 	public boolean playerInGroup(String world, String player, String group) {
 		Player p = plugin.getServer().getPlayerExact(player);
 		if (p != null && p.isOnline()) {
-			Rank rank = plugin.rm.getRank(p);
-			return rank != null && rank.name().equalsIgnoreCase(group);
+			CustomRank rank = plugin.rm.getEffectiveRank(p);
+			return rank != null && rank.getId().equalsIgnoreCase(group);
 		}
 		return false;
 	}
@@ -88,9 +89,9 @@ public class PermissionService extends Permission {
 	public String[] getPlayerGroups(String world, String player) {
 		Player p = plugin.getServer().getPlayerExact(player);
 		if (p != null && p.isOnline()) {
-			Rank rank = plugin.rm.getRank(p);
+			CustomRank rank = plugin.rm.getEffectiveRank(p);
 			if (rank != null) {
-				return new String[] { rank.name() };
+				return new String[] { rank.getId() };
 			}
 		}
 		return new String[0];
@@ -100,9 +101,9 @@ public class PermissionService extends Permission {
 	public String getPrimaryGroup(String world, String player) {
 		Player p = plugin.getServer().getPlayerExact(player);
 		if (p != null && p.isOnline()) {
-			Rank rank = plugin.rm.getRank(p);
+			CustomRank rank = plugin.rm.getEffectiveRank(p);
 			if (rank != null) {
-				return rank.name();
+				return rank.getId();
 			}
 		}
 		return "default";
@@ -110,9 +111,9 @@ public class PermissionService extends Permission {
 
 	@Override
 	public String[] getGroups() {
-		return Arrays.stream(Rank.values())
-				.map(Rank::name)
-				.toArray(String[]::new);
+		// Groups are whatever ranks.json defines, so an operator-defined rank is visible to Vault
+		// consumers on the same footing as one the plugin ships with.
+		return plugin.rm.getCustomRanks().keySet().toArray(String[]::new);
 	}
 
 	@Override
@@ -124,9 +125,9 @@ public class PermissionService extends Permission {
 	public String getPrimaryGroup(String world, OfflinePlayer player) {
 		Player p = plugin.getServer().getPlayer(player.getUniqueId());
 		if (p != null && p.isOnline()) {
-			Rank rank = plugin.rm.getRank(p);
+			CustomRank rank = plugin.rm.getEffectiveRank(p);
 			if (rank != null) {
-				return rank.name();
+				return rank.getId();
 			}
 		}
 		return "default";
@@ -136,9 +137,9 @@ public class PermissionService extends Permission {
 	public String[] getPlayerGroups(String world, OfflinePlayer player) {
 		Player p = plugin.getServer().getPlayer(player.getUniqueId());
 		if (p != null && p.isOnline()) {
-			Rank rank = plugin.rm.getRank(p);
+			CustomRank rank = plugin.rm.getEffectiveRank(p);
 			if (rank != null) {
-				return new String[] { rank.name() };
+				return new String[] { rank.getId() };
 			}
 		}
 		return new String[0];

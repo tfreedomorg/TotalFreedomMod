@@ -4,17 +4,17 @@ import java.net.InetAddress;
 import java.util.List;
 import java.util.Objects;
 
-import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
 import me.totalfreedom.totalfreedommod.banning.Ban;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.rank.Rank;
 
 @Command(name = "banip", description = "Bans an IP address or all known IP addresses for a player.", usage = "/banip <player|ip> [reason]")
-@Permission(level = Rank.SUPER_ADMIN, permission = "tfm.admin.ban")
+@Permission(permission = "tfm.admin.ban")
 public class Command_banip extends FCommand 
 {
     
@@ -25,9 +25,25 @@ public class Command_banip extends FCommand
         banIpsWithReason(sender, addressList, null);
     }
     
+    @Completer(value = "", position = 1)
+    public List<String> completeReason(CommandSender sender, String partial)
+    {
+        return NameCandidates.onlineTyped(server(), partial);
+    }
+
     @Callback
     public void banIpsWithReason(CommandSender sender, @Resolve(value = "IPs", strategy = "allowPlayers,all") List<InetAddress> addressList, @Greedy String reason)
     {
+        final boolean reachesAdmin = addressList.stream()
+                                                .map(InetAddress::getHostAddress)
+                                                .anyMatch(ip -> isProtectedAdminByIp(sender, ip));
+
+        if (reachesAdmin)
+        {
+            msg(sender, "<red>You cannot IP-ban another admin.");
+            return;
+        }
+
         adminAction(sender, "<red>Banning <count> address<plural:es:><include_reason:\" - Reason: <yellow><reason>\":\"\">",
                 Formatter.number("count", addressList.size()),
                 Formatter.booleanChoice("plural", addressList.size() != 1),

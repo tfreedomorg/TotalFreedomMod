@@ -1,41 +1,69 @@
 package me.totalfreedom.totalfreedommod.player;
 
-import com.google.common.collect.Maps;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
-import lombok.Getter;
-import me.totalfreedom.totalfreedommod.FreedomService;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.util.FLog;
-import me.totalfreedom.totalfreedommod.util.FUtil;
-import java.io.IOException;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.configuration.file.YamlConfiguration;
+
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
+import me.totalfreedom.totalfreedommod.FreedomService;
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.sql.PersistenceQueue;
+import me.totalfreedom.totalfreedommod.sql.adapter.PlayerRepository;
+import me.totalfreedom.totalfreedommod.util.FLog;
+import me.totalfreedom.totalfreedommod.util.FUtil;
+import me.totalfreedom.totalfreedommod.util.JsonUtil;
+
+import com.google.common.collect.Maps;
 
 public class PlayerList extends FreedomService
 {
 
     public static final long AUTO_PURGE_TICKS = 20L * 60L * 5L;
+
+    private static final long SHUTDOWN_FLUSH_TIMEOUT_MS = 10L * 1000L;
     //
-    @Getter
     public final Map<String, FPlayer> playerMap = Maps.newHashMap(); // key: lowercase username
-    @Getter
     public final Map<String, PlayerData> dataMap = Maps.newHashMap(); // key: lowercase username
     private final File configFolder;
-    
-    // Manual getter - Lombok @Getter not processing reliably
+    private final PersistenceQueue writes = new PersistenceQueue("player data");
+
+    public Map<String, FPlayer> getPlayerMap()
+    {
+        return playerMap;
+    }
+
+    public Map<String, PlayerData> getDataMap()
+    {
+        return dataMap;
+    }
+
     public File getConfigFolder()
     {
+        if (!configFolder.exists())
+        {
+            configFolder.mkdirs();
+        }
+
         return configFolder;
     }
 
@@ -44,6 +72,11 @@ public class PlayerList extends FreedomService
         super(plugin);
 
         this.configFolder = new File(plugin.getDataFolder(), "players");
+    }
+
+    private boolean usingSql()
+    {
+        return plugin.dm != null && plugin.dm.isInitialized();
     }
 
     @Override
@@ -63,44 +96,62 @@ public class PlayerList extends FreedomService
     protected void onStop()
     {
         save();
+        writes.await(SHUTDOWN_FLUSH_TIMEOUT_MS);
     }
 
+    /**
+     * Queue a write of every loaded player record.
+     */
     public void save()
     {
-        for (PlayerData data : dataMap.values())
-        {
-            saveOne(data);
-        }
+        List.copyOf(dataMap.values()).forEach(this::saveOne);
     }
 
     public void saveAsync()
     {
-        if (!plugin.isEnabled())
-        {
-            save();
-            return;
-        }
-        final java.util.List<PlayerData> snapshot = new java.util.ArrayList<>(dataMap.values());
-        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () ->
-        {
-            for (PlayerData data : snapshot)
-            {
-                saveOne(data);
-            }
-        });
+        save();
     }
 
-    private void saveOne(PlayerData data)
+    /**
+     * Queue one player's SQL write plus its JSON snapshot refresh. Safe from an event handler:
+     * the round trip runs off the main thread.
+     */
+    private void saveOne(final PlayerData data)
     {
-        final YamlConfiguration config = getConfig(data);
-        data.saveTo(config);
-        try
+        if (!usingSql())
         {
-            config.save(getConfigFile(data.getUsername().toLowerCase()));
+            writes.enqueue(writeJsonAsync(data));
+            return;
+        }
+
+        writes.enqueue(plugin.dm.getPlayerRepository().save(data)
+                .onErrorResume(ex ->
+                {
+                    FLog.severe(String.format("Could not save player data for %s to SQL: %s",
+                            data.getUsername(), ex.getMessage()));
+                    FLog.severe(ex);
+                    return Mono.empty();
+                })
+                .then(writeJsonAsync(data)));
+    }
+
+    private Mono<Void> writeJsonAsync(final PlayerData data)
+    {
+        return Mono.<Void>fromRunnable(() -> saveToJson(data))
+                .subscribeOn(Schedulers.boundedElastic());
+    }
+
+    private void saveToJson(PlayerData data)
+    {
+        final File configFile = getConfigFile(data.getUsername().toLowerCase());
+        try (FileWriter writer = new FileWriter(configFile))
+        {
+            JsonUtil.GSON.toJson(data, PlayerData.class, writer);
         }
         catch (IOException ex)
         {
             FLog.severe("Could not save player data for " + data.getUsername());
+            FLog.severe(ex);
         }
     }
 
@@ -201,16 +252,7 @@ public class PlayerList extends FreedomService
             dataMap.put(player.getName().toLowerCase(), data);
 
             // Save player
-            YamlConfiguration config = getConfig(data);
-            data.saveTo(config);
-            try
-            {
-                config.save(getConfigFile(data.getUsername().toLowerCase()));
-            }
-            catch (IOException ex)
-            {
-                FLog.severe("Could not save player data for " + data.getUsername());
-            }
+            saveOne(data);
         }
 
         return data;
@@ -221,18 +263,87 @@ public class PlayerList extends FreedomService
     {
         username = username.toLowerCase();
 
-        // Check if the player is a known player
+        if (usingSql())
+        {
+            PlayerData data = loadFromSql(username);
+            if (data != null)
+            {
+                return data;
+            }
+        }
+
+        return loadFromJson(username);
+    }
+
+    private PlayerData loadFromSql(String username)
+    {
+        try
+        {
+            PlayerRepository repo = plugin.dm.getPlayerRepository();
+            reconcileFromJsonIfNewer(username, repo);
+
+            return repo.findByUsername(username)
+                       .map(data ->
+                       {
+                           if (Bukkit.getPlayerExact(data.getUsername()) != null)
+                           {
+                               dataMap.put(data.getUsername().toLowerCase(), data);
+                           }
+                           return data;
+                       })
+                       .orElse(null);
+        }
+        catch (Exception ex)
+        {
+            FLog.warning("Failed to load player data for " + username + " from SQL, falling back to JSON: " + ex.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * If this player's JSON snapshot was written more recently than the database's last update
+     * for them, re-import it into SQL.
+     */
+    private void reconcileFromJsonIfNewer(String username, PlayerRepository repo)
+    {
+        final File jsonFile = getConfigFile(username);
+        if (!jsonFile.exists())
+        {
+            return;
+        }
+
+        try
+        {
+            Long sqlUpdatedAt = repo.getUpdatedAt(username);
+            if (!FUtil.isSnapshotNewer(jsonFile.lastModified(), sqlUpdatedAt))
+                return;
+
+            PlayerData jsonData = readJsonPlayer(username);
+            if (jsonData == null || !jsonData.isValid())
+            {
+                return;
+            }
+
+            FLog.info(jsonFile.getName() + " is newer than the database; re-importing player data for " + username + " from it.");
+            repo.saveOrUpdate(jsonData);
+        }
+        catch (Exception ex)
+        {
+            FLog.warning("Failed to reconcile player data for " + username + " into the database: " + ex.getMessage());
+        }
+    }
+
+    private PlayerData loadFromJson(String username)
+    {
         final File configFile = getConfigFile(username);
         if (!configFile.exists())
         {
             return null;
         }
 
-        // Create and load entry
-        final PlayerData data = new PlayerData(username);
-        data.loadFrom(getConfig(data));
+        final PlayerData data = readJsonPlayer(username);
 
-        if (!data.isValid())
+        if (data == null || !data.isValid())
         {
             FLog.warning("Could not load player data entry: " + username + ". Entry is not valid!");
             configFile.delete();
@@ -248,13 +359,57 @@ public class PlayerList extends FreedomService
         return data;
     }
 
+    private PlayerData readJsonPlayer(String username)
+    {
+        final File configFile = getConfigFile(username);
+        try (FileReader reader = new FileReader(configFile))
+        {
+            return JsonUtil.GSON.fromJson(reader, PlayerData.class);
+        }
+        catch (Exception ex)
+        {
+            FLog.severe("Could not read player data for " + username + ": " + ex.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Reads the pre-JSON per-player {@code players/<name>.yml} format. Retained only for the
+     * one-time legacy-install migration path (not called during normal startup).
+     */
+    private PlayerData loadLegacyYaml(String username)
+    {
+        final File legacyFile = new File(getConfigFolder(), username + ".yml");
+        if (!legacyFile.exists())
+        {
+            return null;
+        }
+
+        final YamlConfiguration config = YamlConfiguration.loadConfiguration(legacyFile);
+        final PlayerData data = new PlayerData(username);
+        data.loadFrom(config);
+        return data;
+    }
+
     public Collection<PlayerData> getAllData()
     {
+        if (usingSql())
+        {
+            try
+            {
+                return plugin.dm.getPlayerRepository().loadAll().values();
+            }
+            catch (Exception ex)
+            {
+                FLog.warning("Failed to load all player data from SQL, falling back to JSON: " + ex.getMessage());
+            }
+        }
+
         return Arrays.stream(configFolder.listFiles())
             .filter(file -> file != null)
             .map(File::getName)
-            .filter(name -> name.endsWith(".yml"))
-            .map(name -> getData(name.substring(0, name.length() - ".yml".length()))).toList();
+            .filter(name -> name.endsWith(".json"))
+            .map(name -> getData(name.substring(0, name.length() - ".json".length()))).toList();
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -295,8 +450,24 @@ public class PlayerList extends FreedomService
         }
         if (plugin.isEnabled())
         {
-            plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> saveOne(data));
+            saveOne(data);
         }
+    }
+
+    /**
+     * Warm {@link #dataMap} before the player reaches the main thread. This event already runs
+     * off it, so the lookup that {@code onPlayerJoin} would otherwise make against the database
+     * happens here instead and finds a cached entry on join.
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPreLogin(AsyncPlayerPreLoginEvent event)
+    {
+        if (event.getLoginResult() != AsyncPlayerPreLoginEvent.Result.ALLOWED)
+            return;
+
+        final PlayerData data = getData(event.getName());
+        if (data != null)
+            dataMap.put(data.getUsername().toLowerCase(), data);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -308,7 +479,7 @@ public class PlayerList extends FreedomService
 
         if (data != null && plugin.isEnabled())
         {
-            plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> saveOne(data));
+            saveOne(data);
         }
     }
 
@@ -330,19 +501,22 @@ public class PlayerList extends FreedomService
             deleted += file.delete() ? 1 : 0;
         }
 
+        if (usingSql())
+        {
+            writes.enqueue(plugin.dm.getPlayerRepository().deleteAll()
+                    .onErrorResume(ex ->
+                    {
+                        FLog.severe(String.format("Could not purge player data from SQL: %s", ex.getMessage()));
+                        return Mono.empty();
+                    }));
+        }
+
         dataMap.clear();
         return deleted;
     }
 
     protected File getConfigFile(String name)
     {
-        return new File(getConfigFolder(), name + ".yml");
-    }
-
-    protected YamlConfiguration getConfig(PlayerData data)
-    {
-        final File configFile = getConfigFile(data.getUsername().toLowerCase());
-        final YamlConfiguration config = YamlConfiguration.loadConfiguration(configFile);
-        return config;
+        return new File(getConfigFolder(), name + ".json");
     }
 }

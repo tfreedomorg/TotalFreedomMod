@@ -2,10 +2,7 @@ package me.totalfreedom.totalfreedommod;
 
 import java.util.Iterator;
 import java.util.List;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.player.FPlayer;
-import me.totalfreedom.totalfreedommod.util.FUtil;
-import net.kyori.adventure.text.format.NamedTextColor;
+
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -13,6 +10,12 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.block.BlockDropItemEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.inventory.ItemStack;
+
+import net.kyori.adventure.text.format.NamedTextColor;
+
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.player.FPlayer;
+import me.totalfreedom.totalfreedommod.util.FUtil;
 
 public class AntiDrop extends FreedomService
 {

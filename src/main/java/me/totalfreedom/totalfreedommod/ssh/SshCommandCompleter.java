@@ -1,11 +1,14 @@
 package me.totalfreedom.totalfreedommod.ssh;
 
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
+import org.bukkit.Bukkit;
+
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import me.totalfreedom.totalfreedommod.util.FLog;
-import org.bukkit.Bukkit;
+
 import org.jline.reader.Candidate;
 import org.jline.reader.Completer;
 import org.jline.reader.LineReader;

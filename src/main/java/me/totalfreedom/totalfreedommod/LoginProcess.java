@@ -3,26 +3,26 @@ package me.totalfreedom.totalfreedommod;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
-import me.totalfreedom.totalfreedommod.admin.Admin;
-import me.totalfreedom.totalfreedommod.cmd.MessageUtils;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.util.FSync;
-import me.totalfreedom.totalfreedommod.util.FUtil;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 
+import com.destroystokyo.paper.profile.PlayerProfile;
+import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 
-import com.destroystokyo.paper.profile.PlayerProfile;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 
-import java.util.concurrent.ThreadLocalRandom;
-import org.bukkit.Location;
-import org.bukkit.World;
+import me.totalfreedom.totalfreedommod.admin.Admin;
+import me.totalfreedom.totalfreedommod.cmd.MessageUtils;
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.util.FSync;
+import me.totalfreedom.totalfreedommod.util.FUtil;
 
 public class LoginProcess extends FreedomService 
 {

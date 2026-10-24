@@ -1,27 +1,53 @@
 package me.totalfreedom.totalfreedommod.banning;
 
-import lombok.Getter;
-import lombok.Setter;
 import org.bukkit.configuration.ConfigurationSection;
 
 public class StrikeRecord
 {
 
-    @Getter
     private final String ip;
-    @Getter
-    @Setter
     private int count;
-    @Getter
-    @Setter
     private long lastStrikeUnix;
-    @Getter
-    @Setter
     private String lastUsername;
 
     public StrikeRecord(String ip)
     {
         this.ip = ip;
+    }
+
+    public String getIp()
+    {
+        return ip;
+    }
+
+    public int getCount()
+    {
+        return count;
+    }
+
+    public void setCount(int count)
+    {
+        this.count = count;
+    }
+
+    public long getLastStrikeUnix()
+    {
+        return lastStrikeUnix;
+    }
+
+    public void setLastStrikeUnix(long lastStrikeUnix)
+    {
+        this.lastStrikeUnix = lastStrikeUnix;
+    }
+
+    public String getLastUsername()
+    {
+        return lastUsername;
+    }
+
+    public void setLastUsername(String lastUsername)
+    {
+        this.lastUsername = lastUsername;
     }
 
     public StrikeRecord(String ip, int count, long lastStrikeUnix, String lastUsername)
@@ -53,10 +79,4 @@ public class StrikeRecord
         this.lastUsername = cs.getString("last_username", null);
     }
 
-    public void saveTo(ConfigurationSection cs)
-    {
-        cs.set("count", count);
-        cs.set("last_strike_unix", lastStrikeUnix);
-        cs.set("last_username", lastUsername);
-    }
 }

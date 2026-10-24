@@ -3,7 +3,6 @@ package me.totalfreedom.totalfreedommod;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.ThrownPotion;
@@ -12,11 +11,14 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.projectiles.ProjectileSource;
 
-import me.totalfreedom.totalfreedommod.player.PlayerData;
-import me.totalfreedom.totalfreedommod.util.FUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
+
+import me.totalfreedom.totalfreedommod.player.PlayerData;
+import me.totalfreedom.totalfreedommod.util.FUtil;
+
+import org.apache.commons.lang3.tuple.Pair;
 
 public class PotionSpy extends FreedomService
 {
@@ -60,6 +62,8 @@ public class PotionSpy extends FreedomService
         if (!(source instanceof final Player thrower))
             return;
         
+        final boolean throwerIsAdmin = plugin.al.isAdmin(thrower);
+
         // Grab old data about the offender, if it exists
         final Pair<Integer, Long> offenderData = offenders.getOrDefault(thrower, Pair.of(0, System.currentTimeMillis()));
         final int amount = offenderData.getLeft() + 1;
@@ -70,14 +74,17 @@ public class PotionSpy extends FreedomService
             System.currentTimeMillis() - lastTime < POTION_SPY_RESET_TIMEOUT ? amount : 0,
             System.currentTimeMillis()));
 
+        // Issue the message along 3^n, so less messages occur over time
+        final double lg = Math.log(amount) / Math.log(3.0);
+        if (Math.abs(lg - Math.floor(lg)) >= 0.01)
+            return;
+
+        // Only current admins may receive spy output, so a removed admin whose stored mode is still
+        // on stops seeing it.
         plugin.al.getOnlineAdmins().stream()
                 .filter(player -> {
                     final PlayerData data = plugin.pl.getData(player);
-                    return data != null && data.isPotionSpy();
-                })
-                .filter(_ -> {
-                    final double lg = Math.log(amount) / Math.log(3.0);
-                    return Math.abs(lg - Math.floor(lg)) < 0.01;
+                    return data != null && data.getPotionSpyMode().shows(throwerIsAdmin);
                 })
                 .forEach(player ->
                         FUtil.playerMsg(

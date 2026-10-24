@@ -1,23 +1,23 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-import me.totalfreedom.totalfreedommod.ssh.SshIdentity;
-import me.totalfreedom.totalfreedommod.ssh.SshQrServer;
-import me.totalfreedom.totalfreedommod.ssh.TotpUtil;
-import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import java.util.UUID;
 
 import org.bukkit.command.CommandSender;
 
-import java.util.UUID;
+import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
-@Permission(level = Rank.SENIOR_ADMIN, source = SourceType.ONLY_CONSOLE, permission = "tfm.ssh.totp")
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+import me.totalfreedom.totalfreedommod.ssh.SshIdentity;
+import me.totalfreedom.totalfreedommod.ssh.SshQrServer;
+import me.totalfreedom.totalfreedommod.ssh.TotpUtil;
+
+@Permission(source = SourceType.ONLY_CONSOLE, permission = "tfm.ssh.totp")
 @Command(
         name = "sshtotp",
         description = "Generate a TOTP secret for an SSH identity and serve a one-time QR setup page.",
         usage = "/sshtotp <identity>"
-    )
+)
 public class Command_sshtotp extends FCommand
 {
     /** 

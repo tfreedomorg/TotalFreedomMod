@@ -1,9 +1,9 @@
 package me.totalfreedom.totalfreedommod.cmd.resolver;
 
-import me.totalfreedom.totalfreedommod.util.FUtil;
-
 import java.util.Date;
 import java.util.List;
+
+import me.totalfreedom.totalfreedommod.util.FUtil;
 
 public class DateOffsetArgumentResolver implements AbstractArgumentResolver<Date>
 {

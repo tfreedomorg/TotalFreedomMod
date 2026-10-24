@@ -1,13 +1,7 @@
 package me.totalfreedom.totalfreedommod.blocking.spawner;
 
 import java.util.function.Predicate;
-import me.totalfreedom.totalfreedommod.FreedomService;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.blocking.sweep.SweepContext;
-import me.totalfreedom.totalfreedommod.blocking.sweep.TileEntityVisitor;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.util.DetectionReporter;
-import me.totalfreedom.totalfreedommod.util.FLog;
+
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
@@ -22,6 +16,14 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntitySpawnEvent;
 import org.bukkit.event.entity.SpawnerSpawnEvent;
 import org.bukkit.event.entity.TrialSpawnerSpawnEvent;
+
+import me.totalfreedom.totalfreedommod.FreedomService;
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.blocking.sweep.SweepContext;
+import me.totalfreedom.totalfreedommod.blocking.sweep.TileEntityVisitor;
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.util.DetectionReporter;
+import me.totalfreedom.totalfreedommod.util.FLog;
 
 public class SpawnerValidator extends FreedomService
 {

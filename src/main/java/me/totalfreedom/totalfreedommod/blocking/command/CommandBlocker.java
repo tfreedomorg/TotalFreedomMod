@@ -1,7 +1,5 @@
 package me.totalfreedom.totalfreedommod.blocking.command;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -9,6 +7,15 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+
+import org.bukkit.command.*;
+import org.bukkit.entity.Player;
+import org.bukkit.entity.minecart.CommandMinecart;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
+import org.bukkit.event.server.ServerCommandEvent;
+
 import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import me.totalfreedom.totalfreedommod.blocking.command.CommandBlockerEntry.PatternToken;
@@ -17,18 +24,9 @@ import me.totalfreedom.totalfreedommod.cmd.internal.CommandHolder;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FUtil;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandMap;
-import org.bukkit.command.BlockCommandSender;
-import org.bukkit.command.CommandSender;
-import org.bukkit.command.ConsoleCommandSender;
-import org.bukkit.command.RemoteConsoleCommandSender;
-import org.bukkit.entity.minecart.CommandMinecart;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.server.ServerCommandEvent;
-import org.bukkit.event.player.PlayerCommandPreprocessEvent;
-import org.bukkit.entity.Player;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 public class CommandBlocker extends FreedomService
 {

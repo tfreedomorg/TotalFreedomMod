@@ -1,10 +1,5 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Stream;
@@ -14,9 +9,15 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+
 @Permission(source = SourceType.ONLY_IN_GAME, permission = "tfm.fun.tossmob")
 @Command(
-        name = "tossmob", 
+        name = "tossmob",
         description = "Throw a mob in the direction you are facing when you left click with a stick.",
         usage = "/<command> <mobtype [speed] | off | list>")
 public class Command_tossmob extends FCommand

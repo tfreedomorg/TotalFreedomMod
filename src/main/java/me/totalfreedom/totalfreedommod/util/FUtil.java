@@ -1,7 +1,5 @@
 package me.totalfreedom.totalfreedommod.util;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
@@ -25,20 +23,26 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import me.totalfreedom.totalfreedommod.PluginProvider;
-import me.totalfreedom.totalfreedommod.cmd.MessageUtils;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
-import net.kyori.adventure.text.serializer.ansi.ANSIComponentSerializer;
-import org.apache.commons.io.FileUtils;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+import net.kyori.adventure.text.serializer.ansi.ANSIComponentSerializer;
+
+import me.totalfreedom.totalfreedommod.PluginProvider;
+import me.totalfreedom.totalfreedommod.cmd.MessageUtils;
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import org.apache.commons.io.FileUtils;
 
 public class FUtil
 {
@@ -280,6 +284,26 @@ public class FUtil
         {
             return new Date(0L);
         }
+    }
+
+    /**
+     * The resolution at which the databases store timestamps. SQLite and MySQL both keep whole seconds,
+     * so anything finer than this is an artifact of truncation rather than a real difference.
+     */
+    private static final long TIMESTAMP_RESOLUTION_MS = 1000L;
+
+    /**
+     * Whether a JSON snapshot should be treated as newer than the database it mirrors.
+     * <p>
+     * A write-through save writes its row and then its snapshot, so the file is always a few
+     * milliseconds later than the row, and the stored timestamp is truncated to the second on
+     * top of that. Comparing them directly therefore reports "newer" after almost every save,
+     * which would rebuild the whole domain on each startup. Only a gap wider than the storage
+     * resolution means the file was actually edited or restored behind the plugin's back.
+     */
+    public static boolean isSnapshotNewer(final long fileModified, final Long sqlUpdatedAt)
+    {
+        return sqlUpdatedAt == null || fileModified > sqlUpdatedAt + TIMESTAMP_RESOLUTION_MS;
     }
 
     public static boolean fuzzyIpMatch(String a, String b, int octets)

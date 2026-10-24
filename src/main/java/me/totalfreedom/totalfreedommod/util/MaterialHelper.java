@@ -2,6 +2,7 @@ package me.totalfreedom.totalfreedommod.util;
 
 import java.util.HashMap;
 import java.util.Map;
+
 import org.bukkit.Material;
 
 /**
