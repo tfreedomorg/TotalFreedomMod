@@ -33,6 +33,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 
 import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
@@ -59,6 +60,7 @@ public class BanishManager extends FreedomService
     private static final long ENFORCEMENT_INTERVAL_TICKS = 20L;
     private static final long MAX_BANISH_DURATION_MS = TimeUnit.HOURS.toMillis(24);
     private static final String BANISH_MESSAGE = "You are banished from this server.";
+    private static final String BANISH_ACTION_BAR = "You are banished and cannot interact, chat, or use commands.";
 
     private final Map<String, BanishEntry> banishments = new ConcurrentHashMap<>();
     private final Set<UUID> restrictedPlayers = ConcurrentHashMap.newKeySet();
@@ -373,6 +375,7 @@ public class BanishManager extends FreedomService
         restrictedPlayers.add(player.getUniqueId());
         if (player.getGameMode() != GameMode.SPECTATOR)
             player.setGameMode(GameMode.SPECTATOR);
+        player.sendActionBar(Component.text(BANISH_ACTION_BAR, NamedTextColor.RED));
     }
 
     private void kickRestrictedPlayers()
