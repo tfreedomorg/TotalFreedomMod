@@ -4,6 +4,7 @@ import me.totalfreedom.totalfreedommod.player.PlayerData;
 import me.totalfreedom.api.cmd.FCommand;
 import me.totalfreedom.api.cmd.annotation.Callback;
 import me.totalfreedom.api.cmd.annotation.Command;
+import me.totalfreedom.api.cmd.annotation.Completer;
 import me.totalfreedom.api.cmd.annotation.Permission;
 import me.totalfreedom.api.cmd.annotation.Subcommand;
 import me.totalfreedom.totalfreedommod.banning.PunishmentPoints;
@@ -44,6 +45,12 @@ public class Command_punishmenthistory extends FCommand
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("MM/dd/yyyy - HH:mm")
             .withLocale(Locale.US)
             .withZone(ZoneOffset.UTC);
+
+    @Completer(value = "", position = 0)
+    public List<String> completeTarget(CommandSender sender, String partial)
+    {
+        return NameCandidates.online(server(), partial);
+    }
 
     @Callback
     public void showFirstPage(CommandSender sender, String target)
