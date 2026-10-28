@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import me.totalfreedom.api.title.ITitle;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -43,7 +44,7 @@ public class Command_title extends FCommand
     @Callback
     public void list(CommandSender sender)
     {
-        final List<Title> titles = plugin().titles().getTitlesSorted();
+        final List<? extends ITitle> titles = plugin().titles().getTitlesSorted();
 
         if (titles.isEmpty())
         {
@@ -71,7 +72,7 @@ public class Command_title extends FCommand
     @Subcommand("info")
     public void info(CommandSender sender, String titleId)
     {
-        final Title title = plugin().titles().getTitle(titleId);
+        final ITitle title = plugin().titles().getTitle(titleId);
 
         if (title == null)
         {
@@ -103,7 +104,7 @@ public class Command_title extends FCommand
     @Subcommand("of")
     public void of(CommandSender sender, Player target)
     {
-        final List<Title> held = plugin().titles().getHeldTitles(target);
+        final List<? extends ITitle> held = plugin().titles().getHeldTitles(target);
 
         if (held.isEmpty())
         {
@@ -125,7 +126,7 @@ public class Command_title extends FCommand
     public void grant(CommandSender sender, Player target, String titleId)
     {
         requireLocalConsole(sender);
-        final Title title = plugin().titles().getTitle(titleId);
+        final ITitle title = plugin().titles().getTitle(titleId);
 
         if (title == null)
         {
