@@ -19,6 +19,7 @@ import net.kyori.adventure.text.object.ObjectContents;
 import net.kyori.adventure.text.object.PlayerHeadObjectContents;
 import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -103,6 +104,8 @@ public class Command_punishmenthistory extends FCommand
     @Callback
     public void showPage(CommandSender sender, String target, int page)
     {
+        final Player player = (Player) sender;
+
         if (target == null || target.isBlank())
         {
             msg(sender, "<gray>Usage: /punishmenthistory <player|ip> [page]");
@@ -243,25 +246,40 @@ public class Command_punishmenthistory extends FCommand
     {
         final String actor = safeActor(entry.actorName());
         final String type = safe(entry.punishmentType(), "UNKNOWN");
-        Component details = bookField("Name", Component.text(safe(entry.targetName(), "(unknown)"), NamedTextColor.DARK_GRAY))
-                .append(bookField("Type", Component.text(type, NamedTextColor.RED)))
-                .append(bookField("Issued By", coloredActor(actor)))
-                .append(bookField("Date and length", Component.text(formatDate(entry.appliedAt()), NamedTextColor.DARK_GRAY)
-                        .decorate(TextDecoration.ITALIC)
-                        .append(Component.newline())
-                        .append(Component.text(formatBanLength(entry), NamedTextColor.DARK_GRAY)
-                                .decoration(TextDecoration.ITALIC, false))))
-                .append(Component.newline())
-                .append(bookField("Reason", Component.text(safe(entry.reason(), "No reason provided."), NamedTextColor.DARK_GRAY)));
 
         final Component navigation = MessageUtils.parse("<dark_red>[Back to Overview]</dark_red>")
                 .clickEvent(ClickEvent.changePage(1));
-        return details.append(Component.newline()).append(navigation);
+
+        return Component.empty()
+                .decoration(TextDecoration.ITALIC, false)
+                .append(bookField("Name",
+                        MessageUtils.parse("<dark_gray>" + 
+                                safe(entry.targetName(), "(unknown)") + 
+                                "</dark_gray>")))
+                .append(bookField("Type",
+                        MessageUtils.parse("<red>" + 
+                                type + 
+                                "</red>")))
+                .append(bookField("Issued By", coloredActor(actor)))
+                .append(bookField("Date and length",
+                        MessageUtils.parse("<dark_gray>" + 
+                                formatDate(entry.appliedAt()) + 
+                                "\n" + 
+                                formatBanLength(entry) + 
+                                "</dark_gray>")))
+                .append(Component.newline())
+                .append(bookField("Reason",
+                        MessageUtils.parse("<dark_gray>" +
+                                safe(entry.reason(), "No reason provided.") +
+                                "</dark_gray>")))
+                .append(Component.newline())
+                .append(navigation);
     }
 
     private static Component bookField(String label, Component value)
     {
-        return MessageUtils.parse("<black><label>:</black>", Placeholder.unparsed("label", label))
+        return MessageUtils.parse("<black>" + label + ":</black>")
+                .append(Component.newline())
                 .append(value)
                 .append(Component.newline());
     }
