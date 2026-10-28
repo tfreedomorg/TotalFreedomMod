@@ -2,6 +2,7 @@ package me.totalfreedom.totalfreedommod.cmd;
 
 import me.totalfreedom.totalfreedommod.player.PlayerData;
 import me.totalfreedom.api.cmd.FCommand;
+import me.totalfreedom.api.cmd.SourceType;
 import me.totalfreedom.api.cmd.annotation.Callback;
 import me.totalfreedom.api.cmd.annotation.Command;
 import me.totalfreedom.api.cmd.annotation.Completer;
@@ -38,7 +39,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Command(name = "punishmenthistory", description = "Shows a player's punishment history.", usage = "/<command> <player|ip> [page]", aliases = {"ph"})
-@Permission(permission = "tfm.admin.punishmenthistory")
+@Permission(permission = "tfm.admin.punishmenthistory", source = SourceType.ONLY_IN_GAME)
 public class Command_punishmenthistory extends FCommand
 {
     private static final int ENTRIES_PER_BOOK = 99;
@@ -68,12 +69,6 @@ public class Command_punishmenthistory extends FCommand
     @Permission(permission = "tfm.admin.senior.revokepunishment")
     public void revoke(CommandSender sender, int id)
     {
-        if (!plugin().database().isInitialized())
-        {
-            msg(sender, "<gray>Punishment history is unavailable because the SQL database is not initialized.");
-            return;
-        }
-
         final PunishmentHistoryRepository repo = plugin().database().getPunishmentHistoryRepository();
         async(task ->
         {
@@ -111,18 +106,6 @@ public class Command_punishmenthistory extends FCommand
         if (target == null || target.isBlank())
         {
             msg(sender, "<gray>Usage: /punishmenthistory <player|ip> [page]");
-            return;
-        }
-
-        if (!(sender instanceof Player player))
-        {
-            msg(sender, "<gray>You must be in-game to view punishment history.");
-            return;
-        }
-
-        if (!plugin().database().isInitialized())
-        {
-            msg(sender, "<gray>Punishment history is unavailable because the SQL database is not initialized.");
             return;
         }
 
@@ -197,8 +180,8 @@ public class Command_punishmenthistory extends FCommand
         final ItemStack book = new ItemStack(Material.WRITTEN_BOOK);
         book.editMeta(BookMeta.class, meta ->
         {
-            meta.title(Component.text("Punishment History", NamedTextColor.DARK_RED));
-            meta.author(Component.text("TotalFreedom"));
+            meta.title(MessageUtils.parse("<dark_red>Punishment History</dark_red>"));
+            meta.author(MessageUtils.parse("<gray>TotalFreedom</gray>"));
             meta.pages(pages);
         });
 
@@ -271,14 +254,14 @@ public class Command_punishmenthistory extends FCommand
                 .append(Component.newline())
                 .append(bookField("Reason", Component.text(safe(entry.reason(), "No reason provided."), NamedTextColor.DARK_GRAY)));
 
-        final Component navigation = Component.text("[Back to Overview]", NamedTextColor.DARK_RED)
+        final Component navigation = MessageUtils.parse("<dark_red>[Back to Overview]</dark_red>")
                 .clickEvent(ClickEvent.changePage(1));
         return details.append(Component.newline()).append(navigation);
     }
 
     private static Component bookField(String label, Component value)
     {
-        return Component.text(label + ":\n", NamedTextColor.BLACK)
+        return MessageUtils.parse("<black><label>:</black>", Placeholder.unparsed("label", label))
                 .append(value)
                 .append(Component.newline());
     }
