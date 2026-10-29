@@ -5,11 +5,11 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import me.totalfreedom.api.title.ITitle;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 
-import me.totalfreedom.api.display.Displayable;
 import me.totalfreedom.totalfreedommod.util.AdventureUtil;
 
 /**
@@ -32,7 +32,7 @@ import me.totalfreedom.totalfreedommod.util.AdventureUtil;
  *       preference to a lighter one and confers nothing extra.</li>
  * </ul>
  */
-public class Title implements Displayable, Comparable<Title>
+public class Title implements ITitle, Comparable<Title>
 {
 
     /**
