@@ -23,6 +23,7 @@ import me.totalfreedom.api.world.IWorldManager;
 import me.totalfreedom.totalfreedommod.banning.BanManager;
 import me.totalfreedom.totalfreedommod.banning.PermbanList;
 import me.totalfreedom.totalfreedommod.banning.StrikeList;
+import me.totalfreedom.totalfreedommod.banish.BanishManager;
 import me.totalfreedom.totalfreedommod.blocking.*;
 import me.totalfreedom.totalfreedommod.blocking.command.CommandBlocker;
 import me.totalfreedom.totalfreedommod.blocking.entity.*;
@@ -169,6 +170,7 @@ public class FreedomAggregate
         services.register(Orbiter.class, Orbiter::new);
         services.register(Muter.class, Muter::new);
         services.register(LockupManager.class, LockupManager::new);
+        services.register(BanishManager.class, BanishManager::new);
         services.register(SpectatorBlocker.class, SpectatorBlocker::new);
         services.register(Fuckoff.class, Fuckoff::new);
         services.register(AutoEject.class, AutoEject::new);
