@@ -1,3 +1,4 @@
+
 package me.totalfreedom.totalfreedommod.cmd;
 
 import java.util.Collection;
@@ -6,6 +7,8 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 import org.bukkit.command.CommandSender;
+
+import me.totalfreedom.totalfreedommod.dispatch.RemoteDispatchContext;
 import org.bukkit.entity.Player;
 
 import net.kyori.adventure.text.Component;
@@ -122,6 +125,8 @@ public class Command_title extends FCommand
     @Permission(permission = MANAGE_TITLES)
     public void grant(CommandSender sender, Player target, String titleId)
     {
+        requireLocalConsole(sender);
+
         final Title title = plugin().tm.getTitle(titleId);
 
         if (title == null)
@@ -159,6 +164,8 @@ public class Command_title extends FCommand
     @Permission(permission = MANAGE_TITLES)
     public void revoke(CommandSender sender, Player target, String titleId)
     {
+        requireLocalConsole(sender);
+
         if (!plugin().tm.revokeTitle(target, titleId))
         {
             msg(sender, "<red><player> does not hold that title.",
@@ -232,6 +239,12 @@ public class Command_title extends FCommand
                          .filter(id -> id.startsWith(prefix))
                          .sorted()
                          .toList();
+    }
+
+    private void requireLocalConsole(CommandSender sender)
+    {
+        if (RemoteDispatchContext.isActive() || !sender.getName().equalsIgnoreCase("CONSOLE"))
+            throw new CommandFailException("This command can only be used from the server panel console.");
     }
 
 }

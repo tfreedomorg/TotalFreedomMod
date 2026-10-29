@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import org.bukkit.command.CommandSender;
+
+import me.totalfreedom.totalfreedommod.dispatch.RemoteDispatchContext;
 import org.bukkit.entity.Player;
 
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -23,7 +25,7 @@ import me.totalfreedom.totalfreedommod.rank.RankRole;
         usage = "/rankconfig [list | create <id> | edit <rank> | delete <rank> | set <rank> <property> <value> | setrank <player> <rank> | reload | save]",
         aliases = {"rankconf", "rankcfg"}
 )
-@Permission(permission = "tfm.manage.ranks")
+@Permission(permission = "tfm.manage.ranks", source = SourceType.ONLY_CONSOLE)
 public class Command_rankconfig extends FCommand
 {
     private static final List<String> COLOR_NAMES = Stream.concat(
@@ -322,6 +324,7 @@ public class Command_rankconfig extends FCommand
 
     private void requireManageRanks(CommandSender sender)
     {
+        requireLocalConsole(sender);
         if (!plugin().rm.canManageRanks(sender))
         {
             throw new CommandFailException("You do not have permission to manage ranks.");
@@ -355,4 +358,11 @@ public class Command_rankconfig extends FCommand
     {
         NAME, ABBREVIATION, LEVEL, COLOR, DETERMINER, PREFIX, INHERIT, ADDPERM, REMPERM
     }
+    private void requireLocalConsole(CommandSender sender)
+    {
+        if (RemoteDispatchContext.isActive() || !sender.getName().equalsIgnoreCase("CONSOLE"))
+            throw new CommandFailException("This command can only be used from the server panel console.");
+    }
+
+
 }
