@@ -1,3 +1,4 @@
+
 package me.totalfreedom.totalfreedommod.cmd;
 
 import java.util.Collection;
@@ -6,18 +7,19 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 import org.bukkit.command.CommandSender;
+
+import me.totalfreedom.totalfreedommod.dispatch.RemoteDispatchContext;
 import org.bukkit.entity.Player;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
-import me.totalfreedom.api.cmd.FCommand;
-import me.totalfreedom.api.cmd.annotation.Callback;
-import me.totalfreedom.api.cmd.annotation.Command;
-import me.totalfreedom.api.cmd.annotation.Completer;
-import me.totalfreedom.api.cmd.annotation.Permission;
-import me.totalfreedom.api.cmd.annotation.Subcommand;
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Callback;
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Command;
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Completer;
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Permission;
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Subcommand;
 import me.totalfreedom.totalfreedommod.title.Title;
 
 /**
@@ -42,7 +44,7 @@ public class Command_title extends FCommand
     @Callback
     public void list(CommandSender sender)
     {
-        final List<Title> titles = plugin().titles().getTitlesSorted();
+        final List<Title> titles = plugin().tm.getTitlesSorted();
 
         if (titles.isEmpty())
         {
@@ -70,7 +72,7 @@ public class Command_title extends FCommand
     @Subcommand("info")
     public void info(CommandSender sender, String titleId)
     {
-        final Title title = plugin().titles().getTitle(titleId);
+        final Title title = plugin().tm.getTitle(titleId);
 
         if (title == null)
         {
@@ -102,7 +104,7 @@ public class Command_title extends FCommand
     @Subcommand("of")
     public void of(CommandSender sender, Player target)
     {
-        final List<Title> held = plugin().titles().getHeldTitles(target);
+        final List<Title> held = plugin().tm.getHeldTitles(target);
 
         if (held.isEmpty())
         {
@@ -123,7 +125,9 @@ public class Command_title extends FCommand
     @Permission(permission = MANAGE_TITLES)
     public void grant(CommandSender sender, Player target, String titleId)
     {
-        final Title title = plugin().titles().getTitle(titleId);
+        requireLocalConsole(sender);
+
+        final Title title = plugin().tm.getTitle(titleId);
 
         if (title == null)
         {
@@ -140,7 +144,7 @@ public class Command_title extends FCommand
             return;
         }
 
-        if (!plugin().titles().grantTitle(target, title.getId()))
+        if (!plugin().tm.grantTitle(target, title.getId()))
         {
             msg(sender, "<red><player> already holds that title.",
                     Placeholder.unparsed("player", target.getName()));
@@ -160,7 +164,9 @@ public class Command_title extends FCommand
     @Permission(permission = MANAGE_TITLES)
     public void revoke(CommandSender sender, Player target, String titleId)
     {
-        if (!plugin().titles().revokeTitle(target, titleId))
+        requireLocalConsole(sender);
+
+        if (!plugin().tm.revokeTitle(target, titleId))
         {
             msg(sender, "<red><player> does not hold that title.",
                     Placeholder.unparsed("player", target.getName()));
@@ -178,7 +184,7 @@ public class Command_title extends FCommand
     @Completer(value = "info", position = 0)
     public List<String> completeInfo(CommandSender sender, String partial)
     {
-        return matching(plugin().titles().getTitleIds(), partial);
+        return matching(plugin().tm.getTitleIds(), partial);
     }
 
     /**
@@ -192,16 +198,16 @@ public class Command_title extends FCommand
     @Completer(value = "grant", position = 1)
     public List<String> completeGrant(CommandSender sender, String partial, List<String> priorArgs)
     {
-        if (!plugin().ranks().hasPermission(sender, MANAGE_TITLES))
+        if (!plugin().rm.hasPermission(sender, MANAGE_TITLES))
             return List.of();
 
         final Player target = server().getPlayerExact(priorArgs.get(0));
 
         if (target == null)
-            return matching(plugin().titles().getTitleIds(), partial);
+            return matching(plugin().tm.getTitleIds(), partial);
 
-        final Set<String> held = plugin().titles().getHeldTitleIds(target);
-        final List<String> grantable = plugin().titles().getTitleIds()
+        final Set<String> held = plugin().tm.getHeldTitleIds(target);
+        final List<String> grantable = plugin().tm.getTitleIds()
                                                   .stream()
                                                   .filter(Predicate.not(held::contains))
                                                   .toList();
@@ -217,12 +223,12 @@ public class Command_title extends FCommand
     @Completer(value = "revoke", position = 1)
     public List<String> completeRevoke(CommandSender sender, String partial, List<String> priorArgs)
     {
-        if (!plugin().ranks().hasPermission(sender, MANAGE_TITLES))
+        if (!plugin().rm.hasPermission(sender, MANAGE_TITLES))
             return List.of();
 
         final Player target = server().getPlayerExact(priorArgs.get(0));
 
-        return target == null ? List.of() : matching(plugin().titles().getHeldTitleIds(target), partial);
+        return target == null ? List.of() : matching(plugin().tm.getHeldTitleIds(target), partial);
     }
 
     private static List<String> matching(Collection<String> candidates, String partial)
@@ -233,6 +239,12 @@ public class Command_title extends FCommand
                          .filter(id -> id.startsWith(prefix))
                          .sorted()
                          .toList();
+    }
+
+    private void requireLocalConsole(CommandSender sender)
+    {
+        if (RemoteDispatchContext.isActive() || !sender.getName().equalsIgnoreCase("CONSOLE"))
+            throw new CommandFailException("This command can only be used from the server panel console.");
     }
 
 }
