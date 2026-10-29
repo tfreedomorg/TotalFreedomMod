@@ -8,8 +8,10 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
-import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -18,6 +20,10 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+
+import io.papermc.paper.connection.PlayerLoginConnection;
+import io.papermc.paper.event.connection.PlayerConnectionValidateLoginEvent;
+import com.destroystokyo.paper.profile.PlayerProfile;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -33,8 +39,6 @@ import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FUtil;
 import me.totalfreedom.totalfreedommod.util.JsonUtil;
 
-import com.google.common.collect.Maps;
-
 public class PlayerList extends FreedomService
 {
 
@@ -42,8 +46,9 @@ public class PlayerList extends FreedomService
 
     private static final long SHUTDOWN_FLUSH_TIMEOUT_MS = 10L * 1000L;
     //
-    public final Map<String, FPlayer> playerMap = Maps.newHashMap(); // key: lowercase username
-    public final Map<String, PlayerData> dataMap = Maps.newHashMap(); // key: lowercase username
+    public final Map<String, FPlayer> playerMap = new ConcurrentHashMap<>(); // key: lowercase username
+    public final Map<String, PlayerData> dataMap = new ConcurrentHashMap<>(); // key: lowercase username
+    private final Set<String> unverifiedUsernames = ConcurrentHashMap.newKeySet();
     private final File configFolder;
     private final PersistenceQueue writes = new PersistenceQueue("player data");
 
@@ -118,6 +123,13 @@ public class PlayerList extends FreedomService
      */
     private void saveOne(final PlayerData data)
     {
+        if (unverifiedUsernames.contains(data.getUsername().toLowerCase()))
+        {
+            FLog.warning(String.format("Not saving player data for %s: its SQL lookup failed, so the record is unverified.",
+                    data.getUsername()));
+            return;
+        }
+
         if (!usingSql())
         {
             writes.enqueue(writeJsonAsync(data));
@@ -207,69 +219,60 @@ public class PlayerList extends FreedomService
     // May not return null
     public FPlayer getPlayer(Player player)
     {
-        FPlayer tPlayer = playerMap.get(player.getName().toLowerCase());
-        if (tPlayer != null)
+        return playerMap.computeIfAbsent(player.getName().toLowerCase(), key ->
         {
-            return tPlayer;
-        }
-
-        tPlayer = new FPlayer(plugin, player);
-        final PlayerData data = getData(player);
-        tPlayer.setCommandSpyMode(data.getCommandSpyMode());
-        tPlayer.setCommandsBlocked(data.isCommandsBlocked());
-        tPlayer.setJoinLeaveMessagesEnabled(data.isJoinLeaveMessagesEnabled());
-        playerMap.put(player.getName().toLowerCase(), tPlayer);
-
-        return tPlayer;
+            final FPlayer created = new FPlayer(plugin, player);
+            final PlayerData data = getData(player);
+            created.setCommandSpyMode(data.getCommandSpyMode());
+            created.setCommandsBlocked(data.isCommandsBlocked());
+            created.setJoinLeaveMessagesEnabled(data.isJoinLeaveMessagesEnabled());
+            return created;
+        });
     }
 
     // May not return null
     public PlayerData getData(Player player)
     {
-        // Check already loaded
-        PlayerData data = dataMap.get(player.getName().toLowerCase());
-        if (data != null)
-        {
-            return data;
-        }
-
-        // Load data
-        data = getData(player.getName());
-
-        // Create data if nonexistent
-        if (data == null)
-        {
-            FLog.info("Creating new player data entry for " + player.getName());
-
-            // Create new player
-            final long unix = FUtil.getUnixTime();
-            data = new PlayerData(player);
-            data.setFirstJoinUnix(unix);
-            data.setLastJoinUnix(unix);
-            data.addIp(player.getAddress().getAddress().getHostAddress());
-
-            // Store player
-            dataMap.put(player.getName().toLowerCase(), data);
-
-            // Save player
-            saveOne(data);
-        }
-
-        return data;
+        final String ip = player.getAddress() == null ? null : player.getAddress().getAddress().getHostAddress();
+        return resolve(player.getName(), ip);
     }
 
     // May return null
     public PlayerData getData(String username)
     {
-        username = username.toLowerCase();
+        final PlayerData cached = dataMap.get(username.toLowerCase());
+        return cached != null ? cached : load(username.toLowerCase());
+    }
 
+    private PlayerData resolve(final String username, final String ip)
+    {
+        return dataMap.computeIfAbsent(username.toLowerCase(), key ->
+        {
+            final PlayerData loaded = load(key);
+            if (loaded != null)
+                return loaded;
+
+            FLog.info("Creating new player data entry for " + username);
+            final long unix = FUtil.getUnixTime();
+            final PlayerData created = new PlayerData(username);
+            created.setFirstJoinUnix(unix);
+            created.setLastJoinUnix(unix);
+            if (ip != null)
+                created.addIp(ip);
+            return created;
+        });
+    }
+
+    private PlayerData load(final String username)
+    {
         if (usingSql())
         {
-            PlayerData data = loadFromSql(username);
+            final PlayerData data = loadFromSql(username);
             if (data != null)
             {
                 return data;
             }
+            // A failed lookup must fall through to JSON, but is not the same as "no such player".
         }
 
         return loadFromJson(username);
@@ -282,19 +285,13 @@ public class PlayerList extends FreedomService
             PlayerRepository repo = plugin.dm.getPlayerRepository();
             reconcileFromJsonIfNewer(username, repo);
 
-            return repo.findByUsername(username)
-                       .map(data ->
-                       {
-                           if (Bukkit.getPlayerExact(data.getUsername()) != null)
-                           {
-                               dataMap.put(data.getUsername().toLowerCase(), data);
-                           }
-                           return data;
-                       })
-                       .orElse(null);
+            final PlayerData found = repo.findByUsername(username).orElse(null);
+            unverifiedUsernames.remove(username);
+            return found;
         }
         catch (Exception ex)
         {
+            unverifiedUsernames.add(username);
             FLog.warning("Failed to load player data for " + username + " from SQL, falling back to JSON: " + ex.getMessage());
             return null;
         }
@@ -350,12 +347,6 @@ public class PlayerList extends FreedomService
             return null;
         }
 
-        // Only store data if the player is online
-        if (Bukkit.getPlayerExact(data.getUsername()) != null)
-        {
-            dataMap.put(data.getUsername().toLowerCase(), data);
-        }
-
         return data;
     }
 
@@ -405,8 +396,8 @@ public class PlayerList extends FreedomService
             }
         }
 
-        return Arrays.stream(configFolder.listFiles())
-            .filter(file -> file != null)
+        return listConfigFiles()
+            .stream()
             .map(File::getName)
             .filter(name -> name.endsWith(".json"))
             .map(name -> getData(name.substring(0, name.length() - ".json".length()))).toList();
@@ -465,22 +456,54 @@ public class PlayerList extends FreedomService
         if (event.getLoginResult() != AsyncPlayerPreLoginEvent.Result.ALLOWED)
             return;
 
-        final PlayerData data = getData(event.getName());
-        if (data != null)
-            dataMap.put(data.getUsername().toLowerCase(), data);
+        resolve(event.getName(), event.getAddress().getHostAddress());
+    }
+
+    /**
+     * A login refused after pre-login never produces a quit, so drop the record pre-login cached.
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onValidateLogin(PlayerConnectionValidateLoginEvent event)
+    {
+        if (event.isAllowed() || !(event.getConnection() instanceof PlayerLoginConnection login))
+            return;
+
+        // The profile is null until authentication finishes, and a refusal can come before that.
+        Optional.ofNullable(login.getAuthenticatedProfile())
+                .map(PlayerProfile::getName)
+                .map(String::toLowerCase)
+                .ifPresent(this::releasePlayer);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerQuit(PlayerQuitEvent event)
     {
         final String username = event.getPlayer().getName().toLowerCase();
+
+        if (!plugin.isEnabled())
+        {
+            playerMap.remove(username);
+            dataMap.remove(username);
+            return;
+        }
+
+        server.getScheduler().runTask(plugin, () -> releasePlayer(username));
+    }
+
+    private void releasePlayer(final String username)
+    {
+        if (server.getPlayerExact(username) != null)
+            return;
+
         playerMap.remove(username);
         final PlayerData data = dataMap.remove(username);
 
-        if (data != null && plugin.isEnabled())
+        if (data != null)
         {
             saveOne(data);
         }
+
+        unverifiedUsernames.remove(username);
     }
 
     public Collection<FPlayer> getLoadedPlayers()
@@ -495,11 +518,10 @@ public class PlayerList extends FreedomService
 
     public int purgeAllData()
     {
-        int deleted = 0;
-        for (File file : getConfigFolder().listFiles())
-        {
-            deleted += file.delete() ? 1 : 0;
-        }
+        final int deleted = (int) listConfigFiles()
+                .stream()
+                .filter(File::delete)
+                .count();
 
         if (usingSql())
         {
@@ -513,6 +535,13 @@ public class PlayerList extends FreedomService
 
         dataMap.clear();
         return deleted;
+    }
+
+    private List<File> listConfigFiles()
+    {
+        return Optional.ofNullable(getConfigFolder().listFiles())
+                .map(Arrays::asList)
+                .orElseGet(List::of);
     }
 
     protected File getConfigFile(String name)
