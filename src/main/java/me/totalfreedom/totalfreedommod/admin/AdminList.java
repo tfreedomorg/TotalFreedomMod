@@ -372,6 +372,23 @@ public class AdminList extends FreedomService
         return getEntryByName(player.getName()) != null && !isAdmin(player);
     }
 
+    /**
+     * Registers {@code player} against the existing entry {@code admin} after their identity was
+     * confirmed out of band, which is what turns an impostor back into the admin. The entry gains
+     * the player's address, and takes their UUID where entries are matched by UUID alone.
+     */
+    public void verifyIdentity(final Player player, final Admin admin)
+    {
+        admin.addIp(player.getAddress().getAddress().getHostAddress());
+
+        if (ConfigEntry.ADMINLIST_USE_UUID_ONLY.getBoolean())
+            admin.setUuid(player.getUniqueId());
+
+        updateTables();
+        saveAdminAsync(admin);
+        plugin.rm.restoreVerifiedAdmin(player);
+    }
+
     public boolean isIdentityMatched(Player player)
     {
         if (Bukkit.getOnlineMode())

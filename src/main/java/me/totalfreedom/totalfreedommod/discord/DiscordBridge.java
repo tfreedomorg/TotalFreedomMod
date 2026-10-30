@@ -23,11 +23,14 @@ import org.bukkit.scheduler.BukkitTask;
 
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
 import discord4j.common.util.Snowflake;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.object.entity.channel.GuildMessageChannel;
+import discord4j.discordjson.json.ApplicationCommandOptionChoiceData;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import reactor.core.publisher.Mono;
@@ -36,7 +39,9 @@ import reactor.core.scheduler.Schedulers;
 
 import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.admin.Admin;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.util.AdventureUtil;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FTask;
 
@@ -66,6 +71,7 @@ public class DiscordBridge extends FreedomService
     private static final SecureRandom CODE_RANDOM = new SecureRandom();
     private static final String CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private static final int CODE_LENGTH = 8;
+    private static final int VERIFY_CODE_LENGTH = 7;
     private static final int DEFAULT_LINK_CODE_TTL_SECONDS = 300;
     private static final Duration SHUTDOWN_MESSAGE_TIMEOUT = Duration.ofSeconds(5);
 
@@ -73,6 +79,25 @@ public class DiscordBridge extends FreedomService
             ApplicationCommandRequest.builder()
                     .name("list")
                     .description("Show a list of players on the server.")
+                    .addOption(ApplicationCommandOptionData.builder()
+                            .name("filter")
+                            .description("Only list one kind of player.")
+                            .type(3)
+                            .required(false)
+                            .addChoice(ApplicationCommandOptionChoiceData.builder().name("Admins").value("admins").build())
+                            .addChoice(ApplicationCommandOptionChoiceData.builder().name("Impostors").value("impostors").build())
+                            .addChoice(ApplicationCommandOptionChoiceData.builder().name("Famous players").value("famous").build())
+                            .build())
+                    .build(),
+            ApplicationCommandRequest.builder()
+                    .name("verify")
+                    .description("Verify yourself as an admin using the 7-character code shown in-game.")
+                    .addOption(ApplicationCommandOptionData.builder()
+                            .name("code")
+                            .description("The 7-character code shown in-game.")
+                            .type(3)
+                            .required(true)
+                            .build())
                     .build(),
             ApplicationCommandRequest.builder()
                     .name("link")
@@ -90,6 +115,7 @@ public class DiscordBridge extends FreedomService
                     .build());
 
     private final Map<String, PendingLink> pendingLinks = new ConcurrentHashMap<>();
+    private final Map<String, PendingVerification> pendingVerifications = new ConcurrentHashMap<>();
     private final DiscordConnection connection = new DiscordConnection();
     private final Scheduler mainThread;
 
@@ -481,7 +507,7 @@ public class DiscordBridge extends FreedomService
         final long expiryMs = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(linkCodeTtlSeconds);
         String code;
         
-        do code = generateCode();
+        do code = generateCode(CODE_LENGTH);
         while (Optional.ofNullable(pendingLinks.putIfAbsent(code, new PendingLink(adminUuid, expiryMs))).isPresent());
 
         return code;
@@ -503,6 +529,66 @@ public class DiscordBridge extends FreedomService
     public int getLinkCodeTtlSeconds()
     {
         return linkCodeTtlSeconds;
+    }
+
+    /**
+     * Gives an impostor-flagged player a code to verify with from Discord, provided the admin
+     * entry for their name has a linked Discord account. The link lookup is JDBC, so it runs on
+     * {@code boundedElastic} and the code is issued back on the main thread.
+     */
+    public void offerImpostorVerification(final Player player)
+    {
+        final Admin admin = plugin.al.getEntryByName(player.getName());
+        if (admin == null || !isReady())
+            return;
+
+        Mono.fromCallable(() -> plugin.dm.getDiscordLinkRepository().findDiscordIdByAdminUuid(admin.getUuid()))
+            .subscribeOn(Schedulers.boundedElastic())
+            .publishOn(mainThread)
+            .subscribe(ignored -> sendVerificationCode(player, admin.getUuid()),
+                       thrown -> FLog.warning(String.format("[Discord] Could not look up the link for %s: %s",
+                               admin.getName(), DiscordConnection.describeFailure(thrown))));
+    }
+
+    /**
+     * The verification issued under {@code code}, if it is still live. It stays registered until
+     * {@link #completeVerification} claims it, so a submission from the wrong account leaves the
+     * code usable.
+     */
+    Optional<PendingVerification> findPendingVerification(final String code)
+    {
+        return Optional.ofNullable(pendingVerifications.get(code))
+                       .filter(verification -> verification.expiresAtMs() >= System.currentTimeMillis());
+    }
+
+    /**
+     * Claims {@code verification} for a single use.
+     *
+     * @return whether this call was the one that claimed it
+     */
+    boolean completeVerification(final String code, final PendingVerification verification)
+    {
+        return pendingVerifications.remove(code, verification);
+    }
+
+    private void sendVerificationCode(final Player player, final UUID adminUuid)
+    {
+        if (!player.isOnline())
+            return;
+
+        final long expiryMs = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(linkCodeTtlSeconds);
+        final PendingVerification verification = new PendingVerification(adminUuid, player.getUniqueId(), expiryMs);
+        String code;
+
+        do code = generateCode(VERIFY_CODE_LENGTH);
+        while (Optional.ofNullable(pendingVerifications.putIfAbsent(code, verification)).isPresent());
+
+        player.sendMessage(AdventureUtil.formatWithPlaceholders(
+                "<yellow>This name belongs to an admin with a linked Discord account.<newline>"
+                        + "<green>Your verification code is: <yellow><code><newline>"
+                        + "<gray>Run /verify <code> on the Discord server from your linked account. It expires in <seconds> seconds.",
+                Placeholder.unparsed("code", code),
+                Formatter.number("seconds", linkCodeTtlSeconds)));
     }
 
     private void sendPlayerStatusMessage(String playerName, ConfigEntry configEntry)
@@ -553,19 +639,27 @@ public class DiscordBridge extends FreedomService
     {
         final long now = System.currentTimeMillis();
         pendingLinks.entrySet().removeIf(entry -> entry.getValue().expiresAtMs() < now);
+        pendingVerifications.entrySet().removeIf(entry -> entry.getValue().expiresAtMs() < now);
     }
 
-    private static String generateCode()
+    private static String generateCode(final int length)
     {
-        final StringBuilder builder = new StringBuilder(CODE_LENGTH);
+        final StringBuilder builder = new StringBuilder(length);
 
-        for (int i = 0; i < CODE_LENGTH; i++)
+        for (int i = 0; i < length; i++)
             builder.append(CODE_ALPHABET.charAt(CODE_RANDOM.nextInt(CODE_ALPHABET.length())));
 
         return builder.toString();
     }
 
     private record PendingLink(UUID adminUuid, long expiresAtMs)
+    {
+    }
+
+    /**
+     * A code issued to {@code playerUuid} in game, good for re-registering them as {@code adminUuid}.
+     */
+    record PendingVerification(UUID adminUuid, UUID playerUuid, long expiresAtMs)
     {
     }
 

@@ -532,7 +532,8 @@ public class RankManager extends FreedomService
             color = NamedTextColor.WHITE;
         }
 
-        final String teamName = title == null ? rankTeamName : createTitleTeamName(rankTeamName, title);
+        final int rankLevel = admin ? rank.getLevel() : 0;
+        final String teamName = title == null ? rankTeamName : createTitleTeamName(rankTeamName, rankLevel, title);
 
         if (currentTeam != null && !currentTeam.getName().equals(teamName))
             currentTeam.removeEntry(player.getName());
@@ -549,24 +550,59 @@ public class RankManager extends FreedomService
 
     private static final String DEFAULT_TEAM_NAME = "zz_default";
 
-    private static String createTeamName(final int sortKey, final String id)
+    /**
+     * The tab list sorts teams by name. Rank teams start with {@code 1} so they follow every title
+     * team, which starts with {@code 0}, and the two digits after it put higher levels first.
+     */
+    private static String createTeamName(final int level, final String id)
     {
-        final String name = String.format("%02d_%s",
-                99 - Math.max(0, Math.min(99, sortKey)),
+        final String name = String.format("1%02d_%s",
+                sortSlot(level),
                 id.replaceAll("[^A-Za-z0-9_\\-]", "_"));
 
         return name.length() > 16 ? name.substring(0, 16) : name;
     }
 
     /**
-     * A team name for one rank and title pair. The rank's name keeps its sort position as a
-     * truncated head and a hash of the pair keeps each pair distinct within the 16 character limit.
+     * A team name for one rank and title pair. Titles order by weight, then by the holder's rank
+     * level, and a hash of the pair keeps each pair distinct within the 16 character limit.
      */
-    private static String createTitleTeamName(final String rankTeamName, final Title title)
+    private static String createTitleTeamName(final String rankTeamName, final int rankLevel, final Title title)
     {
-        final String head = rankTeamName.substring(0, Math.min(rankTeamName.length(), 7));
+        return String.format("0%02d%02d_%08x",
+                sortSlot(title.getWeight()),
+                sortSlot(rankLevel),
+                (rankTeamName + "/" + title.getId()).hashCode());
+    }
 
-        return String.format("%s_%08x", head, (rankTeamName + "/" + title.getId()).hashCode());
+    private static int sortSlot(final int value)
+    {
+        return 99 - Math.max(0, Math.min(99, value));
+    }
+
+    /**
+     * Orders players for listings: everyone displaying a title first, heaviest title first, then
+     * everyone displaying their rank, highest level first. Ties fall back to rank level and then
+     * name.
+     */
+    public Comparator<Player> byDisplayOrder()
+    {
+        return Comparator.comparing((Player player) -> !(getDisplay(player) instanceof Title))
+                         .thenComparing(Comparator.comparingInt(this::titleWeight).reversed())
+                         .thenComparing(Comparator.comparingInt(this::rankLevel).reversed())
+                         .thenComparing(Player::getName, String.CASE_INSENSITIVE_ORDER);
+    }
+
+    private int titleWeight(final Player player)
+    {
+        return getDisplay(player) instanceof Title title ? title.getWeight() : 0;
+    }
+
+    private int rankLevel(final Player player)
+    {
+        final CustomRank rank = getEffectiveRank(player);
+
+        return rank == null ? 0 : rank.getLevel();
     }
 
     public void updateAllPlayerTeams()
@@ -1209,6 +1245,11 @@ public class RankManager extends FreedomService
             Component playerMsg = Component.text("You are marked as an impostor, please verify yourself!")
                     .color(NamedTextColor.RED);
             player.sendMessage(playerMsg);
+
+            if (plugin.db != null)
+            {
+                plugin.db.offerImpostorVerification(player);
+            }
             return;
         }
 
@@ -1233,6 +1274,22 @@ public class RankManager extends FreedomService
             }
 
         }
+    }
+
+    /**
+     * Undoes the impostor treatment once {@code player} has been verified as the admin their name
+     * belongs to. The inventory the impostor join cleared is not recoverable.
+     */
+    public void restoreVerifiedAdmin(final Player player)
+    {
+        final FPlayer fPlayer = plugin.pl.getPlayer(player);
+
+        fPlayer.getFreezeData().setFrozen(false);
+        fPlayer.setSuperadminIdVerified(true);
+        plugin.al.updateLastLogin(player);
+        updatePlayerTeam(player);
+
+        player.sendMessage(Component.text("You have been verified as an admin.", NamedTextColor.GREEN));
     }
 
     public Component formatLoginMessage(Player player)

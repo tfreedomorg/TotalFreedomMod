@@ -22,6 +22,7 @@ import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.display.Displayable;
 import me.totalfreedom.totalfreedommod.player.FPlayer;
 import me.totalfreedom.totalfreedommod.player.PlayerData;
+import me.totalfreedom.totalfreedommod.title.Title;
 import me.totalfreedom.totalfreedommod.util.*;
 import me.totalfreedom.totalfreedommod.vault.VaultProviderRegistry;
 
@@ -165,7 +166,7 @@ public class ChatManager extends FreedomService
 
         // Prefix and suffix come from the shared builder so chat, the tab list, and
         // the Vault Chat export all render identically — with or without Vault.
-        String prefix = buildPlayerPrefix(player, PrefixFormat.SECTION);
+        String prefix = buildPlayerPrefix(player, PrefixFormat.SECTION, false);
         String suffix = "";
         String worldName = player.getWorld().getName();
 
@@ -347,13 +348,17 @@ public class ChatManager extends FreedomService
         AMPERSAND
     }
 
-    public String buildPlayerPrefix(Player player, PrefixFormat format)
+    /**
+     * @param omitTitleTag leave out the tag of a displayed title, for callers whose output already
+     *                     carries it through the player's scoreboard team prefix
+     */
+    public String buildPlayerPrefix(Player player, PrefixFormat format, boolean omitTitleTag)
     {
-        String prefix = buildPrefixSection(player);
+        String prefix = buildPrefixSection(player, omitTitleTag);
         return format == PrefixFormat.AMPERSAND ? prefix.replace('§', '&') : prefix;
     }
 
-    private String buildPrefixSection(Player player)
+    private String buildPrefixSection(Player player, boolean omitTitleTag)
     {
         if (player == null)
         {
@@ -363,7 +368,7 @@ public class ChatManager extends FreedomService
         Displayable display = plugin.rm.getDisplay(player);
         String rankPrefix = "";
 
-        if (display != null)
+        if (display != null && !(omitTitleTag && display instanceof Title))
         {
             String configPrefix = getConfigPrefix(display);
             if (configPrefix != null && !configPrefix.isEmpty())

@@ -75,21 +75,10 @@ public final class PermissionGate
 
         if (dispatch != null)
         {
-            if (!dispatch.isIdentified())
+            if (!dispatch.isIdentified() || dispatch.getChannel() == RemoteDispatchSession.Channel.DISCORD)
                 return true;
 
-            final String node = switch (dispatch.getChannel())
-            {
-                case SSH -> "tfm.manage.ssh";
-                case DISCORD -> "tfm.manage.discord";
-            };
-            final String label = switch (dispatch.getChannel())
-            {
-                case SSH -> "SSH";
-                case DISCORD -> "Discord";
-            };
-
-            return requireChannelNode(plugin, sender, node, label, sendMsg);
+            return requireChannelNode(plugin, sender, "tfm.manage.ssh", "SSH", sendMsg);
         }
 
         if (!(sender instanceof Player) && plugin.al.getEntryByName(sender.getName()) != null)

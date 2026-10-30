@@ -32,7 +32,7 @@ public class ChatService extends Chat {
 		if (player == null || !player.isOnline()) {
 			return "";
 		}
-		return plugin.cm.buildPlayerPrefix(player, ChatManager.PrefixFormat.SECTION);
+		return plugin.cm.buildPlayerPrefix(player, ChatManager.PrefixFormat.SECTION, false);
 	}
 
 	@Override

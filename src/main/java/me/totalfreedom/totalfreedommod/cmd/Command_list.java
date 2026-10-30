@@ -1,6 +1,5 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -13,7 +12,6 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.dispatch.RemoteDispatchContext;
 import me.totalfreedom.totalfreedommod.display.Displayable;
 import me.totalfreedom.totalfreedommod.rank.CustomRank;
@@ -23,8 +21,6 @@ import me.totalfreedom.totalfreedommod.util.PlayerListUtil;
 @Permission(permission = "tfm.player.list")
 public class Command_list extends FCommand
 {
-    private static final Comparator<Player> BY_NAME = Comparator.comparing(Player::getName, String.CASE_INSENSITIVE_ORDER);
-
     @Callback
     public void list(CommandSender sender, @Switch("a") boolean admins, @Switch("i") boolean impostors, @Switch("f") boolean famous)
     {
@@ -53,7 +49,7 @@ public class Command_list extends FCommand
         else if (impostors)
             sendPlayerLine(sender, "Impostors", visible, plugin().al::isAdminImpostor, NamedTextColor.AQUA);
         else if (famous)
-            sendPlayerLine(sender, "Famous Players", visible, this::isFamous, NamedTextColor.AQUA);
+            sendPlayerLine(sender, "Famous Players", visible, PlayerListUtil::isFamous, NamedTextColor.AQUA);
         else
         {
             sendPlayerLine(sender, "Admins", visible, plugin().al::isAdmin, NamedTextColor.RED);
@@ -72,7 +68,7 @@ public class Command_list extends FCommand
     {
         final List<Player> members = visible.stream()
                                             .filter(membership)
-                                            .sorted(BY_NAME)
+                                            .sorted(plugin().rm.byDisplayOrder())
                                             .toList();
 
         final Component labelComponent = Component.text(String.format("%s (%d): ", label, members.size()), labelColor);
@@ -109,11 +105,6 @@ public class Command_list extends FCommand
             MessageUtils.component("tag", display.getColoredTag()),
             MessageUtils.component("name", Component.text(player.getName(), nameColor))
         );
-    }
-
-    private boolean isFamous(Player player)
-    {
-        return ConfigEntry.FAMOUS_PLAYERS.getList().contains(player.getName().toLowerCase());
     }
 
     private String header(boolean admins, boolean impostors, boolean famous)

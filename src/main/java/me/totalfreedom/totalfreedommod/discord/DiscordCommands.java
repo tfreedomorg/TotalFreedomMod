@@ -4,6 +4,9 @@ import java.sql.SQLException;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandInteractionOption;
@@ -19,7 +22,7 @@ import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.PlayerListUtil;
 
 /**
- * Slash command handlers for {@code /list}, {@code /link}, {@code /unlink}.
+ * Slash command handlers for {@code /list}, {@code /link}, {@code /unlink}, {@code /verify}.
  * <p>
  * Two threading rules run through all of this. Repository work is JDBC and blocks, so it goes onto
  * {@code boundedElastic} rather than running where the interaction arrived; and anything reading
@@ -63,6 +66,7 @@ public class DiscordCommands
         return switch (event.getCommandName())
         {
             case "list" -> handleList(event);
+            case "verify" -> handleVerify(event);
             case "link" -> handleLink(event);
             case "unlink" -> handleUnlink(event);
             default -> Mono.empty();
@@ -71,17 +75,83 @@ public class DiscordCommands
 
     private Mono<Void> handleList(final ChatInputInteractionEvent event)
     {
+        final String filter = stringOption(event, "filter").orElse("");
+
         return event.deferReply()
-                    .then(Mono.fromCallable(() -> "```\n" + PlayerListUtil.buildRankList() + "\n```")
+                    .then(Mono.fromCallable(() -> "```\n" + buildList(filter) + "\n```")
                               .subscribeOn(bridge.mainThread()))
                     .flatMap(body -> event.createFollowup(body).then());
     }
 
+    private String buildList(final String filter)
+    {
+        return switch (filter)
+        {
+            case "admins" -> PlayerListUtil.buildFilteredList("Admin", plugin.al::isAdmin);
+            case "impostors" -> PlayerListUtil.buildFilteredList("Impostor", plugin.al::isAdminImpostor);
+            case "famous" -> PlayerListUtil.buildFilteredList("Famous Player", PlayerListUtil::isFamous);
+            default -> PlayerListUtil.buildRankList();
+        };
+    }
+
+    /**
+     * Re-registers an impostor-flagged player as the admin their name belongs to.
+     * <p>
+     * The code only reaches the person in game, so possessing it proves nothing on its own. The
+     * submitting Discord account must also be the one linked to that admin entry.
+     */
+    private Mono<Void> handleVerify(final ChatInputInteractionEvent event)
+    {
+        final String code = stringOption(event, "code").map(text -> text.trim().toUpperCase()).orElse("");
+        final Optional<DiscordBridge.PendingVerification> pending = bridge.findPendingVerification(code);
+
+        if (pending.isEmpty())
+            return replyPrivately(event, "That code is unknown or expired. Rejoin the server for a fresh one.");
+
+        final DiscordBridge.PendingVerification verification = pending.get();
+        final String discordUserId = event.getInteraction().getUser().getId().asString();
+
+        return Mono.fromCallable(() -> verification.adminUuid().equals(
+                           plugin.dm.getDiscordLinkRepository().findAdminUuidByDiscordId(discordUserId)))
+                   .subscribeOn(Schedulers.boundedElastic())
+                   .flatMap(linked -> linked
+                           ? Mono.fromCallable(() -> verify(code, verification)).subscribeOn(bridge.mainThread())
+                                 .flatMap(outcome -> replyPrivately(event, outcome))
+                           : replyPrivately(event, "That code isn't for your linked account."))
+                   .onErrorResume(thrown ->
+                   {
+                       FLog.warning("[Discord] /verify failed: " + DiscordConnection.describeFailure(thrown));
+                       return replyPrivately(event, "Couldn't verify you, see the server log.");
+                   });
+    }
+
+    private String verify(final String code, final DiscordBridge.PendingVerification verification)
+    {
+        if (!bridge.completeVerification(code, verification))
+            return "That code was already used or has expired.";
+
+        final Player player = Bukkit.getPlayer(verification.playerUuid());
+        final Admin admin = plugin.al.getAdminByUuid(verification.adminUuid());
+
+        if (player == null || admin == null || !admin.isActive() || !admin.getName().equalsIgnoreCase(player.getName()))
+            return "That player is no longer online. Rejoin the server for a fresh code.";
+
+        plugin.al.verifyIdentity(player, admin);
+        FLog.info(String.format("[Discord] Verified %s as admin %s.", player.getName(), admin.getName()));
+
+        return String.format("Verified **%s**. You are an admin in game again.", player.getName());
+    }
+
+    private static Optional<String> stringOption(final ChatInputInteractionEvent event, final String name)
+    {
+        return event.getOption(name)
+                    .flatMap(ApplicationCommandInteractionOption::getValue)
+                    .map(ApplicationCommandInteractionOptionValue::asString);
+    }
+
     private Mono<Void> handleLink(final ChatInputInteractionEvent event)
     {
-        final Optional<String> code = event.getOption("code")
-                                           .flatMap(ApplicationCommandInteractionOption::getValue)
-                                           .map(ApplicationCommandInteractionOptionValue::asString);
+        final Optional<String> code = stringOption(event, "code");
 
         if (code.isEmpty())
             return replyPrivately(event, "Missing `code` argument.");

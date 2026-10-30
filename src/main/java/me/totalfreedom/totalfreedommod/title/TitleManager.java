@@ -285,15 +285,15 @@ public class TitleManager extends FreedomService
         }
 
         final PlayerData data = plugin.pl.getData(player);
-        if (data == null || data.getSavedTag() != null)
-            return;
-
         final Displayable display = plugin.rm.getDisplay(player);
-        if (display != null)
+        if (data != null && data.getSavedTag() == null && display != null)
         {
             plugin.pl.getPlayer(player)
                      .setTag(AdventureUtil.componentToLegacySection(display.getColoredTag()));
         }
+
+        if (plugin.tl != null)
+            plugin.tl.refresh(player);
     }
 
     // ========================================================================

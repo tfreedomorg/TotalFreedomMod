@@ -94,6 +94,15 @@ public class TabList extends FreedomService
                 FTask.guard("TabList/applyOnJoin", () -> applyToPlayer(player, ctx)), 1L);
     }
 
+    /**
+     * Rewrites one player's tab entry now, rather than at the next update interval.
+     */
+    public void refresh(final Player player)
+    {
+        if (enabled)
+            applyToPlayer(player, newCycleContext());
+    }
+
     private void updateAll()
     {
         final CycleContext ctx = newCycleContext();
@@ -136,8 +145,8 @@ public class TabList extends FreedomService
 
     private Component buildPlayerListName(Player player, CycleContext ctx)
     {
-        // ${prefix} — rank tag / custom tag, same logic as chat prefix
-        String prefix = plugin.cm.buildPlayerPrefix(player, ChatManager.PrefixFormat.AMPERSAND);
+        // A displayed title's tag is left out because the player's scoreboard team prefix already puts it on this entry.
+        String prefix = plugin.cm.buildPlayerPrefix(player, ChatManager.PrefixFormat.AMPERSAND, true);
 
         // ${afk_tag} — AFK indicator (empty if not AFK or Essentials unavailable)
         String afkTag = "";
@@ -146,10 +155,8 @@ public class TabList extends FreedomService
             afkTag = ctx.afkTag;
         }
 
-        // ${display_name} — nickname (with optional prepended indicator) or plain real name
         String displayName = resolveDisplayName(player, ctx);
 
-        // ${name} — plain real username, no color applied
         String name = player.getName();
 
         String resolved = ctx.playerComponentTemplate
