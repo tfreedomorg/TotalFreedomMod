@@ -39,6 +39,7 @@ public class GenericPlayerRepository implements PlayerRepository
     private final String colStrikes;
     private final String colSavedTag;
     private final String colTitles;
+    private final String colDisplayedTitle;
     private final String colNickname;
     private final String colId;
     private final String colPlayerUsername;
@@ -67,21 +68,22 @@ public class GenericPlayerRepository implements PlayerRepository
         this.colStrikes = adapter.quoteIdentifier("strikes");
         this.colSavedTag = adapter.quoteIdentifier("saved_tag");
         this.colTitles = adapter.quoteIdentifier("titles");
+        this.colDisplayedTitle = adapter.quoteIdentifier("displayed_title");
         this.colNickname = adapter.quoteIdentifier("nickname");
         this.colId = adapter.quoteIdentifier("id");
         this.colPlayerUsername = adapter.quoteIdentifier("username");
         this.colIp = adapter.quoteIdentifier("ip");
         this.colUpdatedAt = adapter.quoteIdentifier("updated_at");
-        this.selectColumns = String.format("%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s",
+        this.selectColumns = String.format("%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s",
                 colUsername, colFirstJoin, colLastJoin, colPotionSpyMode, colCommandSpyMode, colSignSpyMode,
                 colBookSpyMode, colMuted, colFrozen, colCommandsBlocked, colJoinLeaveMessages, colStrikes,
-                colSavedTag, colTitles) + ", " + colNickname;
+                colSavedTag, colTitles, colDisplayedTitle) + ", " + colNickname;
     }
 
     @Override
     public void insert(PlayerData data) throws SQLException
     {
-        String sql = String.format("INSERT INTO %s (%s, %s) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, %s)",
+        String sql = String.format("INSERT INTO %s (%s, %s) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, %s)",
                 tblPlayers, selectColumns, colUpdatedAt, adapter.currentTimestamp());
 
         statementHandler.executeUpdate(sql,
@@ -99,6 +101,7 @@ public class GenericPlayerRepository implements PlayerRepository
                 data.getStrikes(),
                 data.getSavedTag(),
                 serializeTitles(data),
+                data.getDisplayedTitle(),
                 serializeNickname(data));
 
         insertIps(data.getUsername(), data.getIps());
@@ -212,9 +215,9 @@ public class GenericPlayerRepository implements PlayerRepository
     @Override
     public boolean update(PlayerData data) throws SQLException
     {
-        String sql = String.format("UPDATE %s SET %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = %s WHERE %s = ?",
+        String sql = String.format("UPDATE %s SET %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = %s WHERE %s = ?",
                 tblPlayers, colFirstJoin, colLastJoin, colPotionSpyMode, colCommandSpyMode, colSignSpyMode,
-                colBookSpyMode, colMuted, colFrozen, colCommandsBlocked, colJoinLeaveMessages, colStrikes, colSavedTag, colTitles,
+                colBookSpyMode, colMuted, colFrozen, colCommandsBlocked, colJoinLeaveMessages, colStrikes, colSavedTag, colTitles, colDisplayedTitle,
                 colUpdatedAt, adapter.currentTimestamp(), colUsername);
 
         int rows = statementHandler.executeUpdate(sql,
@@ -231,6 +234,7 @@ public class GenericPlayerRepository implements PlayerRepository
                 data.getStrikes(),
                 data.getSavedTag(),
                 serializeTitles(data),
+                data.getDisplayedTitle(),
                 data.getUsername());
 
         statementHandler.executeUpdate(
@@ -334,6 +338,7 @@ public class GenericPlayerRepository implements PlayerRepository
         data.setStrikes(rs.getInt("strikes"));
         data.setSavedTag(rs.getString("saved_tag"));
         data.setTitles(parseTitles(rs.getString("titles")));
+        data.setDisplayedTitle(rs.getString("displayed_title"));
 
         String rawNickname = rs.getString("nickname");
         if (rawNickname != null && !rawNickname.isEmpty())

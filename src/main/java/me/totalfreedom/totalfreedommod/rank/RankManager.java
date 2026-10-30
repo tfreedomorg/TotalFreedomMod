@@ -517,25 +517,22 @@ public class RankManager extends FreedomService
 
         final boolean admin = rank != null && registry.hasMarker(rank, RankRegistry.ADMIN_TAG);
 
-        // same precedence as getDisplay: a held title outranks the rank on screen
-        final String teamName;
+        // names take the colour of the rank; a displayed title goes in the team prefix
+        final String rankTeamName;
         final NamedTextColor color;
 
-        if (title != null)
+        if (admin)
         {
-            teamName = createTeamName(title.getWeight(), title.getId());
-            color = title.getColor();
-        }
-        else if (admin)
-        {
-            teamName = createTeamName(rank.getLevel(), rank.getId());
+            rankTeamName = createTeamName(rank.getLevel(), rank.getId());
             color = rank.getColor();
         }
         else
         {
-            teamName = DEFAULT_TEAM_NAME;
+            rankTeamName = DEFAULT_TEAM_NAME;
             color = NamedTextColor.WHITE;
         }
+
+        final String teamName = title == null ? rankTeamName : createTitleTeamName(rankTeamName, title);
 
         if (currentTeam != null && !currentTeam.getName().equals(teamName))
             currentTeam.removeEntry(player.getName());
@@ -546,7 +543,7 @@ public class RankManager extends FreedomService
             team = scoreboard.registerNewTeam(teamName);
 
         team.color(color);
-        team.prefix(Component.empty());
+        team.prefix(title == null ? Component.empty() : title.getColoredTag().append(Component.space()));
         team.addEntry(player.getName());
     }
 
@@ -559,6 +556,17 @@ public class RankManager extends FreedomService
                 id.replaceAll("[^A-Za-z0-9_\\-]", "_"));
 
         return name.length() > 16 ? name.substring(0, 16) : name;
+    }
+
+    /**
+     * A team name for one rank and title pair. The rank's name keeps its sort position as a
+     * truncated head and a hash of the pair keeps each pair distinct within the 16 character limit.
+     */
+    private static String createTitleTeamName(final String rankTeamName, final Title title)
+    {
+        final String head = rankTeamName.substring(0, Math.min(rankTeamName.length(), 7));
+
+        return String.format("%s_%08x", head, (rankTeamName + "/" + title.getId()).hashCode());
     }
 
     public void updateAllPlayerTeams()

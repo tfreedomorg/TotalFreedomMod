@@ -2,6 +2,7 @@ package me.totalfreedom.totalfreedommod.cmd;
 
 import java.net.InetAddress;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.bukkit.entity.Player;
 
@@ -9,9 +10,10 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
 
 import me.totalfreedom.totalfreedommod.admin.Admin;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+import me.totalfreedom.totalfreedommod.player.PlayerData;
 
 @Permission(source = SourceType.ONLY_IN_GAME, permission = "tfm.admin.myadmin")
-@Command(name = "myadmin", description = "Manage my admin entry", usage = "/myadmin <clearips | clearip <ip> | setlogin <message> | clearlogin>")
+@Command(name = "myadmin", description = "Manage my admin entry", usage = "/myadmin <clearips | clearip <ip> | setlogin <message> | clearlogin | display <title | rank | auto>>")
 public class Command_myadmin extends FCommand
 {
 
@@ -86,5 +88,41 @@ public class Command_myadmin extends FCommand
         entry.setLoginMessage(null); // this needs a .resetLoginMessage() call so that we AVOID nullability. Not my problem right now.
         msg(player, "<gray>Your login message has been removed.");
         plugin().al.saveAdminAsync(entry);
+    }
+
+    @Callback
+    @Subcommand("display")
+    public void display(Player player, String choice)
+    {
+        final String pick = choice.toLowerCase();
+
+        switch (pick)
+        {
+            case "auto" -> plugin().tm.setDisplayedTitle(player, null);
+            case "rank" -> plugin().tm.setDisplayedTitle(player, PlayerData.DISPLAY_RANK);
+            default ->
+            {
+                if (!plugin().tm.getHeldTitleIds(player).contains(pick))
+                {
+                    msg(player, "<red>You don't hold a title called <title>.", MessageUtils.unparsed("title", choice));
+                    return;
+                }
+
+                plugin().tm.setDisplayedTitle(player, pick);
+            }
+        }
+
+        msg(player, "<gray>You now appear as <display>.", MessageUtils.component("display", plugin().rm.getDisplay(player).getColoredName()));
+    }
+
+    @Completer(value = "display", position = 0)
+    public List<String> completeDisplay(Player player, String partial)
+    {
+        final String prefix = partial == null ? "" : partial.toLowerCase();
+
+        return Stream.concat(Stream.of("auto", "rank"), plugin().tm.getHeldTitleIds(player).stream())
+                     .filter(option -> option.startsWith(prefix))
+                     .sorted()
+                     .toList();
     }
 }

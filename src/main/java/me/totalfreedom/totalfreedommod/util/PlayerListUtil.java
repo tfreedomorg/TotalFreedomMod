@@ -13,6 +13,7 @@ import me.totalfreedom.totalfreedommod.PluginProvider;
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import me.totalfreedom.totalfreedommod.rank.CustomRank;
 import me.totalfreedom.totalfreedommod.rank.RankRole;
+import me.totalfreedom.totalfreedommod.title.Title;
 
 /**
  * Plaintext online player list shared by automated console contexts.
@@ -94,7 +95,7 @@ public final class PlayerListUtil
                 final List<Player> rankedPlayers = playerRanks.get(rank);
                 final List<String> rankedPlayerNames = rankedPlayers
                     .stream()
-                    .map(Player::getName)
+                    .map(player -> listingName(plugin, player))
                     .collect(Collectors.toCollection(ArrayList::new));
                 // Make a nice message out of it
                 return String.format("%ss (%s): %s",
@@ -107,5 +108,16 @@ public final class PlayerListUtil
             players.size(),
             max,
             String.join("\n", playerListings));
+    }
+
+    /**
+     * The name to print under a rank's group. Groups are keyed by rank, and a player showing a
+     * title is annotated with it.
+     */
+    private static String listingName(final TotalFreedomMod plugin, final Player player)
+    {
+        return plugin.rm.getDisplay(player) instanceof Title title
+                ? String.format("%s (%s)", player.getName(), title.getName())
+                : player.getName();
     }
 }

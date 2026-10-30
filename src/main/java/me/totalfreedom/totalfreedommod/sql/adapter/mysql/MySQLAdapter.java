@@ -449,6 +449,7 @@ public class MySQLAdapter extends DatabaseAdapter
         statementHandler.executeUpdate(sql);
         addColumnIfMissing("players", "updated_at", "DATETIME NOT NULL DEFAULT NOW()");
         addColumnIfMissing("players", "titles", "TEXT");
+        addColumnIfMissing("players", "displayed_title", "TEXT");
         addColumnIfMissing("players", "potion_spy_mode", "VARCHAR(16) NOT NULL DEFAULT 'off'");
         addColumnIfMissing("players", "sign_spy_mode", "VARCHAR(16) NOT NULL DEFAULT 'off'");
         addColumnIfMissing("players", "book_spy_mode", "VARCHAR(16) NOT NULL DEFAULT 'off'");

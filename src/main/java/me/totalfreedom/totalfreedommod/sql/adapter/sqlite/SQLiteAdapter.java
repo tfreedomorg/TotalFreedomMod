@@ -481,6 +481,7 @@ public class SQLiteAdapter extends DatabaseAdapter
         statementHandler.executeUpdate(sql);
         addTimestampColumnIfMissing("players", "updated_at");
         addColumnIfMissing("players", "titles", "TEXT");
+        addColumnIfMissing("players", "displayed_title", "TEXT");
         addColumnIfMissing("players", "potion_spy_mode", "TEXT NOT NULL DEFAULT 'off'");
         addColumnIfMissing("players", "sign_spy_mode", "TEXT NOT NULL DEFAULT 'off'");
         addColumnIfMissing("players", "book_spy_mode", "TEXT NOT NULL DEFAULT 'off'");

@@ -159,15 +159,45 @@ public class TitleManager extends FreedomService
     }
 
     /**
-     * The title that should represent {@code player} on screen, or {@code null} when they hold
-     * none. The heaviest held title wins; see {@link Title#getWeight()}.
+     * The title that should represent {@code player} on screen, or {@code null} when the rank
+     * should be shown instead.
+     * <p>
+     * A title the player picked wins, as does their choice of the rank. When nothing is picked, or
+     * the pick has been revoked, the heaviest announced title is used; see
+     * {@link Title#getWeight()}.
      */
     public Title getDisplayTitle(Player player)
     {
-        return getHeldTitles(player).stream()
-                                    .filter(Title::isAnnounce)
-                                    .findFirst()
-                                    .orElse(null);
+        final PlayerData data = plugin.pl.getData(player);
+        final String picked = data == null ? null : data.getDisplayedTitle();
+
+        if (PlayerData.DISPLAY_RANK.equals(picked))
+            return null;
+
+        final List<Title> held = getHeldTitles(player);
+
+        return held.stream()
+                   .filter(title -> title.getId().equals(picked))
+                   .findFirst()
+                   .or(() -> held.stream()
+                                 .filter(Title::isAnnounce)
+                                 .findFirst())
+                   .orElse(null);
+    }
+
+    /**
+     * Records which identity {@code player} wants shown: a held title's id, {@link
+     * PlayerData#DISPLAY_RANK}, or {@code null} to go back to the heaviest title.
+     */
+    public void setDisplayedTitle(Player player, String choice)
+    {
+        final PlayerData data = plugin.pl.getData(player);
+        if (data == null)
+            return;
+
+        data.setDisplayedTitle(choice);
+        plugin.pl.saveData(data);
+        refreshDisplay(player);
     }
 
     // ========================================================================
@@ -227,6 +257,16 @@ public class TitleManager extends FreedomService
     }
 
     /**
+     * Rebuilds every online player's scoreboard team, so a changed tag or colour reaches nametags
+     * and the tab list.
+     */
+    private void refreshAllTeams()
+    {
+        if (plugin.rm != null)
+            plugin.rm.updateAllPlayerTeams();
+    }
+
+    /**
      * Re-applies the player's tag after their titles changed.
      * <p>
      * A tag the player set by hand is left alone: they chose it deliberately, and having a title
@@ -264,6 +304,7 @@ public class TitleManager extends FreedomService
     {
         titles.put(title.getId(), title);
         saveTitles();
+        refreshAllTeams();
     }
 
     public boolean removeTitle(String id)
@@ -291,6 +332,7 @@ public class TitleManager extends FreedomService
         }
 
         saveTitles();
+        refreshAllTeams();
 
         return true;
     }
@@ -328,6 +370,7 @@ public class TitleManager extends FreedomService
         titles.clear();
         titles.putAll(loaded);
         FLog.info(String.format("Loaded %d titles from SQL database.", titles.size()));
+        refreshAllTeams();
 
         reconcileFromJsonIfNewer(repo);
     }
@@ -394,6 +437,7 @@ public class TitleManager extends FreedomService
     {
         titles.clear();
         titles.putAll(jsonTitles);
+        refreshAllTeams();
     }
 
     private void loadFromJsonOrDefaults()
@@ -449,6 +493,7 @@ public class TitleManager extends FreedomService
         }
 
         FLog.info(String.format("Loaded %d titles.", titles.size()));
+        refreshAllTeams();
     }
 
     private Map<String, Title> readJsonTitles() throws IOException
