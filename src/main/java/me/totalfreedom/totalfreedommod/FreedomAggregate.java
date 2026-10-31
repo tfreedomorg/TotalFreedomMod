@@ -54,7 +54,6 @@ import me.totalfreedom.totalfreedommod.rank.RankManager;
 import me.totalfreedom.totalfreedommod.sql.FreedomDatabase;
 import me.totalfreedom.totalfreedommod.ssh.SshDaemon;
 import me.totalfreedom.totalfreedommod.tablist.TabList;
-import me.totalfreedom.totalfreedommod.teleport.TeleportService;
 import me.totalfreedom.totalfreedommod.title.TitleManager;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.vanish.VanishService;
@@ -156,7 +155,6 @@ public class FreedomAggregate
         services.register(StrikeList.class, StrikeList::new);
         services.register(ProtectArea.class, ProtectArea::new);
         services.register(SpawnManager.class, SpawnManager::new);
-        services.register(TeleportService.class, TeleportService::new);
         services.register(GameRuleHandler.class, GameRuleHandler::new);
         services.register(GameModeGuard.class, GameModeGuard::new);
         services.register(DisallowedDisguises.class, DisallowedDisguises::new);
