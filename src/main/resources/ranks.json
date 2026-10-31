@@ -66,6 +66,7 @@
     ],
     "inherit": "op",
     "permissions": [
+      "tfm.admin.tp.others",
       "tfm.marker.admin",
       "tfm.fun.*",
       "tfm.world.*",
