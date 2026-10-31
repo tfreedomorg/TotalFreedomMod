@@ -24,7 +24,7 @@ import me.totalfreedom.totalfreedommod.util.AdventureUtil;
  * Every source runs the candidates through {@link FuzzyMatch} so completion behaves the same as the
  * framework's built-in suggesters.
  */
-final class NameCandidates
+public final class NameCandidates
 {
 
     private static final int MIN_TYPED_PREFIX = 3;
@@ -49,7 +49,7 @@ final class NameCandidates
                      .toList();
     }
 
-    static List<String> online(Server server, String partial)
+    public static List<String> online(Server server, String partial)
     {
         return FuzzyMatch.filter(
                 server.getOnlinePlayers()
