@@ -67,6 +67,7 @@
     "inherit": "op",
     "permissions": [
       "tfm.marker.admin",
+      "tfm.admin.back.others",
       "tfm.admin.tppos",
       "tfm.admin.tphere",
       "tfm.admin.tp.others",
