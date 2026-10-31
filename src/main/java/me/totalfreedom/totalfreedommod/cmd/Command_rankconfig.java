@@ -3,21 +3,23 @@ package me.totalfreedom.totalfreedommod.cmd;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import org.bukkit.command.CommandSender;
-
-import me.totalfreedom.totalfreedommod.dispatch.RemoteDispatchContext;
 import org.bukkit.entity.Player;
 
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
-import me.totalfreedom.totalfreedommod.admin.Admin;
 import me.totalfreedom.totalfreedommod.cmd.internal.FuzzyMatch;
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+import me.totalfreedom.api.cmd.FCommand;
+import me.totalfreedom.api.cmd.SourceType;
+import me.totalfreedom.api.cmd.annotation.*;
+import me.totalfreedom.totalfreedommod.dispatch.RemoteDispatchContext;
+import me.totalfreedom.totalfreedommod.player.PlayerData;
 import me.totalfreedom.totalfreedommod.rank.CustomRank;
-import me.totalfreedom.totalfreedommod.rank.RankRole;
+import me.totalfreedom.api.rank.RankRole;
 
 @Command(
         name = "rankconfig",
@@ -33,12 +35,12 @@ public class Command_rankconfig extends FCommand
             Stream.of("purple", "orange", "grey", "dark_grey", "cyan", "dark_cyan", "pink", "magenta"))
         .sorted()
         .toList();
-        
+
     @Callback
     public void menu(CommandSender sender)
     {
         requireManageRanks(sender);
-        msg(sender, "<menu>", MessageUtils.component("menu", plugin().rm.buildMainMenu()));
+        msg(sender, "<menu>", MessageUtils.component("menu", plugin().ranks().buildMainMenu()));
     }
 
     @Callback
@@ -55,17 +57,17 @@ public class Command_rankconfig extends FCommand
         requireManageRanks(sender);
 
         final String rankId = id.toLowerCase();
-        if (plugin().rm.hasCustomRank(rankId))
+        if (plugin().ranks().hasCustomRank(rankId))
         {
             msg(sender, "<red>A rank with that ID already exists!");
             return;
         }
 
         final CustomRank rank = new CustomRank(rankId);
-        plugin().rm.setCustomRank(rank);
+        plugin().ranks().setCustomRank(rank);
 
         adminAction(sender, "<aqua>Created new rank: <rank>", Placeholder.unparsed("rank", rank.getName()));
-        msg(sender, "<menu>", MessageUtils.component("menu", plugin().rm.buildEditMenu(rank)));
+        msg(sender, "<menu>", MessageUtils.component("menu", plugin().ranks().buildEditMenu(rank)));
     }
 
     @Callback
@@ -74,14 +76,14 @@ public class Command_rankconfig extends FCommand
     {
         requireManageRanks(sender);
 
-        final CustomRank target = plugin().rm.getCustomRank(rank.toLowerCase());
+        final CustomRank target = plugin().ranks().getCustomRank(rank.toLowerCase());
         if (target == null)
         {
             msg(sender, "<red>Rank not found: <rank>", Placeholder.unparsed("rank", rank));
             return;
         }
 
-        msg(sender, "<menu>", MessageUtils.component("menu", plugin().rm.buildEditMenu(target)));
+        msg(sender, "<menu>", MessageUtils.component("menu", plugin().ranks().buildEditMenu(target)));
     }
 
     @Completer(value = "edit", position = 0)
@@ -97,16 +99,16 @@ public class Command_rankconfig extends FCommand
         requireManageRanks(sender);
 
         final String rankId = rank.toLowerCase();
-        final CustomRank target = plugin().rm.getCustomRank(rankId);
+        final CustomRank target = plugin().ranks().getCustomRank(rankId);
         if (target == null)
         {
             msg(sender, "<red>Rank not found: <rank>", Placeholder.unparsed("rank", rankId));
             return;
         }
 
-        plugin().rm.removeCustomRank(rankId);
+        plugin().ranks().removeCustomRank(rankId);
         adminAction(sender, "<red>Deleted rank: <rank>", Placeholder.unparsed("rank", target.getName()));
-        msg(sender, "<menu>", MessageUtils.component("menu", plugin().rm.buildMainMenu()));
+        msg(sender, "<menu>", MessageUtils.component("menu", plugin().ranks().buildMainMenu()));
     }
 
     @Completer(value = "delete", position = 0)
@@ -122,7 +124,7 @@ public class Command_rankconfig extends FCommand
         requireManageRanks(sender);
 
         final String rankId = rank.toLowerCase();
-        final CustomRank target = plugin().rm.getCustomRank(rankId);
+        final CustomRank target = plugin().ranks().getCustomRank(rankId);
         if (target == null)
         {
             msg(sender, "<red>Rank not found: <rank>", Placeholder.unparsed("rank", rankId));
@@ -157,7 +159,7 @@ public class Command_rankconfig extends FCommand
                 {
                     target.setInheritFrom(null);
                 }
-                else if (!plugin().rm.hasCustomRank(trimmed.toLowerCase()))
+                else if (!plugin().ranks().hasCustomRank(trimmed.toLowerCase()))
                 {
                     msg(sender, "<red>Rank '<rank>' does not exist!", Placeholder.unparsed("rank", trimmed));
                     return;
@@ -169,7 +171,7 @@ public class Command_rankconfig extends FCommand
             }
         }
 
-        plugin().rm.setCustomRank(target);
+        plugin().ranks().setCustomRank(target);
         msg(
             sender,
             "<green>Updated <property> for rank <rank>",
@@ -179,7 +181,7 @@ public class Command_rankconfig extends FCommand
 
         if (sender instanceof Player)
         {
-            msg(sender, "<menu>", MessageUtils.component("menu", plugin().rm.buildEditMenu(target)));
+            msg(sender, "<menu>", MessageUtils.component("menu", plugin().ranks().buildEditMenu(target)));
         }
     }
 
@@ -210,7 +212,7 @@ public class Command_rankconfig extends FCommand
     private List<String> inheritCandidates(String rankId)
     {
         final List<String> candidates = new ArrayList<>(List.of("none"));
-        plugin().rm.getCustomRanksSorted()
+        plugin().ranks().getCustomRanksSorted()
                    .stream()
                    .map(CustomRank::getId)
                    .filter(id -> !id.equalsIgnoreCase(rankId.trim()))
@@ -221,7 +223,7 @@ public class Command_rankconfig extends FCommand
 
     private List<String> heldPermissions(String rankId)
     {
-        final CustomRank rank = plugin().rm.getCustomRank(rankId.trim().toLowerCase());
+        final CustomRank rank = plugin().ranks().getCustomRank(rankId.trim().toLowerCase());
         return rank == null ? List.of() : rank.getPermissions().stream().sorted().toList();
     }
 
@@ -242,30 +244,31 @@ public class Command_rankconfig extends FCommand
         final String rankId = rank.toLowerCase();
         if (rankId.equals("none") || rankId.equals("clear"))
         {
-            final Admin admin = plugin().al.getAdmin(target);
-            if (admin == null)
+            final PlayerData admin = plugin().players().getData(target);
+            final Optional<String> baseline = plugin().ranks().getRegistry()
+                                                      .byRole(RankRole.ADMIN_DEFAULT)
+                                                      .map(CustomRank::getId);
+            if (!admin.isStaff() || baseline.isEmpty())
             {
                 msg(sender, "<red>Player is not an admin, no custom rank to clear.");
                 return;
             }
 
-            admin.setRankId(plugin().rm.getRegistry().byRole(RankRole.ADMIN_DEFAULT)
-                                       .map(CustomRank::getId)
-                                       .orElse(null));
-            plugin().al.saveAsync();
+            admin.setRankId(baseline.get());
+            plugin().players().saveData(admin);
             msg(sender, "<green>Reset <player> to the baseline admin rank.", Placeholder.unparsed("player", target.getName()));
             return;
         }
 
-        final CustomRank customRank = plugin().rm.getCustomRank(rankId);
+        final CustomRank customRank = plugin().ranks().getCustomRank(rankId);
         if (customRank == null)
         {
             msg(sender, "<red>Rank not found: <rank>", Placeholder.unparsed("rank", rankId));
             return;
         }
 
-        final Admin admin = plugin().al.getAdmin(target);
-        if (admin == null)
+        final PlayerData admin = plugin().players().getData(target);
+        if (!admin.isStaff())
         {
             msg(sender, "<red>Player must be an admin to have a custom rank assigned.");
             msg(sender, "<gray>Add them to the admin list first using /saconfig add <player>", Placeholder.unparsed("player", target.getName()));
@@ -273,7 +276,7 @@ public class Command_rankconfig extends FCommand
         }
 
         admin.setRankId(rankId);
-        plugin().al.saveAsync();
+        plugin().players().saveData(admin);
 
         adminAction(
             sender,
@@ -295,10 +298,10 @@ public class Command_rankconfig extends FCommand
     {
         requireManageRanks(sender);
 
-        plugin().rm.loadRanks();
+        plugin().ranks().loadRanks();
         adminAction(sender, "<aqua>Reloaded rank configuration");
         msg(sender, "<green>Ranks reloaded from file.");
-        msg(sender, "<menu>", MessageUtils.component("menu", plugin().rm.buildMainMenu()));
+        msg(sender, "<menu>", MessageUtils.component("menu", plugin().ranks().buildMainMenu()));
     }
 
     @Callback
@@ -307,28 +310,34 @@ public class Command_rankconfig extends FCommand
     {
         requireManageRanks(sender);
 
-        plugin().rm.saveRanks();
+        plugin().ranks().saveRanks();
         msg(sender, "<green>Ranks saved to file.");
     }
 
     private List<String> rankIdCandidates(String partial)
     {
-        final List<String> ids = plugin().rm
+        final List<String> ids = plugin().ranks()
                                    .getCustomRanksSorted()
                                    .stream()
                                    .map(CustomRank::getId)
                                    .toList();
-                                   
+
         return FuzzyMatch.filter(ids, partial);
     }
 
     private void requireManageRanks(CommandSender sender)
     {
         requireLocalConsole(sender);
-        if (!plugin().rm.canManageRanks(sender))
+        if (!plugin().ranks().canManageRanks(sender))
         {
             throw new CommandFailException("You do not have permission to manage ranks.");
         }
+    }
+
+    private void requireLocalConsole(CommandSender sender)
+    {
+        if (RemoteDispatchContext.isActive() || !sender.getName().equalsIgnoreCase("CONSOLE"))
+            throw new CommandFailException("This command can only be used from the server panel console.");
     }
 
     private static NamedTextColor parseColor(String name)
@@ -358,11 +367,4 @@ public class Command_rankconfig extends FCommand
     {
         NAME, ABBREVIATION, LEVEL, COLOR, DETERMINER, PREFIX, INHERIT, ADDPERM, REMPERM
     }
-    private void requireLocalConsole(CommandSender sender)
-    {
-        if (RemoteDispatchContext.isActive() || !sender.getName().equalsIgnoreCase("CONSOLE"))
-            throw new CommandFailException("This command can only be used from the server panel console.");
-    }
-
-
 }
