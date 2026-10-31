@@ -13,6 +13,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.slf4j.LoggerFactory;
 
 import me.totalfreedom.api.banning.IBanManager;
+import me.totalfreedom.api.blocking.item.IItemValidator;
 import me.totalfreedom.api.blocking.sweep.ISweepScheduler;
 import me.totalfreedom.api.cmd.CommandLoader;
 import me.totalfreedom.api.config.IMainConfig;
@@ -195,6 +196,12 @@ public class TotalFreedomMod extends JavaPlugin implements FreedomAPI
     public IVanishService vanish()
     {
         return aggregate.vanish();
+    }
+
+    @Override
+    public IItemValidator itemValidator()
+    {
+        return aggregate.itemValidator();
     }
 
     @Override

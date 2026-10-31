@@ -7,6 +7,7 @@ import me.totalfreedom.api.BuildInfo;
 import me.totalfreedom.api.IAutoEject;
 import me.totalfreedom.api.IGameRuleHandler;
 import me.totalfreedom.api.banning.IBanManager;
+import me.totalfreedom.api.blocking.item.IItemValidator;
 import me.totalfreedom.api.blocking.sweep.ISweepScheduler;
 import me.totalfreedom.api.config.IMainConfig;
 import me.totalfreedom.api.economy.IBank;
@@ -290,6 +291,11 @@ public class FreedomAggregate
     public IVanishService vanish()
     {
         return services.require(VanishService.class);
+    }
+
+    public IItemValidator itemValidator()
+    {
+        return services.require(ItemValidator.class);
     }
 
     public IBanManager bans()

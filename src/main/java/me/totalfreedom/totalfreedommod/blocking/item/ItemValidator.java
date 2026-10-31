@@ -40,6 +40,7 @@ import org.bukkit.inventory.*;
 import net.kyori.adventure.text.format.NamedTextColor;
 
 import me.totalfreedom.totalfreedommod.FreedomService;
+import me.totalfreedom.api.blocking.item.IItemValidator;
 import me.totalfreedom.api.blocking.sweep.EntityVisitor;
 import me.totalfreedom.api.blocking.sweep.SweepContext;
 import me.totalfreedom.api.blocking.sweep.TileEntityVisitor;
@@ -49,7 +50,7 @@ import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FTask;
 import me.totalfreedom.totalfreedommod.util.FUtil;
 
-public class ItemValidator extends FreedomService
+public class ItemValidator extends FreedomService implements IItemValidator
 {
 
     private static final long LOG_INTERVAL_TICKS = 100L;
@@ -435,6 +436,7 @@ public class ItemValidator extends FreedomService
         }
     }
 
+    @Override
     public boolean isCursed(ItemStack item)
     {
         return scan(item).isCursed();

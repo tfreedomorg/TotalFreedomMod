@@ -5,6 +5,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
 import me.totalfreedom.api.banning.IBanManager;
+import me.totalfreedom.api.blocking.item.IItemValidator;
 import me.totalfreedom.api.blocking.sweep.ISweepScheduler;
 import me.totalfreedom.api.cmd.CommandLoader;
 import me.totalfreedom.api.config.IMainConfig;
@@ -74,6 +75,8 @@ public interface FreedomAPI extends Plugin
     IGenerationService generation();
 
     IVanishService vanish();
+
+    IItemValidator itemValidator();
 
     IConsoleSenderRegistry consoleSenders();
 
