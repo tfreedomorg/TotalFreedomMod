@@ -70,6 +70,7 @@
       "tfm.admin.back.others",
       "tfm.admin.tppos",
       "tfm.admin.tphere",
+      "tfm.admin.tpoffline",
       "tfm.admin.tp.others",
       "tfm.admin.tptoggle.others",
       "tfm.fun.*",
