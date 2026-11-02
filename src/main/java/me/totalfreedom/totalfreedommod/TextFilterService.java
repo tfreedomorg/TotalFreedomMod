@@ -2,6 +2,7 @@ package me.totalfreedom.totalfreedommod;
 
 import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -12,6 +13,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
@@ -41,11 +43,13 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
 public class TextFilterService extends FreedomService
 {
     private static final int ITEM_DATA_PREVIEW_LIMIT = 512;
+    private static final long ALERT_COOLDOWN_MS = 5_000L;
 
     private static final Map<Character, Character> LEET = Map.ofEntries(
         Map.entry('0', 'O'), Map.entry('1', 'I'), Map.entry('3', 'E'),
@@ -54,6 +58,8 @@ public class TextFilterService extends FreedomService
 
     private List<Pattern> filters = List.of();
     private List<Pattern> usernameFilters = List.of();
+    private final Map<AlertKey, Long> alertCooldowns = new HashMap<>();
+    private long lastAlertCleanup;
 
     public TextFilterService(TotalFreedomMod plugin)
     {
@@ -71,6 +77,8 @@ public class TextFilterService extends FreedomService
     {
         filters = List.of();
         usernameFilters = List.of();
+        alertCooldowns.clear();
+        lastAlertCleanup = 0L;
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
@@ -272,13 +280,8 @@ public class TextFilterService extends FreedomService
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onPlayerInteractEntity(PlayerInteractEntityEvent event)
     {
-        if (!shouldFilter(event.getPlayer()) || !(event.getRightClicked() instanceof Mob))
-        {
-            return;
-        }
-
         final ItemStack item = event.getPlayer().getInventory().getItem(event.getHand());
-        if (item.getType() != Material.NAME_TAG)
+        if (!shouldFilter(event.getPlayer()) || !(event.getRightClicked() instanceof Mob) || item.getType() != Material.NAME_TAG)
         {
             return;
         }
@@ -304,18 +307,46 @@ public class TextFilterService extends FreedomService
         {
             return;
         }
-
+        final Location location = mob.getLocation();
         final Optional<String> filteredText = findFilteredText(mob.customName());
         if (filteredText.isEmpty())
         {
             return;
         }
+        if (shouldNotify("mob", "contains prohibited text: " + filteredText.get()))
+        {
+            final String coordinates = String.format("%d, %d, %d",
+                    location.getBlockX(),
+                    location.getBlockY(),
+                    location.getBlockZ());
+            final String mobName = mob.getType().name().toLowerCase(Locale.ROOT).replace('_', ' ');
+            final String displayName = Character.toUpperCase(mobName.charAt(0)) + mobName.substring(1);
+            final String locationText = String.format("%s (%s)",
+                    location.getWorld().getName(),
+                    coordinates);
+            final String description = String.format(" at %s filtered: %s",
+                    locationText,
+                    filteredText.get());
+            final String alert = String.format("[%s]%s", displayName, description);
+            final Component label = Component.text("[" + displayName + "]", NamedTextColor.YELLOW)
+                .hoverEvent(HoverEvent.showText(mob.customName()))
+                .append(Component.text(" at ", NamedTextColor.GRAY))
+                .append(Component.text(location.getWorld().getName() + " (", NamedTextColor.GRAY))
+                .append(Component.text(coordinates, NamedTextColor.AQUA)
+                    .decorate(TextDecoration.UNDERLINED)
+                    .clickEvent(ClickEvent.runCommand(String.format("/tppos %d %d %d",
+                        location.getBlockX(),
+                        location.getBlockY(),
+                        location.getBlockZ()))))
+                .append(Component.text(") filtered: ", NamedTextColor.GRAY))
+                .append(Component.text(filteredText.get(), NamedTextColor.RED));
+            notifyAdmins(alert, label);
+        }
 
-        final Component label = Component.text("[Mob]", NamedTextColor.YELLOW)
-            .hoverEvent(HoverEvent.showText(mob.customName()));
-        notifyAdmins(String.format("[Mob] contains prohibited text: %s", filteredText.get()), label);
         Bukkit.getScheduler().runTask(plugin, FTask.guard("TextFilterService/removeMob", mob::remove));
     }
+
+    private record AlertKey(String playerName, String text) {}
 
     private void reloadFilters()
     {
@@ -454,6 +485,11 @@ public class TextFilterService extends FreedomService
 
     private void notifyAdmins(Player player, ItemStack item, String message)
     {
+        if (!shouldNotify(player.getName(), message))
+        {
+            return;
+        }
+
         final String itemName = itemName(item);
         final String consoleMessage = String.format("%s: [%s] %s", player.getName(), itemName, message);
         final String itemData = truncateItemData(item);
@@ -466,6 +502,25 @@ public class TextFilterService extends FreedomService
             .append(Component.text(" " + message, NamedTextColor.GRAY));
 
         notifyAdmins(consoleMessage, feedback);
+    }
+
+    private boolean shouldNotify(String playerName, String text)
+    {
+        final long now = System.currentTimeMillis();
+        if (now - lastAlertCleanup >= ALERT_COOLDOWN_MS)
+        {
+            alertCooldowns.values().removeIf(lastAlert -> now - lastAlert >= ALERT_COOLDOWN_MS);
+            lastAlertCleanup = now;
+        }
+
+        final AlertKey key = new AlertKey(playerName.toLowerCase(Locale.ROOT), text.toLowerCase(Locale.ROOT));
+        if (alertCooldowns.containsKey(key))
+        {
+            return false;
+        }
+
+        alertCooldowns.put(key, now);
+        return true;
     }
 
     private static String truncateItemData(ItemStack item)
