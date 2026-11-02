@@ -67,6 +67,10 @@
     "inherit": "op",
     "permissions": [
       "tfm.marker.admin",
+      "tfm.admin.home.others",
+      "tfm.admin.homes.others",
+      "tfm.admin.delhome.others",
+      "tfm.admin.gamemode.others",
       "tfm.admin.back.others",
       "tfm.admin.tppos",
       "tfm.admin.tphere",
@@ -96,7 +100,6 @@
       "tfm.admin.findip",
       "tfm.admin.freeze",
       "tfm.admin.fuckup",
-      "tfm.admin.gamemode",
       "tfm.admin.gchat",
       "tfm.admin.gcmd",
       "tfm.admin.invis",
