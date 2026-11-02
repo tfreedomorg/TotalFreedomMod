@@ -1,5 +1,6 @@
 package me.totalfreedom.totalfreedommod.sql;
 
+import java.io.File;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +50,7 @@ public class FreedomDatabase extends FreedomService implements IFreedomDatabase
      * {@link #recordPunishmentAsync(PunishmentHistoryEntry)}.
      */
     private final Object punishmentLock = new Object();
+    private PunishmentHistoryRepository fallbackPunishmentHistoryRepository;
 
     public FreedomDatabase(FreedomAPI plugin)
     {
@@ -334,11 +336,21 @@ public class FreedomDatabase extends FreedomService implements IFreedomDatabase
 
     public PunishmentHistoryRepository getPunishmentHistoryRepository()
     {
-        if (adapter == null)
+        if (adapter == null || !initialized)
         {
-            throw new IllegalStateException("Database not initialized");
+            return fallbackPunishmentHistoryRepository();
         }
         return adapter.getPunishmentHistoryRepository();
+    }
+
+    private PunishmentHistoryRepository fallbackPunishmentHistoryRepository()
+    {
+        if (fallbackPunishmentHistoryRepository == null)
+        {
+            fallbackPunishmentHistoryRepository =
+                    new PunishJsonFallback(new File(plugin.getDataFolder(), "punishment-history.json"));
+        }
+        return fallbackPunishmentHistoryRepository;
     }
 
     public void recordPunishment(Player target, CommandSender actor, String type, String reason, Long expiryAt, String source)
@@ -378,12 +390,6 @@ public class FreedomDatabase extends FreedomService implements IFreedomDatabase
      */
     public void recordPunishmentAsync(PunishmentHistoryEntry entry)
     {
-        if (!initialized)
-        {
-            FLog.warn("Punishment history was not recorded because the SQL database is unavailable.");
-            return;
-        }
-
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () ->
         {
             synchronized (punishmentLock)
