@@ -84,5 +84,5 @@ public interface ITitleManager
     /**
      * The title filling a given id, wrapped for callers that would rather not null-check.
      */
-    Optional<? extends ITitle> find(String id);
+    Optional<ITitle> find(String id);
 }
