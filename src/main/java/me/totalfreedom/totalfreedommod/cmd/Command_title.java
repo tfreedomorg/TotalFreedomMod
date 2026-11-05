@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import me.totalfreedom.api.title.ITitle;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -20,7 +19,7 @@ import me.totalfreedom.api.cmd.annotation.Completer;
 import me.totalfreedom.api.cmd.annotation.Permission;
 import me.totalfreedom.api.cmd.annotation.Subcommand;
 import me.totalfreedom.totalfreedommod.dispatch.RemoteDispatchContext;
-import me.totalfreedom.totalfreedommod.title.Title;
+import me.totalfreedom.api.title.ITitle;
 
 /**
  * Grants, revokes and inspects titles.
