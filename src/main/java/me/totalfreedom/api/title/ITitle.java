@@ -4,6 +4,9 @@ import me.totalfreedom.api.display.Displayable;
 
 import java.util.Set;
 
+/**
+ * Represents a title a player holds which can display alongside their rank, with their own display and permissions.
+ */
 public interface ITitle extends Displayable
 {
     String getId();
