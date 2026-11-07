@@ -23,7 +23,7 @@ public interface IAutoEject
      * @param cause             The internal identifier for the cause
      * @param causeDescription  The description to use in the "ejection" broadcast
      * @param kickMessage       The message to kick the player with
-     * @return                  True if the player can be ejected for the given cause
+     * @return                  True if the player was eligible to be ejected
      */
     boolean eject(@NotNull Player player,
                 @NotNull String cause,
@@ -37,6 +37,7 @@ public interface IAutoEject
      * @param causeDescription  The description to use in the "ejection" broadcast
      * @param kickMessage       The message to kick the player with
      * @param condition         The condition that must be true for the player to be ejected
+     * @return                  True if the player was eligible to be ejected and the provided condition is true.
      */
     boolean ejectIf(@NotNull Player player,
                     @NotNull String cause,
