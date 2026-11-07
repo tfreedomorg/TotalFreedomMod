@@ -5,6 +5,7 @@ import me.totalfreedom.totalfreedommod.discord.DiscordBridge;
 import me.totalfreedom.api.FreedomAPI;
 import me.totalfreedom.api.rank.IRankManager;
 import me.totalfreedom.api.rank.RankRole;
+import me.totalfreedom.api.title.ITitle;
 
 import java.io.File;
 import java.io.FileReader;
@@ -58,7 +59,6 @@ import me.totalfreedom.api.display.Displayable;
 import me.totalfreedom.totalfreedommod.sql.PersistenceQueue;
 import me.totalfreedom.api.sql.adapter.RankRepository;
 import me.totalfreedom.totalfreedommod.player.PlayerData;
-import me.totalfreedom.totalfreedommod.title.Title;
 import me.totalfreedom.totalfreedommod.util.*;
 
 import com.google.common.base.Function;
@@ -596,7 +596,7 @@ public class RankManager extends FreedomService implements IRankManager
         final Scoreboard scoreboard = manager.getMainScoreboard();
         final Team currentTeam = scoreboard.getEntryTeam(player.getName());
         final CustomRank rank = getAssignedAdminRank(player);
-        final Title title = plugin.titles() == null || plugin.players().isImpostor(player)
+        final ITitle title = plugin.titles() == null || plugin.players().isImpostor(player)
                 ? null
                 : plugin.titles().getDisplayTitle(player);
 
@@ -649,7 +649,10 @@ public class RankManager extends FreedomService implements IRankManager
     public void updateAllPlayerTeams()
     {
         for (Player player : server.getOnlinePlayers())
+        {
             updatePlayerTeam(player);
+            player.updateCommands();
+        }
     }
 
     /**
