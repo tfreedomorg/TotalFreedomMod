@@ -101,10 +101,13 @@ public class ChatManager extends FreedomService
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
     public void onPlayerChatFormat(AsyncChatEvent event) {
-        try {
+        try
+        {
             handleChatEvent(event);
-        } catch (Exception ex) {
-            FLog.error(ex);
+        }
+        catch (Exception ex)
+        {
+            FLog.error("Failed to handle AsyncChatEvent", ex);
         }
     }
 

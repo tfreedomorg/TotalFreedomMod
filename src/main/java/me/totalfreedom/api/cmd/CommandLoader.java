@@ -178,8 +178,7 @@ public class CommandLoader extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.warn(String.format("Error walking commands: \n%s", ExceptionUtils.getRootCauseMessage(ex)));
-            FLog.warn(ex);
+            FLog.warn("Error walking commands: \n{}", ExceptionUtils.getRootCauseMessage(ex), ex);
         }
 
         return 0;
@@ -210,11 +209,11 @@ public class CommandLoader extends FreedomService
         } 
         catch (ClassNotFoundException | NoClassDefFoundError | ExceptionInInitializerError ex) 
         {
-            FLog.warn(String.format("Could not load command class %s: \n%s", className, ExceptionUtils.getRootCauseMessage(ex)));
+            FLog.warn("Could not load command class {}: \n{}", className, ExceptionUtils.getRootCauseMessage(ex));
         } 
         catch (Exception ex) 
         {
-            FLog.warn(String.format("Failed to register command %s: \n%s ", className, ExceptionUtils.getRootCauseMessage(ex)));
+            FLog.warn("Failed to register command {}: \n{}", className, ExceptionUtils.getRootCauseMessage(ex));
         }
         return false;
     }

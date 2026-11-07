@@ -63,8 +63,7 @@ public class WorldEditBridge extends FreedomService
         }
         catch (Throwable t)
         {
-            FLog.warn("Failed to attach WorldEdit hook: " + t.getMessage());
-            FLog.warn(t);
+            FLog.warn("Failed to attach WorldEdit hook: " + t.getMessage(), t);
             hook = null;
         }
     }
@@ -151,7 +150,7 @@ public class WorldEditBridge extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to set WorldEdit limit", ex);
         }
     }
 
@@ -165,7 +164,7 @@ public class WorldEditBridge extends FreedomService
             }
             catch (Exception ex)
             {
-                FLog.error(ex);
+                FLog.error("Failed to get WorldEdit", ex);
             }
         }
         return worldedit;
@@ -185,7 +184,7 @@ public class WorldEditBridge extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to get session for player {}", player.getName(), ex);
             return null;
         }
     }
@@ -207,7 +206,7 @@ public class WorldEditBridge extends FreedomService
         }
         catch (NoSuchMethodException ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to get selection for player {}", player.getName(), ex);
             return null;
         }
 
@@ -223,12 +222,12 @@ public class WorldEditBridge extends FreedomService
             if (ex.getCause() != null &&
                 ex.getCause().getClass().getSimpleName().equals("IncompleteRegionException"))
                 return null;
-            FLog.error(ex);
+            FLog.error("Failed to get selection", ex);
             return null;
         }
         catch (Exception ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to get selection", ex);
             return null;
         }
 
@@ -252,7 +251,7 @@ public class WorldEditBridge extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to get selection point", ex);
             return null;
         }
 
@@ -292,7 +291,7 @@ public class WorldEditBridge extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to adapt selection", ex);
             return null;
         }
 
@@ -316,7 +315,7 @@ public class WorldEditBridge extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to check if WorldEdit is enabled", ex);
         }
         return false;
     }

@@ -101,8 +101,7 @@ public class SshDaemon extends FreedomService
         }
         catch (IOException e)
         {
-            FLog.error("Failed to start SSH daemon on port " + port + "!");
-            FLog.error(e);
+            FLog.error("Failed to start SSH daemon on port {}!", port, e);
         }
     }
 
@@ -131,8 +130,7 @@ public class SshDaemon extends FreedomService
             }
             catch (Exception e)
             {
-                FLog.error("Error stopping SSH daemon.");
-                FLog.error(e);
+                FLog.error("Error stopping SSH daemon", e);
             }
         }
     }

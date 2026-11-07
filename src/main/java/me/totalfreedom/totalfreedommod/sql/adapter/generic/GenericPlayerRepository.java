@@ -294,7 +294,7 @@ public class GenericPlayerRepository implements PlayerRepository
 
         statementHandler.executeUpdate(String.format("DROP TABLE %s", legacyIps));
         statementHandler.executeUpdate(String.format("DROP TABLE %s", legacyPlayers));
-        FLog.info(String.format("Moved %d player record(s) from the old players table to player_data.", byUsername.size()));
+        FLog.info("Moved {} player record(s) from the old players table to player_data.", byUsername.size());
     }
 
     /**
@@ -409,8 +409,8 @@ public class GenericPlayerRepository implements PlayerRepository
         if (hasDiscordLinks)
             renameTable("discord_links", "legacy_discord_links");
 
-        FLog.info(String.format("Moved %d admin(s) onto player_data. The old tables are kept as legacy_admins, legacy_admin_ips and legacy_discord_links.",
-                byName.size()));
+        FLog.info("Moved {} admin(s) onto player_data. The old tables are kept as legacy_admins, legacy_admin_ips and legacy_discord_links.",
+                byName.size());
     }
 
     private void renameTable(String from, String to) throws SQLException

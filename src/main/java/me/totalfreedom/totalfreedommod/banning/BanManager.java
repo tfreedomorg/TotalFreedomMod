@@ -68,7 +68,7 @@ public class BanManager extends FreedomService implements IBanManager
 
         unbannableUsernames.clear();
         unbannableUsernames.addAll((Collection<? extends String>) ConfigEntry.FAMOUS_PLAYERS.getList());
-        FLog.info(String.format("Loaded %d unbannable usernames.", unbannableUsernames.size()));
+        FLog.info("Loaded {} unbannable usernames.", unbannableUsernames.size());
     }
 
     /**
@@ -102,8 +102,8 @@ public class BanManager extends FreedomService implements IBanManager
             bans.addAll(loaded);
             usingSql = true;
             updateViews();
-            FLog.info(String.format("Loaded %d IP bans and %d username bans from SQL database.",
-                    ipBans.size(), nameBans.size()));
+            FLog.info("Loaded {} IP bans and {} username bans from SQL database.",
+                    ipBans.size(), nameBans.size());
         }
 
         reconcileFromJsonIfNewer(repo);
@@ -136,7 +136,7 @@ public class BanManager extends FreedomService implements IBanManager
         }
         catch (IOException ex)
         {
-            FLog.warn(String.format("Failed to read bans.json: %s", ex.getMessage()));
+            FLog.warn("Failed to read bans.json", ex);
             return;
         }
 
@@ -157,13 +157,13 @@ public class BanManager extends FreedomService implements IBanManager
                 .filter(Boolean::booleanValue)
                 .flatMap(ignored ->
                 {
-                    FLog.info(String.format("bans.json is newer than the database; merging the file's %d ban(s) into it.",
-                                            jsonBans.size()));
+                    FLog.info("bans.json is newer than the database; merging the file's {} ban(s) into it.",
+                            jsonBans.size());
                     return upsertToSql(repo, jsonBans).then(plugin.database().syncMono("BanManager/applyReconciled", () -> mergeReconciledBans(jsonBans)));
                 })
                 .onErrorResume(ex ->
                 {
-                    FLog.warn(String.format("Failed to reconcile bans.json into the database: %s", ex.getMessage()));
+                    FLog.warn("Failed to reconcile bans.json into the database", ex);
                     return Mono.empty();
                 })
                 .then());

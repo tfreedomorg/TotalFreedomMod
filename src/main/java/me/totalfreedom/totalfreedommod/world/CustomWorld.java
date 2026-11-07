@@ -101,7 +101,7 @@ public final class CustomWorld extends PluginComponent<TotalFreedomMod>
 
         if (world == null)
         {
-            FLog.warn("Could not load world: %s", name);
+            FLog.warn("Could not load world: {}", name);
             return null;
         }
 

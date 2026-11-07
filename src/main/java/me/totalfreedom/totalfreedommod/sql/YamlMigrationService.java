@@ -154,8 +154,7 @@ public class YamlMigrationService
         }
         catch (RuntimeException ex)
         {
-            FLog.warn(String.format("YAML import '%s' did not complete, will retry on next start: %s",
-                    version, ex.getMessage()));
+            FLog.warn("YAML import '{}' did not complete, will retry on next start", version, ex);
             return;
         }
 
@@ -411,8 +410,8 @@ public class YamlMigrationService
             return;
         }
 
-        FLog.warn(String.format("%s was retired and not imported: it predates the node-only permission model. "
-                + "The default ranks.json is installed instead, so re-add any custom ranks by hand.", RANKS_FILE));
+        FLog.warn("{} was retired and not imported: it predates the node-only permission model. "
+                + "The default ranks.json is installed instead, so re-add any custom ranks by hand.", RANKS_FILE);
 
         finishMigration(0, ranksFile);
     }
@@ -700,7 +699,7 @@ public class YamlMigrationService
             }
             catch (SQLException ex)
             {
-                FLog.error(String.format("Force migration failed: %s", ex.getMessage()));
+                FLog.error("Force migration failed", ex);
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }

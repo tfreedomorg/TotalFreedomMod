@@ -1724,7 +1724,7 @@ public final class WorldEditHook implements Listener
         }
         catch (Throwable t)
         {
-            FLog.error(t);
+            FLog.error("Failed to perform undo operation", t);
         }
     }
 

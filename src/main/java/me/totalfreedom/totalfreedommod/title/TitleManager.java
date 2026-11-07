@@ -288,8 +288,7 @@ public class TitleManager extends FreedomService implements ITitleManager
                     .deleteAsync(removed.getId())
                     .onErrorResume(ex ->
                     {
-                        FLog.error(String.format("Could not delete title %s from SQL: %s",
-                                removed.getId(), ex.getMessage()));
+                        FLog.error("Could not delete title {} from SQL", removed.getId(), ex);
                         return Mono.empty();
                     })
                     .then());
@@ -332,7 +331,7 @@ public class TitleManager extends FreedomService implements ITitleManager
 
         titles.clear();
         titles.putAll(loaded);
-        FLog.info(String.format("Loaded %d titles from SQL database.", titles.size()));
+        FLog.info("Loaded {} titles from SQL database.", titles.size());
 
         reconcileFromJsonIfNewer(repo);
     }
@@ -358,7 +357,7 @@ public class TitleManager extends FreedomService implements ITitleManager
         }
         catch (IOException ex)
         {
-            FLog.warn(String.format("Failed to read %s: %s", TITLES_FILENAME, ex.getMessage()));
+            FLog.warn("Failed to read {}", TITLES_FILENAME, ex);
             return;
         }
 
@@ -379,8 +378,8 @@ public class TitleManager extends FreedomService implements ITitleManager
                 .filter(Boolean::booleanValue)
                 .flatMap(ignored ->
                 {
-                    FLog.info(String.format("%s is newer than the database; rebuilding it from the file's %d title(s).",
-                            TITLES_FILENAME, jsonTitles.size()));
+                    FLog.info("{} is newer than the database; rebuilding it from the file's {} title(s).",
+                            TITLES_FILENAME, jsonTitles.size());
                     return repo.deleteAll()
                                .thenMany(Flux.fromIterable(jsonTitles.values())
                                              .concatMap(repo::save))
@@ -388,8 +387,7 @@ public class TitleManager extends FreedomService implements ITitleManager
                 })
                 .onErrorResume(ex ->
                 {
-                    FLog.warn(String.format("Failed to reconcile %s into the database: %s",
-                            TITLES_FILENAME, ex.getMessage()));
+                    FLog.warn("Failed to reconcile {} into the database", TITLES_FILENAME, ex);
                     return Mono.empty();
                 })
                 .then());
@@ -425,18 +423,17 @@ public class TitleManager extends FreedomService implements ITitleManager
         }
         catch (IllegalArgumentException ex)
         {
-            FLog.error(String.format("No bundled %s to install: %s", TITLES_FILENAME, ex.getMessage()));
+            FLog.error("No bundled {} to install", TITLES_FILENAME, ex);
             return;
         }
 
         if (!titlesFile.exists())
         {
-            FLog.error(String.format("Could not install a default %s; no titles will be available.",
-                    TITLES_FILENAME));
+            FLog.error("Could not install a default {}; no titles will be available.", TITLES_FILENAME);
             return;
         }
 
-        FLog.info(String.format("Installed the default %s.", TITLES_FILENAME));
+        FLog.info("Installed the default {}.", TITLES_FILENAME);
         loadFromJson();
     }
 
@@ -450,10 +447,10 @@ public class TitleManager extends FreedomService implements ITitleManager
         }
         catch (IOException ex)
         {
-            FLog.error(String.format("Could not read %s: %s", TITLES_FILENAME, ex.getMessage()));
+            FLog.error("Could not read {}: {}", TITLES_FILENAME, ex);
         }
 
-        FLog.info(String.format("Loaded %d titles.", titles.size()));
+        FLog.info("Loaded {} titles.", titles.size());
     }
 
     private Map<String, Title> readJsonTitles() throws IOException
@@ -507,8 +504,7 @@ public class TitleManager extends FreedomService implements ITitleManager
                 .concatMap(title -> repo.save(title)
                         .onErrorResume(ex ->
                         {
-                            FLog.error(String.format("Could not save title %s to SQL: %s",
-                                    title.getId(), ex.getMessage()));
+                            FLog.error("Could not save title {} to SQL", title.getId(), ex);
                             return Mono.empty();
                         }))
                 .then(writeJsonAsync()));
@@ -540,7 +536,7 @@ public class TitleManager extends FreedomService implements ITitleManager
         }
         catch (IOException ex)
         {
-            FLog.error(String.format("Could not save %s: %s", TITLES_FILENAME, ex.getMessage()));
+            FLog.error("Could not save {}", TITLES_FILENAME, ex);
         }
     }
 

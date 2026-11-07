@@ -267,8 +267,7 @@ public class SshConsoleShellFactory implements ShellFactory
             }
             catch (Exception e)
             {
-                FLog.error("Error processing SSH shell for user: " + username);
-                FLog.error(e);
+                FLog.error("Error processing SSH shell for user {}", username, e);
             }
             finally
             {

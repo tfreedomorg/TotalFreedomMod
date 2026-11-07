@@ -451,7 +451,7 @@ public class TextFilterService extends FreedomService
 
         player.sendMessage(MessageUtils.parse("<red>Your message was blocked by the text filter."));
         plugin.players().getOnlineStaff().forEach(admin -> admin.sendMessage(feedback));
-        FLog.warn(String.format("[TextFilter] Blocked message from %s: %s", player.getName(), message), true);
+        FLog.warn("[TextFilter] Blocked message from {}: {}", player.getName(), message);
     }
 
     private void notifyAdmins(Player player, ItemStack item, String message)
@@ -494,9 +494,9 @@ public class TextFilterService extends FreedomService
 
     private void notifyAdmins(String message, Component feedback)
     {
-        FLog.warn("[Text Filter] " + message, true);
+        FLog.warn("[Text Filter] " + message);
         final Component notification = Component.text("[Text Filter] ", NamedTextColor.RED)
-            .append(feedback);
+                .append(feedback);
 
         plugin.players().getOnlineStaff().forEach(admin -> admin.sendMessage(notification));
     }

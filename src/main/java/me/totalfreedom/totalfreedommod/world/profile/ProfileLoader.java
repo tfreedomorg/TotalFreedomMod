@@ -163,10 +163,10 @@ public final class ProfileLoader
         }
         catch (final IOException ex)
         {
-            FLog.warn("Failed to copy template '%s' to world '%s': \n%s",
+            FLog.warn("Failed to copy template '{}' to world '{}'",
                       templateName, 
                       worldName, 
-                      ex.getMessage());
+                      ex);
             return false;
         }
     }
@@ -248,18 +248,14 @@ public final class ProfileLoader
                         }
                         catch (final IOException | JsonSyntaxException | IllegalStateException ex)
                         {
-                            FLog.warn("Failed to read bundled resource %s: \n%s",
-                                      path,
-                                      ExceptionUtils.getRootCauseMessage(ex));
+                            FLog.warn("Failed to read bundled resource {}", path, ex);
                         }
                     });
             }
         }
         catch (final IOException | URISyntaxException ex)
         {
-            FLog.warn("Failed to walk bundled %s resources: \n%s", 
-                      jarPath, 
-                      ex.getMessage());
+            FLog.warn("Failed to walk bundled {} resources", jarPath, ex);
         }
 
         return result;

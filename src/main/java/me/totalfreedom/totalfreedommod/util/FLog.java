@@ -1,16 +1,15 @@
 package me.totalfreedom.totalfreedommod.util;
 
 import me.totalfreedom.api.PluginProvider;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
 import org.bukkit.Bukkit;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class FLog
 {
-
-    private static final Logger FALLBACK_LOGGER = LoggerFactory.getLogger("Minecraft-Server");
-    private static Logger serverLogger = null;
-    private static Logger pluginLogger = null;
+    private static Logger plainLogger = null;
+    private static ComponentLogger componentLogger = null;
 
     private FLog()
     {
@@ -18,162 +17,79 @@ public class FLog
 
     public static void debug(String message)
     {
-        log(Level.DEBUG, message, false);
+        plainLogger.debug(message);
     }
 
     public static void debug(String format, Object... args)
     {
-        log(Level.DEBUG, String.format(format, args), false);
+        plainLogger.debug(format, args);
     }
 
     public static void info(String message)
     {
-        log(Level.INFO, message, false);
-    }
-
-    public static void info(String message, boolean raw)
-    {
-        log(Level.INFO, message, raw);
+        plainLogger.info(message);
     }
 
     public static void info(String format, Object... args)
     {
-        log(Level.INFO, String.format(format, args), false);
+        plainLogger.info(format, args);
     }
 
-    public static void info(Throwable ex)
+    public static void info(Component component)
     {
-        log(Level.INFO, ex);
+        componentLogger.info(component);
     }
 
     public static void warn(String message)
     {
-        log(Level.WARN, message, false);
-    }
-
-    public static void warn(String message, boolean raw)
-    {
-        log(Level.WARN, message, raw);
+        plainLogger.warn(message);
     }
 
     public static void warn(String format, Object... args)
     {
-        log(Level.WARN, String.format(format, args), false);
+        plainLogger.warn(format, args);
     }
 
-    public static void warn(Throwable ex)
+    public static void warn(String message, Throwable throwable)
     {
-        log(Level.WARN, ex);
+        plainLogger.warn(message, throwable);
+    }
+
+    public static void warn(Component component)
+    {
+        componentLogger.warn(component);
     }
 
     public static void error(String message)
     {
-        log(Level.ERROR, message, false);
-    }
-
-    public static void error(String message, boolean raw)
-    {
-        log(Level.ERROR, message, raw);
+        plainLogger.error(message);
     }
 
     public static void error(String format, Object... args)
     {
-        log(Level.ERROR, String.format(format, args), false);
+        plainLogger.error(format, args);
     }
 
-    public static void error(Throwable ex)
+    public static void error(Component component)
     {
-        log(Level.ERROR, ex);
+        componentLogger.error(component);
     }
     
     public static void fatal(String message)
     {
-        log(Level.ERROR, message, true);
+        plainLogger.error(message);
         Bukkit.getPluginManager().disablePlugin(PluginProvider.get());
     }
     
     public static void fatal(String format, Object... args)
     {
-        log(Level.ERROR, String.format(format, args), true);
-        Bukkit.getPluginManager().disablePlugin(PluginProvider.get());
-    }
-    
-    public static void fatal(Throwable ex)
-    {
-        log(Level.ERROR, ex);
+        plainLogger.error(format, args);
         Bukkit.getPluginManager().disablePlugin(PluginProvider.get());
     }
 
-    public static void setServerLogger(Logger logger)
+    public static void setLoggers(final Logger plainLogger, final ComponentLogger componentLogger)
     {
-        serverLogger = logger;
-    }
-
-    public static void setPluginLogger(Logger logger)
-    {
-        pluginLogger = logger;
-    }
-
-    public static Logger getPluginLogger()
-    {
-        return (pluginLogger != null ? pluginLogger : FALLBACK_LOGGER);
-    }
-
-    public static Logger getServerLogger()
-    {
-        return (serverLogger != null ? serverLogger : FALLBACK_LOGGER);
-    }
-
-    private static void log(Level level, String message, boolean raw)
-    {
-        if (message != null && !raw && message.contains("&") && !message.contains("§"))
-        {
-            message = message.replace('&', '§');
-        }
-        emit(getLogger(raw), level, message);
-    }
-
-    private static void log(Level level, Throwable throwable)
-    {
-        emit(getLogger(false), level, throwable);
-    }
-
-    private static void emit(Logger logger, Level level, String message)
-    {
-        switch (level)
-        {
-            case DEBUG -> logger.debug(message);
-            case INFO -> logger.info(message);
-            case WARN -> logger.warn(message);
-            case ERROR -> logger.error(message);
-        }
-    }
-
-    private static void emit(Logger logger, Level level, Throwable throwable)
-    {
-        switch (level)
-        {
-            case DEBUG -> logger.debug("", throwable);
-            case INFO -> logger.info("", throwable);
-            case WARN -> logger.warn("", throwable);
-            case ERROR -> logger.error("", throwable);
-        }
-    }
-
-    private static Logger getLogger(boolean raw)
-    {
-        if (raw || pluginLogger == null)
-        {
-            return (serverLogger != null ? serverLogger : FALLBACK_LOGGER);
-        }
-        else
-        {
-            return pluginLogger;
-        }
-    }
-
-    private enum Level
-    {
-        DEBUG, INFO, WARN, ERROR
+        FLog.plainLogger = plainLogger;
+        FLog.componentLogger = componentLogger;
     }
 }

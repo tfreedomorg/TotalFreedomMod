@@ -234,8 +234,7 @@ public class DiscordBridge extends FreedomService
                 .doOnNext(event ->
                 {
                     connection.reportConnected();
-                    FLog.info(String.format("[Discord] Gateway ready. Bot: %s",
-                            event.getSelf().getUsername()));
+                    FLog.info("[Discord] Gateway ready. Bot: {}", event.getSelf().getUsername());
                 })
                 .then();
 
@@ -255,8 +254,7 @@ public class DiscordBridge extends FreedomService
 
         consoleRelay.ifPresent(DiscordConsoleRelay::attachAppender);
 
-        FLog.info(String.format("[Discord] Bridge ready. Guild: %s | %s",
-                opened.guildName(), opened.describeChannels()));
+        FLog.info("[Discord] Bridge ready. Guild: {} | {}", opened.guildName(), opened.describeChannels());
 
         final ConfigEntry greeting = startedWhileReloading
                 ? ConfigEntry.DISCORD_PLUGIN_RELOAD_MESSAGE
@@ -279,8 +277,8 @@ public class DiscordBridge extends FreedomService
                         String.format("[Discord] Registered slash commands on guild %s.", opened.guildName()))))
                 .onErrorResume(thrown ->
                 {
-                    FLog.warn(String.format("[Discord] Failed to register slash commands: %s",
-                            DiscordConnection.describeFailure(thrown)));
+                    FLog.warn("[Discord] Failed to register slash commands: {}",
+                            DiscordConnection.describeFailure(thrown));
                     return Mono.empty();
                 })
                 .then();
@@ -298,17 +296,15 @@ public class DiscordBridge extends FreedomService
                                          .map(channel -> new ResolvedChannel(Optional.of(id), channel.getName()))
                                          .switchIfEmpty(Mono.fromSupplier(() ->
                                          {
-                                             FLog.warn(String.format(
-                                                                        "[Discord] %s '%s' is not a text channel in the configured guild.",
-                                                                        configKey, rawId));
+                                             FLog.warn("[Discord] {} {}' is not a text channel in the configured guild.",
+                                                     configKey, rawId);
                                              return ResolvedChannel.none();
                                         })))
                     .defaultIfEmpty(ResolvedChannel.none())
                     .onErrorResume(thrown ->
                     {
-                        FLog.warn(String.format(
-                                                   "[Discord] Could not resolve %s '%s': %s",
-                                                   configKey, rawId, DiscordConnection.describeFailure(thrown)));
+                        FLog.warn("[Discord] Could not resolve {} '{}': {}",
+                                configKey, rawId, DiscordConnection.describeFailure(thrown));
                         return Mono.just(ResolvedChannel.none());
                     });
     }
@@ -333,9 +329,7 @@ public class DiscordBridge extends FreedomService
             }
             catch (Exception ex)
             {
-                FLog.warn(String.format(
-                                           "[Discord] Chat renderer threw, falling back to plain: %s",
-                                           ex.getMessage()));
+                FLog.warn("[Discord] Chat renderer threw, falling back to plain", ex);
                 rendered = Component.text(player.getName() + ": ").append(event.message());
             }
             relay.sendMessageToDiscord(rendered);
@@ -541,7 +535,7 @@ public class DiscordBridge extends FreedomService
             }
             catch (NumberFormatException ex)
             {
-                FLog.warn(String.format("[Discord] %s '%s' is not a valid Discord id.", configKey, raw));
+                FLog.warn("[Discord] {} '{}' is not a valid Discord id.", configKey, raw);
                 return Optional.empty();
             }
         });

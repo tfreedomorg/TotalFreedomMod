@@ -91,8 +91,8 @@ public class PermbanList extends FreedomService
         {
             replaceViews(loaded);
             usingSql = true;
-            FLog.info(String.format("Loaded %d perm IP bans and %d perm username bans from SQL database.",
-                    permbannedIps.size(), permbannedNames.size()));
+            FLog.info("Loaded {} perm IP bans and {} perm username bans from SQL database.",
+                    permbannedIps.size(), permbannedNames.size());
         }
 
         reconcileFromJsonIfNewer(repo);
@@ -118,7 +118,7 @@ public class PermbanList extends FreedomService
         }
         catch (IOException ex)
         {
-            FLog.warn(String.format("Failed to read %s: %s", CONFIG_FILENAME, ex.getMessage()));
+            FLog.warn("Failed to read {}", CONFIG_FILENAME, ex);
             return;
         }
 
@@ -139,8 +139,8 @@ public class PermbanList extends FreedomService
                     .filter(Boolean::booleanValue)
                     .flatMap(ignored ->
                     {
-                        FLog.info(String.format("%s is newer than the database; rebuilding it from the file's %d permban(s).",
-                                                CONFIG_FILENAME, jsonPermbans.size()));
+                        FLog.info("{} is newer than the database; rebuilding it from the file's {} permban(s).",
+                                CONFIG_FILENAME, jsonPermbans.size());
                         final Set<UUID> keepUuids = jsonPermbans.values().stream()
                                                                 .map(PermBan::getUuid)
                                                                 .filter(Objects::nonNull)
@@ -161,8 +161,7 @@ public class PermbanList extends FreedomService
                     })
                     .onErrorResume(ex ->
                     {
-                        FLog.warn(String.format("Failed to reconcile %s into the database: %s",
-                                                   CONFIG_FILENAME, ex.getMessage()));
+                        FLog.warn("Failed to reconcile {} into the database", CONFIG_FILENAME, ex);
                         return Mono.empty();
                     })
                     .then());
@@ -377,8 +376,7 @@ public class PermbanList extends FreedomService
                 .concatMap(permban -> repo.save(permban)
                         .onErrorResume(ex ->
                         {
-                            FLog.warn(String.format("Failed to save permban %s to SQL: %s",
-                                    permban.getUsername(), ex.getMessage()));
+                            FLog.warn("Failed to save permban {} to SQL", permban.getUsername(), ex);
                             return Mono.empty();
                         }))
                 .then(writeJsonAsync()));

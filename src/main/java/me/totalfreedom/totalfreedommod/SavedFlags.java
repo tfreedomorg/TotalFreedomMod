@@ -114,8 +114,7 @@ public class SavedFlags extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.error("Failed to migrate legacy saved flags data: " + ex.getMessage());
-            FLog.error(ex);
+            FLog.error("Failed to migrate legacy saved flags data", ex);
         }
     }
 
@@ -146,8 +145,7 @@ public class SavedFlags extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.error("Failed to load legacy saved flags: " + ex.getMessage());
-            FLog.error(ex);
+            FLog.error("Failed to load legacy saved flags", ex);
         }
 
         return flags;
@@ -185,8 +183,8 @@ public class SavedFlags extends FreedomService
               .filter(Boolean::booleanValue)
               .flatMap(ignored ->
               {
-                FLog.info(String.format("%s is newer than the database; rebuilding it from the file's %d flag(s).",
-                                        DATA_FILENAME, jsonFlags.size()));
+                FLog.info("{} is newer than the database; rebuilding it from the file's {} flag(s).",
+                        DATA_FILENAME, jsonFlags.size());
                 return repo.loadAllAsync()
                            .flatMapMany(existing -> Flux.fromIterable(jsonFlags.entrySet())
                                                         .concatMap(entry -> repo.upsertAsync(entry.getKey(), entry.getValue()))
@@ -202,8 +200,7 @@ public class SavedFlags extends FreedomService
               })
               .onErrorResume(ex ->
               {
-                  FLog.warn(String.format("Failed to reconcile %s into the database: %s",
-                                             DATA_FILENAME, ex.getMessage()));
+                  FLog.warn("Failed to reconcile {} into the database", DATA_FILENAME, ex);
                   return Mono.empty();
               })
               .then());
@@ -223,8 +220,7 @@ public class SavedFlags extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.error("Failed to load saved flags: " + ex.getMessage());
-            FLog.error(ex);
+            FLog.error("Failed to load saved flags", ex);
         }
 
         return flags;
@@ -239,8 +235,7 @@ public class SavedFlags extends FreedomService
         }
         catch (IOException ex)
         {
-            FLog.error(String.format("Failed to save saved flags: %s", ex.getMessage()));
-            FLog.error(ex);
+            FLog.error("Failed to save saved flags", ex);
         }
     }
 
@@ -285,7 +280,7 @@ public class SavedFlags extends FreedomService
         writes.enqueue(plugin.database().getSavedFlagRepository().upsertAsync(flag, value)
               .onErrorResume(ex ->
               {
-                  FLog.error(String.format("Could not save flag '%s' to SQL: %s", flag, ex.getMessage()));
+                  FLog.error("Could not save flag '{}' to SQL", flag, ex);
                   return Mono.empty();
               })
               .then(writeJsonAsync()));

@@ -91,8 +91,7 @@ public class ConfigConverter extends PluginComponent<TotalFreedomMod>
                 }
                 catch (IOException ex)
                 {
-                    FLog.error("Could not backup file: " + file.getName());
-                    FLog.error(ex);
+                    FLog.error("Could not backup file: {}", file.getName(), ex);
                 }
             }
 
@@ -111,8 +110,7 @@ public class ConfigConverter extends PluginComponent<TotalFreedomMod>
             }
             catch (IOException ex)
             {
-                FLog.error("Could not save version.yml");
-                FLog.error(ex);
+                FLog.error("Could not save version.yml", ex);
             }
         }
     }
@@ -163,8 +161,7 @@ public class ConfigConverter extends PluginComponent<TotalFreedomMod>
         }
         catch (IOException ex)
         {
-            FLog.error("Could not save migrated ranks.yml");
-            FLog.error(ex);
+            FLog.error("Could not save migrated ranks.yml", ex);
         }
     }
 
@@ -189,14 +186,14 @@ public class ConfigConverter extends PluginComponent<TotalFreedomMod>
 
         remapped.forEach(admin ->
         {
-            FLog.info(String.format("Remapped admin '%s' from retired rank '%s' to '%s'.",
-                    admin.getUsername(), admin.getRankId().orElseThrow(), senior));
+            FLog.info("Remapped admin '{}' from retired rank '{}' to '{}'.",
+                    admin.getUsername(), admin.getRankId().orElseThrow(), senior);
             admin.setRankId(senior);
             plugin.players().saveData(admin);
         });
 
         if (!remapped.isEmpty())
-            FLog.info(String.format("Remapped %d admin(s) from retired console ranks.", remapped.size()));
+            FLog.info("Remapped {} admin(s) from retired console ranks.", remapped.size());
     }
 
     /**
@@ -230,15 +227,15 @@ public class ConfigConverter extends PluginComponent<TotalFreedomMod>
         converted.forEach(admin ->
         {
             final String retired = admin.getRankId().orElseThrow();
-            FLog.info(String.format("Moved admin '%s' from retired rank '%s' to the '%s' title, rank '%s'.",
-                    admin.getUsername(), retired, retired, senior));
+            FLog.info("Moved admin '{}' from retired rank '{}' to the '{}' title, rank '{}'.",
+                    admin.getUsername(), retired, retired, senior);
             admin.addTitle(retired);
             admin.setRankId(senior);
             plugin.players().saveData(admin);
         });
 
         if (!converted.isEmpty())
-            FLog.info(String.format("Converted %d admin(s) from cosmetic ranks to titles.", converted.size()));
+            FLog.info("Converted {} admin(s) from cosmetic ranks to titles.", converted.size());
     }
 
     /**

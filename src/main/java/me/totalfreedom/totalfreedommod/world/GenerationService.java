@@ -66,7 +66,7 @@ public final class GenerationService extends FreedomService implements IGenerati
         }
         catch (final ProfileException ex)
         {
-            FLog.error("Failed to load biome library: \n%s", ExceptionUtils.getRootCauseMessage(ex));
+            FLog.error("Failed to load biome library", ex);
             Bukkit.getPluginManager().disablePlugin(plugin); // we don't want to load TFM because no worlds can be loaded.
             return;
         }
@@ -218,7 +218,7 @@ public final class GenerationService extends FreedomService implements IGenerati
         }
         catch (final ProfileException ex)
         {
-            FLog.warn("Failed to reload biome library: \n%s", ExceptionUtils.getRootCauseMessage(ex));
+            FLog.warn("Failed to reload biome library", ex);
             // we don't want to disable the plugin here because this executes assuming worlds have already loaded.
             return;
         }
@@ -242,7 +242,7 @@ public final class GenerationService extends FreedomService implements IGenerati
         }
         catch (final ProfileException ex)
         {
-            FLog.warn("Failed to parse json object for %s: \n%s", worldName, ExceptionUtils.getRootCauseMessage(ex));
+            FLog.warn("Failed to parse json object for {}", worldName, ex);
         }
     }
 }

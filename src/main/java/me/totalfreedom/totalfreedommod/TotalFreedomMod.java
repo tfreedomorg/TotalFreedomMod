@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import me.totalfreedom.api.*;
 import org.bukkit.Bukkit;
+import org.bukkit.Server;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.generator.ChunkGenerator;
@@ -49,8 +50,7 @@ public class TotalFreedomMod extends JavaPlugin implements FreedomAPI
     @Override
     public void onLoad()
     {
-        FLog.setPluginLogger(getSLF4JLogger());
-        FLog.setServerLogger(LoggerFactory.getLogger("Minecraft-Server"));
+        FLog.setLoggers(getSLF4JLogger(), getComponentLogger());
 
         // Register here; PluginProvider#get() then calls from the services manager itself rather than storing its own atomic reference.
         Bukkit.getServicesManager().register(FreedomAPI.class, this, this, ServicePriority.Highest);

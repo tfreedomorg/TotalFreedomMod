@@ -97,8 +97,7 @@ public final class VaultProviderRegistry
         }
         catch (Throwable ex)
         {
-            FLog.warn("Failed to register Vault chat provider: " + ex.getMessage());
-            FLog.warn(ex);
+            FLog.warn("Failed to register Vault chat provider: " + ex.getMessage(), ex);
             unregister();
             return false;
         }

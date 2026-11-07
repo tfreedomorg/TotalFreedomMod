@@ -166,8 +166,7 @@ public class LibsDisguisesBridge extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.error("Error initializing LibsDisguises bridge: " + ex.getMessage());
-            FLog.error(ex);
+            FLog.error("Failed to initialize LibsDisguises bridge", ex);
             return false;
         }
     }
@@ -206,8 +205,7 @@ public class LibsDisguisesBridge extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.error("Failed to register apply-time disguise checks: " + ex.getMessage());
-            FLog.error(ex);
+            FLog.error("Failed to register apply-time disguise checks", ex);
         }
         return false;
     }
@@ -256,8 +254,7 @@ public class LibsDisguisesBridge extends FreedomService
             FUtil.playerMsg(player, reason.get(), NamedTextColor.RED);
         }
 
-        FLog.info(String.format("Blocked disguise for %s: %s",
-            player != null ? player.getName() : "an entity", reason.get()));
+        FLog.info("Blocked disguise for {}: {}", player != null ? player.getName() : "an entity", reason.get());
     }
 
     /**
@@ -362,8 +359,7 @@ public class LibsDisguisesBridge extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.error("Error checking if player is disguised: " + ex.getMessage());
-            FLog.error(ex);
+            FLog.error("Error checking if player is disguised", ex);
         }
 
         return null;
@@ -406,8 +402,7 @@ public class LibsDisguisesBridge extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.error("Error undisguising players: " + ex.getMessage());
-            FLog.error(ex);
+            FLog.error("Error undisguising players", ex);
         }
     }
 

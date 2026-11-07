@@ -64,7 +64,7 @@ public final class RootNodeEvictor
         }
         catch (Exception ex)
         {
-            FLog.warn("Could not remove /%s from the dispatcher root: %s", label, ex.getMessage());
+            FLog.warn("Could not remove /{} from the dispatcher root", label, ex);
             return false;
         }
 

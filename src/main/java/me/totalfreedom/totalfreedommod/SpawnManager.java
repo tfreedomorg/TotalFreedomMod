@@ -43,7 +43,7 @@ public class SpawnManager extends FreedomService
                 return null;
             }
 
-            FLog.warn("Configured spawn world not found; using %s instead.", world.getName());
+            FLog.warn("Configured spawn world not found; using {} instead.", world.getName());
         }
 
         return new Location(
@@ -137,7 +137,7 @@ public class SpawnManager extends FreedomService
             }
             catch (IllegalArgumentException ex)
             {
-                FLog.warn("Invalid spawn.send_player.on_join value \"%s\"; using first_join.", value);
+                FLog.warn("Invalid spawn.send_player.on_join value \"{}\"; using first_join.", value);
                 return FIRST_JOIN;
             }
         }
