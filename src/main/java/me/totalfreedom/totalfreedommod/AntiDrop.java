@@ -127,10 +127,16 @@ public class AntiDrop extends FreedomService
         }
 
         // Allow ranks to bypass the auto-eject if necessary
-        if (eject)
+        final boolean effectivelyFinalEject = eject;
+        if (plugin.autoEject().ejectIf(player,
+                "item_drop_spam",
+                "was dropping too many items",
+                "Kicked for dropping too many items at once.",
+                () -> effectivelyFinalEject))
         {
-            ejectForDropFlood(player, playerData);
             event.setCancelled(true);
+            playerData.resetDropCount();
+            playerData.resetDropItemCount();
             return;
         }
 
@@ -204,12 +210,5 @@ public class AntiDrop extends FreedomService
                 }
             }
         }
-    }
-
-    private void ejectForDropFlood(Player player, PlayerData playerData)
-    {
-        plugin.autoEject().eject(player, "item_drop_spam", "was dropping too many items", "Kicked for dropping too many items at once.");
-        playerData.resetDropCount();
-        playerData.resetDropItemCount();
     }
 }
