@@ -642,9 +642,10 @@ public final class WorldEditHook implements Listener
         if (ejectThreshold >= 0 && throttle.violations >= ejectThreshold)
         {
             opThrottles.remove(uuid);
-            FUtil.bcastMsg(player.getName()
-                + " was automatically ejected for spamming WorldEdit operations.", NamedTextColor.RED);
-            plugin.autoEject().autoEject(player, "Kicked for spamming WorldEdit operations.");
+            plugin.autoEject().eject(player,
+                    "worldedit_spam",
+                    "was spamming WorldEdit operations",
+                    "Kicked for spamming WorldEdit operations.");
         }
         else if (now - throttle.lastWarn > window)
         {

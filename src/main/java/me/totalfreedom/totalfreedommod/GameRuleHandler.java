@@ -205,9 +205,7 @@ public class GameRuleHandler extends FreedomService implements IGameRuleHandler
 
                         if (ConfigEntry.GAMERULES_KICK_FLOODERS.getBoolean(true) && source instanceof Player player)
                         {
-                            FUtil.bcastMsg(player.getName() + " was automatically kicked for spamming"
-                                    + " gamerule changes.", NamedTextColor.RED);
-                            plugin.autoEject().autoEject(player, "Kicked for spamming gamerule changes.");
+                            plugin.autoEject().eject(player, "gamerule_spam", "was spamming gamerule changes", "Kicked for spamming gamerule changes.");
                         }
                     }
                     return;

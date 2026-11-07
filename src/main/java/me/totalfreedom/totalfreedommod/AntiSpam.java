@@ -65,23 +65,24 @@ public class AntiSpam extends FreedomService
         {
             return;
         }
-        final Player player = event.getPlayer();
-        final String message = PlainTextComponentSerializer.plainText().serialize(event.message()).trim();
 
+        final Player player = event.getPlayer();
         final PlayerData playerdata = plugin.players().getData(player);
 
-        final int count = playerdata.incrementAndGetMsgCount();
-        if (count >= limit())
+        // We do not use FSync.autoEject() here because we want to immediately terminate the connection, not wait for
+        //  the next tick. This is because AsyncChatEvent can still be fired even while the main server is hanging. We
+        //  want to make sure players can't spam the chat by just causing the server to hang.
+        if (plugin.autoEject().ejectIf(event.getPlayer(),
+                "chat_spam",
+                "was spamming chat",
+                "Kicked for spamming chat.",
+                () -> playerdata.incrementAndGetMsgCount() >= limit()))
         {
             event.setCancelled(true);
-            if (count == limit())
-            {
-                FSync.bcastMsg(player.getName() + " was automatically kicked for spamming chat.", NamedTextColor.RED);
-                FSync.autoEject(player, "Kicked for spamming chat.");
-            }
             return;
         }
 
+        final String message = PlainTextComponentSerializer.plainText().serialize(event.message()).trim();
         if (blockIfChatSpam(player, playerdata, message))
         {
             event.setCancelled(true);
@@ -221,15 +222,13 @@ public class AntiSpam extends FreedomService
             return;
         }
 
-        final int count = playerData.incrementAndGetMsgCount();
-        if (count >= limit())
+        if (plugin.autoEject().ejectIf(player,
+                "command_spam",
+                "was spamming commands",
+                "Kicked for spamming commands.",
+                () -> playerData.incrementAndGetMsgCount() >= limit()))
         {
             event.setCancelled(true);
-            if (count == limit())
-            {
-                FUtil.bcastMsg(player.getName() + " was automatically kicked for spamming commands.", NamedTextColor.RED);
-                plugin.autoEject().autoEject(player, "Kicked for spamming commands.");
-            }
             return;
         }
 

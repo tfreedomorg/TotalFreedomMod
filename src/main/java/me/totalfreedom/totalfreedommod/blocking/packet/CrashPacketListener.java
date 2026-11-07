@@ -291,8 +291,7 @@ final class CrashPacketListener extends PacketListenerAbstract
         {
             if (count == limit)
             {
-                FSync.bcastMsg(player.getName() + " was automatically kicked for spamming chat.", NamedTextColor.RED);
-                FSync.autoEject(player, "Kicked for spamming chat.");
+                FSync.eject(player, "chat_spam", "was spamming chat", "Kicked for spamming chat.");
             }
         }
 
@@ -389,7 +388,7 @@ final class CrashPacketListener extends PacketListenerAbstract
         event.setCancelled(true);
         if (decision == MovementGuard.Decision.PUNISH)
         {
-            punishSpeed(event, id);
+            punishSpeed(id);
         }
         return true;
     }
@@ -412,19 +411,17 @@ final class CrashPacketListener extends PacketListenerAbstract
         return null;
     }
 
-    private void punishSpeed(PacketReceiveEvent event, UUID id)
+    private void punishSpeed(UUID id)
     {
-        final String name = event.getUser().getName();
-        final String who = name != null ? name : id.toString();
-
-        FSync.bcastMsg(who + " is moving too quickly across chunks!", NamedTextColor.RED);
-
         Bukkit.getScheduler().runTask(plugin, FTask.guard("CrashPacketListener/ejectFastMover", () ->
         {
             final Player player = Bukkit.getPlayer(id);
             if (player != null)
             {
-                plugin.autoEject().autoEject(player, "Moving too quickly across chunks is not permitted.");
+                plugin.autoEject().eject(player,
+                        "too_fast",
+                        "was moving too fast",
+                        "Moving too quickly across chunks is not permitted.");
             }
         }));
     }

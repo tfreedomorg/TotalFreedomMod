@@ -66,19 +66,18 @@ public class GameModeGuard extends FreedomService
             return;
         }
 
-        event.setCancelled(true);
-
-        if (perSecond == maxPerSecond + 1)
+        if (plugin.autoEject().eject(player,
+                "gamemode_spam",
+                "was spamming game mode changes",
+                "You were changing your game mode too fast."))
         {
-            FLog.warn(player.getName() + " is spamming game mode changes; rate-limiting"
-                    + " and suppressing further warnings.");
-
-            if (ConfigEntry.GAMEMODE_FLOOD_KICK_FLOODERS.getBoolean(true))
+            if (perSecond == maxPerSecond + 1)
             {
-                FUtil.bcastMsg(player.getName() + " was automatically kicked for spamming"
-                        + " game mode changes.", NamedTextColor.RED);
-                plugin.autoEject().autoEject(player, "Kicked for spamming game mode changes.");
+                FLog.warn(player.getName() + " is spamming game mode changes; rate-limiting"
+                        + " and suppressing further warnings.");
             }
+
+            event.setCancelled(true);
         }
     }
 
