@@ -1,6 +1,7 @@
 package me.totalfreedom.totalfreedommod.title;
 
 import me.totalfreedom.api.FreedomAPI;
+import me.totalfreedom.api.title.ITitle;
 import me.totalfreedom.api.title.ITitleManager;
 
 import java.io.File;
@@ -564,7 +565,7 @@ public class TitleManager extends FreedomService implements ITitleManager
     /**
      * The title filling a given id, wrapped for callers that would rather not null-check.
      */
-    public Optional<Title> find(String id)
+    public Optional<ITitle> find(String id)
     {
         return Optional.ofNullable(getTitle(id));
     }

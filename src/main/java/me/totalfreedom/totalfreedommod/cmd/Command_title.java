@@ -19,7 +19,7 @@ import me.totalfreedom.api.cmd.annotation.Completer;
 import me.totalfreedom.api.cmd.annotation.Permission;
 import me.totalfreedom.api.cmd.annotation.Subcommand;
 import me.totalfreedom.totalfreedommod.dispatch.RemoteDispatchContext;
-import me.totalfreedom.totalfreedommod.title.Title;
+import me.totalfreedom.api.title.ITitle;
 
 /**
  * Grants, revokes and inspects titles.
@@ -43,7 +43,7 @@ public class Command_title extends FCommand
     @Callback
     public void list(CommandSender sender)
     {
-        final List<Title> titles = plugin().titles().getTitlesSorted();
+        final List<? extends ITitle> titles = plugin().titles().getTitlesSorted();
 
         if (titles.isEmpty())
         {
@@ -71,7 +71,7 @@ public class Command_title extends FCommand
     @Subcommand("info")
     public void info(CommandSender sender, String titleId)
     {
-        final Title title = plugin().titles().getTitle(titleId);
+        final ITitle title = plugin().titles().getTitle(titleId);
 
         if (title == null)
         {
@@ -103,7 +103,7 @@ public class Command_title extends FCommand
     @Subcommand("of")
     public void of(CommandSender sender, Player target)
     {
-        final List<Title> held = plugin().titles().getHeldTitles(target);
+        final List<? extends ITitle> held = plugin().titles().getHeldTitles(target);
 
         if (held.isEmpty())
         {
@@ -125,7 +125,7 @@ public class Command_title extends FCommand
     public void grant(CommandSender sender, Player target, String titleId)
     {
         requireLocalConsole(sender);
-        final Title title = plugin().titles().getTitle(titleId);
+        final ITitle title = plugin().titles().getTitle(titleId);
 
         if (title == null)
         {
