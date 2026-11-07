@@ -1,7 +1,6 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
 import java.util.Comparator;
-import java.util.Date;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
@@ -118,6 +117,13 @@ public class Command_saconfig extends FCommand
             }
         }
 
+        if (admin != null && !plugin().al.canBindIdentity(target, admin))
+        {
+            msg(sender, "<red>That entry is bound to a premium account, but <player> joined through Eaglercraft. Have them rejoin with Java Minecraft, or add their Eaglercraft account under a different name.",
+                    Placeholder.unparsed("player", target.getName()));
+            return true;
+        }
+
         adminAction(sender, "<red><new_entry:A:Re-a>dding <player> to the admin list",
                 Formatter.booleanChoice("new_entry", admin == null),
                 Placeholder.unparsed("player", target.getName()));
@@ -131,13 +137,8 @@ public class Command_saconfig extends FCommand
         else 
         {
             admin.setName(target.getName());
-            admin.addIp(target.getAddress().getAddress().getHostAddress());
-
             admin.setActive(true);
-            admin.setLastLogin(new Date());
-
-            plugin().al.updateTables();
-            plugin().al.saveAdminAsync(admin);
+            plugin().al.verifyIdentity(target, admin);
         }
 
         
