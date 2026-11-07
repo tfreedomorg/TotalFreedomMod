@@ -649,7 +649,10 @@ public class RankManager extends FreedomService implements IRankManager
     public void updateAllPlayerTeams()
     {
         for (Player player : server.getOnlinePlayers())
+        {
             updatePlayerTeam(player);
+            player.updateCommands();
+        }
     }
 
     /**
