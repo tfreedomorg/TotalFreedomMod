@@ -373,12 +373,31 @@ public class AdminList extends FreedomService
     }
 
     /**
+     * Whether {@code player}'s current session may be bound to {@code admin}. Where entries are
+     * matched by UUID alone, an entry already bound to a premium (version 4) UUID may not be moved
+     * to an offline one: that would let the name's offline route, Eaglercraft included, stand in for
+     * a premium account. Eaglercraft admins keep separate entries bound to their offline UUIDs.
+     */
+    public boolean canBindIdentity(Player player, Admin admin)
+    {
+        if (!ConfigEntry.ADMINLIST_USE_UUID_ONLY.getBoolean() || admin.getUuid() == null)
+            return true;
+
+        return admin.getUuid().version() != 4 || player.getUniqueId().version() == 4;
+    }
+
+    /**
      * Registers {@code player} against the existing entry {@code admin} after their identity was
      * confirmed out of band, which is what turns an impostor back into the admin. The entry gains
      * the player's address, and takes their UUID where entries are matched by UUID alone.
+     *
+     * @return false, changing nothing, when {@link #canBindIdentity} refuses the player's session
      */
-    public void verifyIdentity(final Player player, final Admin admin)
+    public boolean verifyIdentity(final Player player, final Admin admin)
     {
+        if (!canBindIdentity(player, admin))
+            return false;
+
         admin.addIp(player.getAddress().getAddress().getHostAddress());
 
         if (ConfigEntry.ADMINLIST_USE_UUID_ONLY.getBoolean())
@@ -387,6 +406,7 @@ public class AdminList extends FreedomService
         updateTables();
         saveAdminAsync(admin);
         plugin.rm.restoreVerifiedAdmin(player);
+        return true;
     }
 
     public boolean isIdentityMatched(Player player)
