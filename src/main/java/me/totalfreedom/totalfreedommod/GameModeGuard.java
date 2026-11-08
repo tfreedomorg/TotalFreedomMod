@@ -66,10 +66,11 @@ public class GameModeGuard extends FreedomService
             return;
         }
 
-        if (plugin.autoEject().eject(player,
+        if (plugin.autoEject().ejectIf(player,
                 "gamemode_spam",
                 "was spamming game mode changes",
-                "You were changing your game mode too fast."))
+                "You were changing your game mode too fast.",
+                () -> ConfigEntry.GAMEMODE_FLOOD_KICK_FLOODERS.getBoolean(true)))
         {
             if (perSecond == maxPerSecond + 1)
             {
