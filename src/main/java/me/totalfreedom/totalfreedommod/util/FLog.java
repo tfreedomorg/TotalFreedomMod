@@ -50,11 +50,6 @@ public class FLog
         plainLogger.warn(format, args);
     }
 
-    public static void warn(String message, Throwable throwable)
-    {
-        plainLogger.warn(message, throwable);
-    }
-
     public static void warn(Component component)
     {
         componentLogger.warn(component);
