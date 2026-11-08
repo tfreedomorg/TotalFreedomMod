@@ -63,8 +63,8 @@ public class TotalFreedomMod extends JavaPlugin implements FreedomAPI
     public void onEnable()
     {
         FLog.info("Created by Madgeek1450 and Prozza");
-        FLog.info("Version " + aggregate.buildInfo().formattedVersion());
-        FLog.info("Compiled " + aggregate.buildInfo().date() + " by " + aggregate.buildInfo().author());
+        FLog.info("Version {}", aggregate.buildInfo().formattedVersion());
+        FLog.info("Compiled {} by {}", aggregate.buildInfo().date(), aggregate.buildInfo().author());
 
         final MethodTimer timer = new MethodTimer();
         timer.start();
@@ -80,7 +80,7 @@ public class TotalFreedomMod extends JavaPlugin implements FreedomAPI
         aggregate.enable();
 
         timer.update();
-        FLog.info("Version " + getPluginMeta().getVersion() + " enabled in " + timer.getTotal() + "ms");
+        FLog.info("Version {} enabled in {}ms", getPluginMeta().getVersion(), timer.getTotal());
     }
 
     @Override

@@ -236,7 +236,7 @@ public class PermbanList extends FreedomService
             }
             catch (IOException ex)
             {
-                FLog.error("Could not create " + CONFIG_FILENAME);
+                FLog.error("Could not create {}", CONFIG_FILENAME, ex);
             }
         }
 
@@ -258,11 +258,11 @@ public class PermbanList extends FreedomService
             }
             catch (IOException ex)
             {
-                FLog.error("Could not read " + CONFIG_FILENAME + ": " + ex.getMessage());
+                FLog.error("Could not read {}", CONFIG_FILENAME, ex);
             }
 
             usingSql = false;
-            FLog.info("Loaded " + permbannedIps.size() + " perm IP bans and " + permbannedNames.size() + " perm username bans from JSON.");
+            FLog.info("Loaded {} perm IP bans and {} perm username bans from JSON.", permbannedIps.size(), permbannedNames.size());
         }
     }
 
@@ -280,7 +280,7 @@ public class PermbanList extends FreedomService
         }
         catch (IOException ex)
         {
-            FLog.error("Could not save " + CONFIG_FILENAME);
+            FLog.error("Could not save {}", CONFIG_FILENAME, ex);
         }
     }
 
@@ -335,12 +335,12 @@ public class PermbanList extends FreedomService
             for (PermBan permban : snapshot)
                 repo.save(permban).block();
 
-            FLog.debug("Saved " + snapshot.size() + " permbans to SQL database");
+            FLog.debug("Saved {} permbans to SQL database", snapshot.size());
             saveToJson();
         }
         catch (Exception ex)
         {
-            FLog.warn("Failed to save permbans to SQL: " + ex.getMessage());
+            FLog.warn("Failed to save permbans to SQL", ex);
         }
     }
 
@@ -529,7 +529,7 @@ public class PermbanList extends FreedomService
         enqueue(repo.save(permban)
                 .onErrorResume(ex ->
                 {
-                    FLog.warn("Failed to save permban to SQL: " + ex.getMessage());
+                    FLog.warn("Failed to save permban to SQL", ex);
                     return Mono.<Integer>empty();
                 })
                 .then(writeJsonAsync()));
@@ -553,7 +553,7 @@ public class PermbanList extends FreedomService
                 .subscribeOn(Schedulers.boundedElastic())
                 .onErrorResume(ex ->
                 {
-                    FLog.warn("Failed to remove permban from SQL: " + ex.getMessage());
+                    FLog.warn("Failed to remove permban from SQL", ex);
                     return Mono.<Boolean>empty();
                 })
                 .then(writeJsonAsync()));

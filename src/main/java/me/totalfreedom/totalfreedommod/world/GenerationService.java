@@ -98,7 +98,7 @@ public final class GenerationService extends FreedomService implements IGenerati
         }
         catch (final ProfileException ex)
         {
-            FLog.warn("Failed to load biome library: " + ExceptionUtils.getRootCauseMessage(ex));
+            FLog.warn("Failed to load biome library", ex);
             return Map.of();
         }
     }
@@ -179,7 +179,7 @@ public final class GenerationService extends FreedomService implements IGenerati
         }
         catch (final ProfileException ex)
         {
-            FLog.warn("Could not re-read profile JSON for \"" + worldName + "\": " + ExceptionUtils.getRootCauseMessage(ex));
+            FLog.warn("Could not re-read profile JSON for \"{}\"", worldName, ex);
             return Optional.empty();
         }
     }

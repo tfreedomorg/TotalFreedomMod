@@ -29,7 +29,7 @@ public class SshPublicKeyAuthenticator implements PublickeyAuthenticator
         }
         catch (Exception e)
         {
-            FLog.warn("[SSH] Could not compute key fingerprint: " + e.getMessage());
+            FLog.warn("[SSH] Could not compute key fingerprint", e);
             return false;
         }
 
@@ -45,19 +45,18 @@ public class SshPublicKeyAuthenticator implements PublickeyAuthenticator
                     {
                         session.setAttribute(SshDaemon.FINGERPRINT_KEY, fingerprint);
                         session.setAttribute(SshDaemon.IDENTITY_KEY, identity.identifier());
-                        FLog.info("[SSH] Key matched identity '" + identity.identifier()
-                                + "' for SSH user: " + username);
+                        FLog.info("[SSH] Key matched identity '{}' for SSH user {}", identity.identifier(), username);
                         return true;
                     }
                 }
                 catch (Exception e)
                 {
-                    FLog.warn("[SSH] Bad key in identity '" + identity.identifier() + "': " + e.getMessage());
+                    FLog.warn("[SSH] Bad key in identity '{}'", identity.identifier(), e);
                 }
             }
         }
 
-        FLog.warn("[SSH] No matching key found for SSH user: " + username);
+        FLog.warn("[SSH] No matching key found for SSH user: {}", username);
         return false;
     }
 }

@@ -85,8 +85,8 @@ public class MainConfig extends PluginComponent<TotalFreedomMod> implements IMai
                     }
                     else
                     {
-                        FLog.warn("Value for " + entry.getConfigName() + " is of type "
-                                + value.getClass().getSimpleName() + ". Needs to be " + entry.getType().getSimpleName() + ". Using default value.");
+                        FLog.warn("Value for {} is of type {}. Needs to be {}. Using default value.",
+                                entry.getConfigName(), value.getClass().getSimpleName(), entry.getType().getSimpleName());
                     }
                 }
                 else
@@ -300,7 +300,7 @@ public class MainConfig extends PluginComponent<TotalFreedomMod> implements IMai
             return;
         }
 
-        FLog.info("Installing default configuration file template: " + targetFile.getPath());
+        FLog.info("Installing default configuration file template: {}", targetFile.getPath());
 
         try
         {

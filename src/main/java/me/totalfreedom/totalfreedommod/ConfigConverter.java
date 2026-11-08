@@ -291,7 +291,7 @@ public class ConfigConverter extends PluginComponent<TotalFreedomMod>
             ConfigurationSection asec = admins.getConfigurationSection(uuid);
             if (asec == null)
             {
-                FLog.warn("Invalid superadmin format for admin: " + uuid);
+                FLog.warn("Invalid superadmin format for admin {}", uuid);
                 continue;
             }
 
@@ -319,10 +319,10 @@ public class ConfigConverter extends PluginComponent<TotalFreedomMod>
         }
         catch (IOException ex)
         {
-            FLog.error("Could not save converted admin list");
+            FLog.error("Could not save converted admin list", ex);
         }
 
-        FLog.info("Converted " + converted.size() + " admins");
+        FLog.info("Converted {} admins", converted.size());
     }
 
     private void convertPermbans(File oldFile)
@@ -352,11 +352,11 @@ public class ConfigConverter extends PluginComponent<TotalFreedomMod>
                     new TypeToken<Map<String, PermBan>>()
                     {
                     }.getType(), writer);
-            FLog.info("Converted " + converted.size() + " permbans");
+            FLog.info("Converted {} permbans", converted.size());
         }
         catch (IOException ex)
         {
-            FLog.warn("Could not save converted permban list!");
+            FLog.warn("Could not save converted permban list", ex);
         }
     }
 

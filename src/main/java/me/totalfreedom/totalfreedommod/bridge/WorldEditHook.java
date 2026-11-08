@@ -288,7 +288,7 @@ public final class WorldEditHook implements Listener
             updated.add(EXTENT_PACKAGE);
             field.set(extent, updated);
 
-            FLog.info("Registered '" + EXTENT_PACKAGE + "' with FAWE's allowed-plugins; TFM extents will not be discarded.");
+            FLog.info("Registered '{}' with FAWE's allowed-plugins; TFM extents will not be discarded.", EXTENT_PACKAGE);
         }
         catch (ClassNotFoundException ignored)
         {
@@ -296,8 +296,7 @@ public final class WorldEditHook implements Listener
         }
         catch (Throwable t)
         {
-            FLog.warn("Could not register TFM with FAWE's allowed-plugins. Protected areas may not be "
-                + "enforced against WorldEdit operations: "+ t.getMessage());
+            FLog.warn("Could not register TFM with FAWE's allowed-plugins. Protected areas may not be enforced against WorldEdit operations", t);
         }
     }
 
@@ -340,7 +339,7 @@ public final class WorldEditHook implements Listener
             }
             catch (Throwable t)
             {
-                FLog.warn("Could not register the WorldEdit EditSession subscriber: " + t.getMessage());
+                FLog.warn("Could not register the WorldEdit EditSession subscriber", t);
             }
             editSessionSubscriber = null;
         }
@@ -408,7 +407,7 @@ public final class WorldEditHook implements Listener
         }
         catch (Throwable t)
         {
-            FLog.warn("Failed to apply WorldEdit bypass negation for " + player.getName() + ": " + t.getMessage());
+            FLog.warn("Failed to apply WorldEdit bypass negation for {}", player.getName(), t);
         }
     }
 
@@ -813,8 +812,7 @@ public final class WorldEditHook implements Listener
         player.sendMessage(Component.text(
             "The block type '" + id + "' cannot be used in your operation.",
             NamedTextColor.RED));
-        FLog.warn(player.getName() + " tried to use a disallowed W/E block type (" + id
-            + "): " + message);
+        FLog.warn("{} tried to use a disallowed W/E block type ({}): {}", player.getName(), id, message);
     }
 
     private static boolean blockedIdMatches(String id, String entry)
@@ -907,7 +905,7 @@ public final class WorldEditHook implements Listener
         player.sendMessage(Component.text(
             "The clipboard pattern may not be used in this context. Please use //paste to paste your clipboard.",
             NamedTextColor.RED));
-        FLog.warn(player.getName() + " tried to use the clipboard pattern in an operation: " + message);
+        FLog.warn("{} tried to use the clipboard pattern in an operation: {}", player.getName(), message);
         return true;
     }
 
@@ -1491,8 +1489,8 @@ public final class WorldEditHook implements Listener
                 "Your WorldEdit selection (" + volume + " blocks) exceeds the max of "
                     + cap + ". Operation blocked.",
                 NamedTextColor.RED));
-            FLog.warn("Blocked oversized WorldEdit op from " + player.getName()
-                + " (volume=" + volume + ", cap=" + cap + "): " + msg);
+
+            FLog.warn("Blocked oversized WorldEdit op from {} (volume={}, cap={}): {}", player.getName(), volume, cap, msg);
             try
             {
                 session.getRegionSelector(wePlayer.getWorld()).clear();
@@ -1600,13 +1598,11 @@ public final class WorldEditHook implements Listener
             player.sendMessage(Component.text(
                 "Your schematic contains too much data in order to be saved.",
                 NamedTextColor.RED));
-            FLog.warn("Blocked oversized schematic save from " + player.getName()
-                + " (cap=" + capKb + " KB): " + msg);
+            FLog.warn("Blocked oversized schematic save from {} (cap={} KB): {}", player.getName(), capKb, msg);
         }
         catch (Throwable t)
         {
-            FLog.warn("Failed to check schematic save size for " + player.getName()
-                + ": " + t.getMessage());
+            FLog.warn("Failed to check schematic save size for {}", player.getName(), t);
         }
     }
 
@@ -1657,8 +1653,7 @@ public final class WorldEditHook implements Listener
         }
         catch (Throwable t)
         {
-            FLog.warn("Failed to check WorldEdit container command for " + event.getPlayer().getName()
-                + ": " + t.getMessage());
+            FLog.warn("Failed to check WorldEdit container command for {}", event.getPlayer().getName(), t);
         }
     }
 
@@ -1671,8 +1666,7 @@ public final class WorldEditHook implements Listener
         {
             event.setCancelled(true);
             player.sendMessage(Component.text("Your clipboard contains too much data to paste.", NamedTextColor.RED));
-            FLog.warn("Blocked oversized volume clipboard paste from " + player.getName()
-                + " (" + region.getVolume() + ")");
+            FLog.warn("Blocked oversized volume clipboard paste from {} ({})", player.getName(), region.getVolume());
             return;
         }
 
@@ -1683,8 +1677,7 @@ public final class WorldEditHook implements Listener
             player.sendMessage(Component.text(
                 "Your clipboard contains too much container data to paste.",
                 NamedTextColor.RED));
-            FLog.warn("Blocked oversized container clipboard paste from " + player.getName()
-                + " (" + containers + " containers)");
+            FLog.warn("Blocked oversized container clipboard paste from {} ({} containers)", player.getName(), containers);
         }
     }
 

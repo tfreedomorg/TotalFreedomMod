@@ -25,7 +25,7 @@ public class SshPasswordAuthenticator implements PasswordAuthenticator
         // Reject if no password is configured
         if (configPassword == null || configPassword.isEmpty())
         {
-            FLog.warn("SSH login attempt by '" + username + "' rejected: no password configured in config.yml (ssh.password is empty).");
+            FLog.warn("SSH login attempt by '{}' rejected: no password configured in config.yml (ssh.password is empty).", username);
             return false;
         }
 
@@ -33,12 +33,12 @@ public class SshPasswordAuthenticator implements PasswordAuthenticator
         {
             failCounts.remove(session);
             session.setAttribute(SshDaemon.AUTH_METHOD_KEY, SshAuthMethod.PASSWORD);
-            FLog.info("SSH login successful for user: " + username);
+            FLog.info("SSH login successful for user: {}", username);
             return true;
         }
 
         // Failed attempt
-        FLog.info("Failed SSH login for '" + username + "' using password authentication.");
+        FLog.info("Failed SSH login for '{}' using password authentication.", username);
 
         try
         {
@@ -56,7 +56,7 @@ public class SshPasswordAuthenticator implements PasswordAuthenticator
         int maxAttempts = ConfigEntry.SSH_MAX_FAILED_ATTEMPTS.getInteger();
         if (fails >= maxAttempts)
         {
-            FLog.info("SSH session for '" + username + "' closed after " + maxAttempts + " failed attempts.");
+            FLog.info("SSH session for '{}' closed after {} failed attempts.", username, maxAttempts);
             failCounts.remove(session);
             session.close(true);
         }

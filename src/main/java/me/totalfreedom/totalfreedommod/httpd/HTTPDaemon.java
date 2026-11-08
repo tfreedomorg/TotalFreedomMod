@@ -57,7 +57,7 @@ public class HTTPDaemon extends FreedomService
 
             if (httpd.isAlive())
             {
-                FLog.info("TFM HTTPd started. Listening on port: " + httpd.getListeningPort());
+                FLog.info("TFM HTTPd started. Listening on port {}", httpd.getListeningPort());
             }
             else
             {

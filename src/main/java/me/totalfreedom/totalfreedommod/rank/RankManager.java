@@ -309,13 +309,13 @@ public class RankManager extends FreedomService implements IRankManager
         }
         catch (IOException ex)
         {
-            FLog.error("Could not read " + RANKS_FILENAME + ": " + ex.getMessage());
+            FLog.error("Could not read {}", RANKS_FILENAME, ex);
         }
 
         selfHealLegacyMarkers();
         resolveInheritance();
         updateAllPlayerTeams();
-        FLog.info("Loaded " + customRanks.size() + " custom ranks.");
+        FLog.info("Loaded {} custom ranks.", customRanks.size());
     }
 
     private Map<String, CustomRank> readJsonRanks() throws IOException
@@ -520,8 +520,8 @@ public class RankManager extends FreedomService implements IRankManager
         if (!rank.hasPermission(LEGACY_ADMIN_STATUS_NODE))
             return;
 
-        FLog.info("Rank '" + rank.getId() + "' holds " + LEGACY_ADMIN_STATUS_NODE
-                + "; replacing it with the " + ADMIN_STATUS_NODE + " marker.");
+        FLog.info("Rank '{}' holds {}; replacing it with the {} marker.",
+                rank.getId(), LEGACY_ADMIN_STATUS_NODE, ADMIN_STATUS_NODE);
         rank.removePermission(LEGACY_ADMIN_STATUS_NODE);
         rank.addPermission(ADMIN_STATUS_NODE);
     }
@@ -532,8 +532,8 @@ public class RankManager extends FreedomService implements IRankManager
             || !registry.getTrie().grants(rank.getId(), LEGACY_SENIOR_STATUS_NODE))
             return;
 
-        FLog.info("Rank '" + rank.getId() + "' already qualified as senior without the "
-                + SENIOR_STATUS_NODE + " node; granting it automatically.");
+        FLog.info("Rank '{}' already qualified as senior without the {} node; granting it automatically.",
+                rank.getId(), SENIOR_STATUS_NODE);
         rank.addPermission(SENIOR_STATUS_NODE);
     }
 
@@ -544,7 +544,7 @@ public class RankManager extends FreedomService implements IRankManager
 
         if (visited.contains(rank.getId()))
         {
-            FLog.warn("Circular inheritance detected for rank: " + rank.getId());
+            FLog.warn("Circular inheritance detected for rank: {}", rank.getId());
             return Set.of();
         }
         visited.add(rank.getId());
@@ -555,7 +555,7 @@ public class RankManager extends FreedomService implements IRankManager
         {
             CustomRank parent = customRanks.get(rank.getInheritFrom().toLowerCase());
             if (parent == null)
-                FLog.warn("Rank '" + rank.getId() + "' inherits from non-existent rank: " + rank.getInheritFrom());
+                FLog.warn("Rank '{}' inherits from non-existent rank: {}", rank.getId(), rank.getInheritFrom());
             else
                 perms.addAll(collectPermissions(parent, visited));
         }
@@ -886,7 +886,7 @@ public class RankManager extends FreedomService implements IRankManager
             catch (Exception ex)
             {
                 player.sendMessage(Component.text("Error processing input: " + ex.getMessage()).color(NamedTextColor.RED));
-                FLog.warn("Error in chat input callback: " + ex.getMessage());
+                FLog.warn("Error in chat input callback", ex);
             }
 
             return true;

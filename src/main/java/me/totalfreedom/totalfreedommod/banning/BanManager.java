@@ -275,7 +275,7 @@ public class BanManager extends FreedomService implements IBanManager
                 {
                     if (!ban.isValid())
                     {
-                        FLog.warn("Not adding username ban: " + ban.getUsername() + ". Missing information.");
+                        FLog.warn("Not adding username ban: {}. Missing information.", ban.getUsername());
                         continue;
                     }
                     bans.add(ban);
@@ -283,12 +283,12 @@ public class BanManager extends FreedomService implements IBanManager
             }
             catch (IOException ex)
             {
-                FLog.error("Could not read bans.json: " + ex.getMessage());
+                FLog.error("Could not read bans.json", ex);
             }
 
             usingSql = false;
             updateViews();
-            FLog.info("Loaded " + ipBans.size() + " IP bans and " + nameBans.size() + " username bans from JSON.");
+            FLog.info("Loaded {} IP bans and {} username bans from JSON.", ipBans.size(), nameBans.size());
         }
     }
 
@@ -297,7 +297,7 @@ public class BanManager extends FreedomService implements IBanManager
     {
         awaitPendingWrites(SHUTDOWN_FLUSH_TIMEOUT_MS);
         saveAll();
-        FLog.info("Saved " + bans.size() + " player bans");
+        FLog.info("Saved {} player bans", bans.size());
     }
 
     public void awaitPendingWrites(long timeoutMs)
@@ -385,7 +385,7 @@ public class BanManager extends FreedomService implements IBanManager
         enqueue(syncToSql(repo, snapshot)
                 .onErrorResume(ex ->
                 {
-                    FLog.warn("Failed to write bans to SQL: " + ex.getMessage());
+                    FLog.warn("Failed to write bans to SQL", ex);
                     return Mono.empty();
                 })
                 .then(writeJsonAsync(snapshot)));
@@ -409,7 +409,7 @@ public class BanManager extends FreedomService implements IBanManager
         enqueue(repo.save(ban)
                 .onErrorResume(ex ->
                 {
-                    FLog.warn("Failed to save ban to SQL: " + ex.getMessage());
+                    FLog.warn("Failed to save ban to SQL", ex);
                     return Mono.<Integer>empty();
                 })
                 .then(writeJsonAsync(snapshot)));
@@ -452,7 +452,7 @@ public class BanManager extends FreedomService implements IBanManager
         enqueue(delete
                 .onErrorResume(ex ->
                 {
-                    FLog.warn("Failed to remove ban from SQL: " + ex.getMessage());
+                    FLog.warn("Failed to remove ban from SQL", ex);
                     return Mono.<Boolean>empty();
                 })
                 .then(writeJsonAsync(snapshot)));
@@ -471,12 +471,12 @@ public class BanManager extends FreedomService implements IBanManager
         {
             BanRepository repo = plugin.database().getBanRepository();
             syncToSql(repo, snapshot).block();
-            FLog.debug("Saved " + snapshot.size() + " bans to SQL database");
+            FLog.debug("Saved {} bans to SQL database", snapshot.size());
             writeAllToJson(snapshot);
         }
         catch (Exception ex)
         {
-            FLog.warn("Failed to save bans to SQL: " + ex.getMessage());
+            FLog.warn("Failed to save bans to SQL", ex);
         }
     }
 

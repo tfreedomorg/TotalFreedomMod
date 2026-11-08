@@ -80,7 +80,7 @@ public class ServiceManager implements IServiceManager
             }
             catch (Exception ex)
             {
-                FLog.error("Failed to stop service {}" + service.getClass().getName(), ex);
+                FLog.error("Failed to stop service {}", service.getClass().getName(), ex);
             }
         }
     }

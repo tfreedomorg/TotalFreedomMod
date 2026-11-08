@@ -176,9 +176,9 @@ public class ProtectArea extends FreedomService
         }
         catch (IOException ex)
         {
-            FLog.error("Failed to read " + DATA_FILENAME + ": " + ex.getMessage());
+            FLog.error("Failed to read {}", DATA_FILENAME, ex);
         }
-        FLog.info("Loaded " + areas.size() + " protected area(s).");
+        FLog.info("Loaded {} protected area(s).", areas.size());
     }
 
     private List<ProtectedRegion> readJsonAreas() throws IOException
@@ -286,7 +286,7 @@ public class ProtectArea extends FreedomService
 
             File oldFile = new File(legacyFile.getParent(), LEGACY_DATA_FILENAME + ".old");
             if (legacyFile.renameTo(oldFile))
-                FLog.info("Migration complete. Legacy file renamed to " + LEGACY_DATA_FILENAME + ".old");
+                FLog.info("Migration complete. Legacy file renamed to {}", oldFile.getName());
             else
                 FLog.warn("Migration complete but could not rename legacy file.");
 
@@ -335,7 +335,7 @@ public class ProtectArea extends FreedomService
                 }
                 catch (CantFindWorldException ex)
                 {
-                    FLog.warn(ex.getMessage());
+                    FLog.warn("Failed to find world", ex);
                 }
             }
         }

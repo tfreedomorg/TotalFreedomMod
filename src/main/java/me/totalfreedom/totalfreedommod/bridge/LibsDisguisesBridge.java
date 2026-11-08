@@ -136,7 +136,7 @@ public class LibsDisguisesBridge extends FreedomService
                                     if (params.length() > 0) params.append(", ");
                                     params.append(param.getSimpleName());
                                 }
-                                FLog.warn("  - " + method.getName() + "(" + params + ")");
+                                FLog.warn("  - {}({})", method.getName(), params);
                             }
                         }
                         FLog.warn("Expected methods: isDisguised(Entity), undisguiseToAll(Entity)");

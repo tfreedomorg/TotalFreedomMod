@@ -38,7 +38,7 @@ public class FreezeData
         final Player player = playerData.getPlayer();
         if (player == null)
         {
-            FLog.info("Could not freeze " + playerData.getUsername() + ". Player not online!");
+            FLog.info("Could not freeze {}. Player not online!", playerData.getUsername());
             return;
         }
 

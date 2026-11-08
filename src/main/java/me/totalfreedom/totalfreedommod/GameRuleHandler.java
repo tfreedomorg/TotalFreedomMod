@@ -75,7 +75,7 @@ public class GameRuleHandler extends FreedomService implements IGameRuleHandler
             // Ignore gamerules that don't exist
             if (rule == null)
             {
-                FLog.warn("Ignoring default gamerule " + key + " as it doesn't exist");
+                FLog.warn("Ignoring default gamerule {} as it doesn't exist", key);
                 continue;
             }
 
@@ -84,14 +84,15 @@ public class GameRuleHandler extends FreedomService implements IGameRuleHandler
             // IntelliJ complained about nullability even though that makes no sense given how this code is done
             if (value == null)
             {
-                FLog.warn("Ignoring default gamerule " + key + " as the value is somehow null");
+                FLog.warn("Ignoring default gamerule {} as the value is somehow null", key);
                 continue;
             }
 
             // Ignore gamerules with invalid values
             if (!rule.getType().isInstance(value))
             {
-                FLog.warn("Ignoring default gamerule " + key + " as it uses an invalid type - Expected " + rule.getType() + ", got " + value.getClass().getName());
+                FLog.warn("Ignoring default gamerule {} as it uses an invalid type - Expected {}, got {}",
+                        key, rule.getType().getName(), value.getClass().getName());
                 continue;
             }
 
@@ -118,14 +119,14 @@ public class GameRuleHandler extends FreedomService implements IGameRuleHandler
             // Ignore gamerules that don't exist
             if (rule == null)
             {
-                FLog.warn("Ignoring cap for gamerule " + key + " as it doesn't exist");
+                FLog.warn("Ignoring cap for gamerule {} as it doesn't exist", key);
                 continue;
             }
 
             // Ignore gamerules that aren't numbers
             if (!Integer.class.isAssignableFrom(rule.getType()) )
             {
-                FLog.warn("Ignoring cap for gamerule " + key + " as said gamerule isn't a number");
+                FLog.warn("Ignoring cap for gamerule {} as said gamerule isn't a number", key);
                 continue;
             }
 
@@ -133,7 +134,7 @@ public class GameRuleHandler extends FreedomService implements IGameRuleHandler
             final List<Integer> range = caps.getIntegerList(key);
             if (range.size() != 2 || range.getFirst() > range.getLast())
             {
-                FLog.warn("Ignoring cap for gamerule " + key + " as the range given isn't valid (must be specified like [min, max] in the configuration)");
+                FLog.warn("Ignoring cap for gamerule {} as the range given isn't valid (must be specified like [min, max] in the configuration)", key);
                 continue;
             }
 

@@ -186,7 +186,7 @@ public class FUtil
 
         for (File dump : coreDumps)
         {
-            FLog.info("Removing core dump file: " + dump.getName());
+            FLog.info("Removing core dump file {}", dump.getName());
             dump.delete();
         }
     }
@@ -534,7 +534,7 @@ public class FUtil
         }
         catch (Exception ex)
         {
-            FLog.warn("Failed to fetch UUID for " + username + ": " + ex.getMessage());
+            FLog.warn("Failed to fetch UUID for {}", username, ex);
         }
 
         return null;
@@ -590,7 +590,7 @@ public class FUtil
         }
         catch (IllegalArgumentException ex)
         {
-            FLog.warn("Failed to parse UUID: " + uuidString);
+            FLog.warn("Failed to parse UUID: {}", uuidString);
         }
 
         return null;

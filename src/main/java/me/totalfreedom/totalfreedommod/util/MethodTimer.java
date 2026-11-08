@@ -27,6 +27,6 @@ public class MethodTimer
 
     public void printTotalToLog(String timerName)
     {
-        FLog.info("DEBUG: " + timerName + " used " + this.getTotal() + " ms.");
+        FLog.debug("{} used {} ms.", timerName, this.getTotal());
     }
 }

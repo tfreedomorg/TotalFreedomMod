@@ -105,7 +105,7 @@ public class DisallowedDisguises extends FreedomService
                       .forEach(forbiddenOptions::add);
         }
 
-        FLog.info("Loaded " + forbiddenDisguiseTypes.size() + " forbidden disguise types.");
+        FLog.info("Loaded {} forbidden disguise types.", forbiddenDisguiseTypes.size());
     }
 
     /**

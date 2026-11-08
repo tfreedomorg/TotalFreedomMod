@@ -395,7 +395,7 @@ public class FreedomDatabase extends FreedomService implements IFreedomDatabase
                 }
                 catch (SQLException | IllegalStateException ex)
                 {
-                    FLog.warn("Failed to record punishment history: " + ex.getMessage());
+                    FLog.warn("Failed to record punishment history", ex);
                 }
             }
         });

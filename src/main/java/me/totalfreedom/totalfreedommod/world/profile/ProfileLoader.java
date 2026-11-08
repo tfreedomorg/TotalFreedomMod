@@ -176,7 +176,8 @@ public final class ProfileLoader
         if (VALID_WORLD_NAME.matcher(worldName).matches())
             return true;
 
-        FLog.warn("Ignoring worlds/" + worldName + JSON_EXTENSION + ": a world name may only be lowercase letters, digits, underscores, or hyphens, so this world will not be loaded.");
+        FLog.warn("Ignoring worlds/{}{}: a world name may only be lowercase letters, digits, underscores, or hyphens, so this world will not be loaded.",
+                worldName, JSON_EXTENSION);
         return false;
     }
 

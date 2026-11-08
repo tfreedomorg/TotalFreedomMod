@@ -226,7 +226,7 @@ public class PlayerList extends FreedomService implements IPlayerList
             }
             catch (Exception ex)
             {
-                FLog.warn("Failed to load all player data from SQL, falling back to JSON: " + ex.getMessage());
+                FLog.warn("Failed to load all player data from SQL, falling back to JSON", ex);
             }
         }
 
@@ -628,7 +628,7 @@ public class PlayerList extends FreedomService implements IPlayerList
             }
             catch (Exception ex)
             {
-                FLog.warn("Failed to look up player data for " + username + " in SQL, falling back to JSON: " + ex.getMessage());
+                FLog.warn("Failed to look up player data for {} in SQL, falling back to JSON", username, ex);
             }
         }
 
@@ -653,7 +653,7 @@ public class PlayerList extends FreedomService implements IPlayerList
         }
         catch (Exception ex)
         {
-            FLog.warn("Failed to load player data for " + uuid + " from SQL, falling back to JSON: " + ex.getMessage());
+            FLog.warn("Failed to load player data for {} from SQL, falling back to JSON", uuid, ex);
             return null;
         }
     }
@@ -682,12 +682,12 @@ public class PlayerList extends FreedomService implements IPlayerList
                 return;
             }
 
-            FLog.info(jsonFile.getName() + " is newer than the database; re-importing player data for " + jsonData.getUsername() + " from it.");
+            FLog.info("{} is newer than the database; re-importing player data for {} from it.", jsonFile.getName(), jsonData.getUsername());
             repo.saveOrUpdate(jsonData);
         }
         catch (Exception ex)
         {
-            FLog.warn("Failed to reconcile player data for " + uuid + " into the database: " + ex.getMessage());
+            FLog.warn("Failed to reconcile player data for {} into the database", uuid, ex);
         }
     }
 
@@ -703,7 +703,7 @@ public class PlayerList extends FreedomService implements IPlayerList
 
         if (data == null || !data.isValid())
         {
-            FLog.warn("Could not load player data entry: " + uuid + ". Entry is not valid!");
+            FLog.warn("Could not load player data entry: {}. Entry is not valid!", uuid);
             configFile.delete();
             return null;
         }
@@ -735,7 +735,7 @@ public class PlayerList extends FreedomService implements IPlayerList
         }
         catch (Exception ex)
         {
-            FLog.error("Could not read player data from " + file.getName() + ": " + ex.getMessage());
+            FLog.error("Could not read player data from {}", file.getName(), ex);
             return null;
         }
     }

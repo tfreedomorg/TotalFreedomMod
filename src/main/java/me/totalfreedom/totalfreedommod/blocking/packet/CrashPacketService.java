@@ -277,7 +277,7 @@ public class CrashPacketService extends FreedomService
         }
         catch (Throwable t)
         {
-            FLog.warn("[CrashPacketService] Failed to unregister PacketEvents listener: " + t.getMessage());
+            FLog.warn("[CrashPacketService] Failed to unregister PacketEvents listener", t);
         }
         finally
         {

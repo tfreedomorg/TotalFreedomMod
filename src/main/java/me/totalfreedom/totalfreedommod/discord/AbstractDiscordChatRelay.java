@@ -169,7 +169,7 @@ public abstract class AbstractDiscordChatRelay
             }
             catch (Exception ex)
             {
-                FLog.warn("[Discord] Failed to send system message to Discord: " + ex.getMessage());
+                FLog.warn("[Discord] Failed to send system message to Discord", ex);
             }
         });
     }

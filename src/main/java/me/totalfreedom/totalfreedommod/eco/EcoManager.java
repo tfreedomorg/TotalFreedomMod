@@ -150,7 +150,7 @@ public class EcoManager extends FreedomService implements IEcoManager
         }
         catch (Exception ex)
         {
-            FLog.warn("Failed to load economy data for " + username + " from SQL: " + ex.getMessage());
+            FLog.warn("Failed to load economy data for {} from SQL", username, ex);
             return Optional.empty();
         }
     }
@@ -201,7 +201,7 @@ public class EcoManager extends FreedomService implements IEcoManager
         }
         catch (Exception ex)
         {
-            FLog.warn("Failed to load bank data from SQL: " + ex.getMessage());
+            FLog.warn("Failed to load bank data from SQL", ex);
         }
     }
 

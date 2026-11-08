@@ -105,7 +105,7 @@ public class SavedFlags extends FreedomService
             File oldFile = new File(legacyFile.getParent(), LEGACY_DATA_FILENAME + ".old");
             if (legacyFile.renameTo(oldFile))
             {
-                FLog.info("Migration complete. Legacy file renamed to " + LEGACY_DATA_FILENAME + ".old");
+                FLog.info("Migration complete. Legacy file renamed to {}", oldFile.getName());
             }
             else
             {

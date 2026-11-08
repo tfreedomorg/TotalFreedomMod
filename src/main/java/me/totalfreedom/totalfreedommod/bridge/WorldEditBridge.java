@@ -63,7 +63,7 @@ public class WorldEditBridge extends FreedomService
         }
         catch (Throwable t)
         {
-            FLog.warn("Failed to attach WorldEdit hook: " + t.getMessage(), t);
+            FLog.warn("Failed to attach WorldEdit hook", t);
             hook = null;
         }
     }

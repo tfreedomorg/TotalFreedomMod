@@ -50,7 +50,7 @@ public class SshCommandCompleter implements Completer {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (ExecutionException e) {
-            FLog.warn("Error during SSH tab completion: " + e.getMessage());
+            FLog.warn("Error during SSH tab completion", e);
         }
     }
 }

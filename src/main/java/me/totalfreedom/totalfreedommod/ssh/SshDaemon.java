@@ -97,7 +97,7 @@ public class SshDaemon extends FreedomService
         try
         {
             sshd.start();
-            FLog.info("SSH daemon started on port: " + port);
+            FLog.info("SSH daemon started on port {}", port);
         }
         catch (IOException e)
         {

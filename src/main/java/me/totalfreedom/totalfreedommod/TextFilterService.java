@@ -324,8 +324,8 @@ public class TextFilterService extends FreedomService
         filters = compile(ConfigEntry.TEXT_FILTER_REGEX_FILTERS.getStringList());
         usernameFilters = compile(ConfigEntry.TEXT_FILTER_USERNAME_FILTERS.getStringList());
 
-        FLog.info("Loaded " + filters.size() + " text filter regex pattern(s) and "
-            + usernameFilters.size() + " username pattern(s).");
+        FLog.info("Loaded {} text filter regex pattern(s) and {} username pattern(s).",
+                filters.size(), usernameFilters.size());
     }
 
     private static List<Pattern> compile(List<String> raw)
@@ -345,7 +345,7 @@ public class TextFilterService extends FreedomService
             }
             catch (PatternSyntaxException ex)
             {
-                FLog.warn("Skipping invalid text filter regex: " + ex.getDescription());
+                FLog.warn("Skipping invalid text filter regex: {}", ex.getDescription());
             }
         }
 
@@ -494,7 +494,7 @@ public class TextFilterService extends FreedomService
 
     private void notifyAdmins(String message, Component feedback)
     {
-        FLog.warn("[Text Filter] " + message);
+        FLog.warn("[Text Filter] {}", message);
         final Component notification = Component.text("[Text Filter] ", NamedTextColor.RED)
                 .append(feedback);
 
