@@ -8,6 +8,7 @@ import java.util.function.Function;
 import org.bukkit.event.Listener;
 
 import me.totalfreedom.api.FreedomAPI;
+import me.totalfreedom.api.framework.AbstractService;
 import me.totalfreedom.api.framework.IServiceManager;
 import me.totalfreedom.totalfreedommod.util.FLog;
 

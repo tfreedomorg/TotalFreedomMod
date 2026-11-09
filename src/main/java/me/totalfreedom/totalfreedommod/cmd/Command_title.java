@@ -13,6 +13,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
 import me.totalfreedom.api.cmd.FCommand;
+import me.totalfreedom.api.cmd.CommandFailException;
 import me.totalfreedom.api.cmd.annotation.Callback;
 import me.totalfreedom.api.cmd.annotation.Command;
 import me.totalfreedom.api.cmd.annotation.Completer;
