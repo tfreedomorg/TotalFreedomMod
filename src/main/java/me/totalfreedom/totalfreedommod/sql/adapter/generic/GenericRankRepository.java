@@ -3,7 +3,6 @@ package me.totalfreedom.totalfreedommod.sql.adapter.generic;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -16,7 +15,7 @@ import me.totalfreedom.api.rank.RankRole;
 import me.totalfreedom.totalfreedommod.rank.RankRegistry;
 import me.totalfreedom.totalfreedommod.sql.StatementHandler;
 import me.totalfreedom.totalfreedommod.sql.adapter.DatabaseAdapter;
-import me.totalfreedom.api.sql.adapter.RankRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.RankRepository;
 
 /**
  * All dialect differences are resolved through the {@link DatabaseAdapter} passed in.

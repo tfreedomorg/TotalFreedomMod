@@ -21,7 +21,7 @@ import reactor.core.scheduler.Schedulers;
 import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.sql.PersistenceQueue;
-import me.totalfreedom.api.sql.adapter.StrikeRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.StrikeRepository;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.JsonUtil;
 import me.totalfreedom.totalfreedommod.util.FUtil;

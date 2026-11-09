@@ -7,17 +7,17 @@ import org.bukkit.entity.Player;
 
 import reactor.core.publisher.Mono;
 
-import me.totalfreedom.api.sql.adapter.BanRepository;
-import me.totalfreedom.api.sql.adapter.EconomyRepository;
-import me.totalfreedom.api.sql.adapter.MigrationRepository;
-import me.totalfreedom.api.sql.adapter.PermbanRepository;
-import me.totalfreedom.api.sql.adapter.PlayerRepository;
-import me.totalfreedom.api.sql.adapter.ProtectedAreaRepository;
-import me.totalfreedom.api.sql.adapter.PunishmentHistoryRepository;
-import me.totalfreedom.api.sql.adapter.RankRepository;
-import me.totalfreedom.api.sql.adapter.SavedFlagRepository;
-import me.totalfreedom.api.sql.adapter.StrikeRepository;
-import me.totalfreedom.api.sql.adapter.TitleRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.BanRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.EconomyRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.MigrationRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.PermbanRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.PlayerRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.ProtectedAreaRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.PunishmentHistoryRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.RankRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.SavedFlagRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.StrikeRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.TitleRepository;
 import me.totalfreedom.totalfreedommod.sql.ConnectionHandler;
 import me.totalfreedom.totalfreedommod.sql.PunishmentHistoryEntry;
 

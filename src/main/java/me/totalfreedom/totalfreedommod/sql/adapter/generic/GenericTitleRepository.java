@@ -3,7 +3,6 @@ package me.totalfreedom.totalfreedommod.sql.adapter.generic;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -15,7 +14,7 @@ import reactor.core.publisher.Mono;
 
 import me.totalfreedom.totalfreedommod.sql.StatementHandler;
 import me.totalfreedom.totalfreedommod.sql.adapter.DatabaseAdapter;
-import me.totalfreedom.api.sql.adapter.TitleRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.TitleRepository;
 import me.totalfreedom.totalfreedommod.title.Title;
 
 /**

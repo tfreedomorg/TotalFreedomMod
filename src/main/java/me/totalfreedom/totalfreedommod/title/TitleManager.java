@@ -30,7 +30,7 @@ import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.api.display.Displayable;
 import me.totalfreedom.totalfreedommod.player.PlayerData;
 import me.totalfreedom.totalfreedommod.sql.PersistenceQueue;
-import me.totalfreedom.api.sql.adapter.TitleRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.TitleRepository;
 import me.totalfreedom.totalfreedommod.util.*;
 
 import com.google.common.collect.Maps;

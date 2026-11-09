@@ -6,7 +6,6 @@ import me.totalfreedom.totalfreedommod.discord.DiscordBridge;
 import me.totalfreedom.api.FreedomAPI;
 import me.totalfreedom.api.rank.IRankManager;
 import me.totalfreedom.api.rank.RankRole;
-import me.totalfreedom.api.title.ITitle;
 
 import java.io.File;
 import java.io.FileReader;
@@ -58,7 +57,7 @@ import me.totalfreedom.totalfreedommod.cmd.MessageUtils;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.api.display.Displayable;
 import me.totalfreedom.totalfreedommod.sql.PersistenceQueue;
-import me.totalfreedom.api.sql.adapter.RankRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.RankRepository;
 import me.totalfreedom.totalfreedommod.player.PlayerData;
 import me.totalfreedom.totalfreedommod.util.*;
 

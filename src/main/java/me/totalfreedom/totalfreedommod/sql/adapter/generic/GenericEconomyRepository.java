@@ -14,7 +14,7 @@ import me.totalfreedom.totalfreedommod.eco.EcoBankData;
 import me.totalfreedom.totalfreedommod.eco.EcoPlayerData;
 import me.totalfreedom.totalfreedommod.sql.StatementHandler;
 import me.totalfreedom.totalfreedommod.sql.adapter.DatabaseAdapter;
-import me.totalfreedom.api.sql.adapter.EconomyRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.EconomyRepository;
 
 /**
  * All dialect differences are resolved through the {@link DatabaseAdapter} passed in.
