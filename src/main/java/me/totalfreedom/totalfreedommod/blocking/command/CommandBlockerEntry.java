@@ -177,13 +177,12 @@ public class CommandBlockerEntry
     public void doActions(CommandSender sender)
     {
         if (action == CommandBlockerAction.BLOCK_AND_EJECT
-                && sender instanceof Player)
+                && sender instanceof Player player)
         {
-            PluginProvider.get().autoEject().autoEject((Player) sender,
+            PluginProvider.get().autoEject().eject(player,
+                    "harmful_command",
+                    "attempted to use a harmful command",
                     "You used a prohibited command: " + command);
-            FUtil.bcastMsg(sender.getName()
-                    + " was automatically kicked for using harmful commands.",
-                    NamedTextColor.RED);
             return;
         }
 

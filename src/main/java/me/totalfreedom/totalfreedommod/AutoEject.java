@@ -8,17 +8,18 @@ import me.totalfreedom.api.IAutoEject;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.function.Supplier;
 
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
-
-import net.kyori.adventure.text.format.NamedTextColor;
 
 import me.totalfreedom.totalfreedommod.banning.Ban;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FUtil;
+import org.jetbrains.annotations.NotNull;
 
 public class AutoEject extends FreedomService implements IAutoEject
 {
@@ -38,76 +39,120 @@ public class AutoEject extends FreedomService implements IAutoEject
     {
     }
 
+    @Override
     public void autoEject(Player player, String kickMessage)
     {
-        final Boolean enabled = ConfigEntry.AUTOEJECT_ENABLED.getBoolean();
-        if (enabled != null && !enabled)
+        eject(player, "legacy", "triggered a legacy ejector", kickMessage);
+    }
+
+    @Override
+    public boolean eject(@NotNull Player player,
+                      @NotNull String cause,
+                      @NotNull String causeDescription,
+                      @NotNull String kickMessage)
+    {
+        // Double-check to make sure that we're not ejecting someone who shouldn't be able to
+        if (!canEject(player, cause))
         {
-            FLog.info("AutoEject suppressed (disabled): " + player.getName() + " - " + kickMessage);
-            return;
+            FLog.info("AutoEject suppressed: {} - {}", player.getName(), kickMessage);
+            return false;
         }
 
+        // Fetch IPs and strike number
         final String ip = player.getAddress().getAddress().getHostAddress();
-        final int strike = plugin.services().require(StrikeList.class).recordStrikeAndGet(ip, player.getName());
+        // FIXME: Why are we doing strikes by usernames? Shouldn't it be UUIDs instead?
+        final int strikeNumber = plugin.services().require(StrikeList.class).recordStrikeAndGet(ip, player.getName());
 
-        FLog.info("AutoEject -> name: " + player.getName() + " - player ip: " + ip + " - strike: " + strike);
+        // Log what just happened
+        FLog.info("[AutoEject]"
+                + (" name: " + player.getName() + " -")
+                + (server.isLoggingIPs() ? (" ip: " + ip + " -") : "")
+                + (" strike: " + strikeNumber + " -")
+                + (" cause: " + cause));
 
-        player.setOp(false);
-        player.setGameMode(GameMode.SURVIVAL);
-        player.getInventory().clear();
+        // Broadcast it too
+        FUtil.bcastMsg("<red><username> <description> and has been <sanction>.",
+                Placeholder.unparsed("username", player.getName()),
+                Placeholder.parsed("description", causeDescription),
+                Placeholder.unparsed("sanction", strikeNumber == 1 ? "kicked"
+                        : "banned for " + banDurationByStrikes(strikeNumber) + " minutes"));
 
-        final int timeout;
-        if (strike >= 3)
+        // Perform the sanction
+        sanction(player, kickMessage, strikeNumber);
+        return true;
+    }
+
+    @Override
+    public boolean ejectIf(@NotNull Player player,
+                        @NotNull String cause,
+                        @NotNull String causeDescription,
+                        @NotNull String kickMessage,
+                        @NotNull Supplier<Boolean> condition)
+    {
+        if (!canEject(player, cause))
         {
-            timeout = timeoutMinutes(ConfigEntry.AUTOEJECT_STRIKE_THREE_TIMEOUT, -1);
+            return false;
         }
-        else if (strike == 2)
+
+        final Boolean ejectCheck = condition.get();
+        if (ejectCheck != null && ejectCheck)
         {
-            timeout = timeoutMinutes(ConfigEntry.AUTOEJECT_STRIKE_TWO_TIMEOUT, 10);
+            return eject(player, cause, causeDescription, kickMessage);
         }
-        else
+
+        return false;
+    }
+
+    @Override
+    public boolean canEject(@NotNull Player player,
+                            @NotNull String cause)
+    {
+        final Boolean enabled = ConfigEntry.AUTOEJECT_ENABLED.getBoolean();
+        return enabled != null && enabled
+                && !plugin.ranks().hasPermission(player, "tfm.autoeject.bypass." + cause);
+    }
+
+    private void sanction(Player player, String kickMessage, int strike)
+    {
+        // Should we even be doing this?
+        if (server.isPrimaryThread())
         {
-            timeout = timeoutMinutes(ConfigEntry.AUTOEJECT_STRIKE_ONE_TIMEOUT, 5);
+            player.setOp(false);
+            player.setGameMode(GameMode.SURVIVAL);
+            player.getInventory().clear();
         }
-        applyStrike(player, kickMessage, timeout);
+
+        // Ban the player if they have any existing strikes
+        if (strike > 1)
+        {
+            final Calendar cal = new GregorianCalendar();
+            cal.add(Calendar.MINUTE, banDurationByStrikes(strike));
+            final Date expires = cal.getTime();
+            plugin.bans().addBan(Ban.forPlayer(player, Bukkit.getConsoleSender(), expires, kickMessage));
+        }
+
+        // Kick them
+        player.kick(FUtil.colorizeWithLinks(kickMessage));
+    }
+
+    private int banDurationByStrikes(int strike)
+    {
+        if (strike == 1)
+        {
+            return 0;
+        }
+
+        return timeoutMinutes(switch (strike)
+        {
+            case 2 -> ConfigEntry.AUTOEJECT_STRIKE_ONE_TIMEOUT;
+            case 3 -> ConfigEntry.AUTOEJECT_STRIKE_TWO_TIMEOUT;
+            default -> ConfigEntry.AUTOEJECT_STRIKE_THREE_TIMEOUT;
+        }, (strike - 1) * 5);
     }
 
     private int timeoutMinutes(ConfigEntry entry, int fallback)
     {
         final Integer v = entry.getInteger();
         return v == null ? fallback : v;
-    }
-
-    private void applyStrike(Player player, String kickMessage, int timeoutMinutes)
-    {
-        if (timeoutMinutes == 0)
-        {
-            FUtil.bcastMsg(player.getName() + " has been kicked.", NamedTextColor.RED);
-            player.kick(FUtil.colorizeWithLinks(kickMessage));
-            return;
-        }
-
-        if (timeoutMinutes < 0)
-        {
-            if (Boolean.TRUE.equals(ConfigEntry.RANGE_BAN_IPS.getBoolean()))
-            {
-                plugin.bans().addBan(Ban.forPlayerFuzzy(player, Bukkit.getConsoleSender(), null, kickMessage));
-            }
-            else
-            {
-                plugin.bans().addBan(Ban.forPlayer(player, Bukkit.getConsoleSender(), null, kickMessage));
-            }
-            FUtil.bcastMsg(player.getName() + " has been banned.", NamedTextColor.RED);
-            player.kick(FUtil.colorizeWithLinks(kickMessage));
-            return;
-        }
-
-        final Calendar cal = new GregorianCalendar();
-        cal.add(Calendar.MINUTE, timeoutMinutes);
-        final Date expires = cal.getTime();
-
-        FUtil.bcastMsg(player.getName() + " has been banned for " + timeoutMinutes + " minutes.", NamedTextColor.RED);
-        plugin.bans().addBan(Ban.forPlayer(player, Bukkit.getConsoleSender(), expires, kickMessage));
-        player.kick(FUtil.colorizeWithLinks(kickMessage));
     }
 }

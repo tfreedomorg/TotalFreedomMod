@@ -116,7 +116,8 @@
       "tfm.admin.warn",
       "tfm.admin.whohas",
       "tfm.admin.wildcard",
-      "tfm.world.manage"
+      "tfm.world.manage",
+      "tfm.autoeject.bypass.*"
     ]
   },
   "senior_admin": {
