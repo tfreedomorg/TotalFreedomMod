@@ -77,6 +77,13 @@
       "tfm.admin.tpoffline",
       "tfm.admin.tp.others",
       "tfm.admin.tptoggle.others",
+      "tfm.admin.setwarp.others",
+      "tfm.admin.delwarp.others",
+      "tfm.admin.feed.others",
+      "tfm.admin.fly.others",
+      "tfm.admin.god.others",
+      "tfm.admin.heal.others",
+      "tfm.admin.speed.others",
       "tfm.fun.*",
       "tfm.world.*",
       "tfm.server.*",
@@ -145,6 +152,7 @@
       "tfm.manage.*",
       "tfm.admin.ban.perm",
       "tfm.admin.banlist.purge",
+      "tfm.admin.loom.others",
       "tfm.ssh.totp",
       "tfm.vanish.bypass"
     ]
