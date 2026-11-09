@@ -1,4 +1,4 @@
-package me.totalfreedom.totalfreedommod.framework;
+package me.totalfreedom.api.framework;
 
 import org.bukkit.Server;
 
