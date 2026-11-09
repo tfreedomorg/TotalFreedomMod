@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import me.totalfreedom.api.*;
 import org.bukkit.Bukkit;
+import org.bukkit.Server;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.generator.ChunkGenerator;
@@ -49,8 +50,7 @@ public class TotalFreedomMod extends JavaPlugin implements FreedomAPI
     @Override
     public void onLoad()
     {
-        FLog.setPluginLogger(getSLF4JLogger());
-        FLog.setServerLogger(LoggerFactory.getLogger("Minecraft-Server"));
+        FLog.setLoggers(getSLF4JLogger(), getComponentLogger());
 
         // Register here; PluginProvider#get() then calls from the services manager itself rather than storing its own atomic reference.
         Bukkit.getServicesManager().register(FreedomAPI.class, this, this, ServicePriority.Highest);
@@ -63,8 +63,8 @@ public class TotalFreedomMod extends JavaPlugin implements FreedomAPI
     public void onEnable()
     {
         FLog.info("Created by Madgeek1450 and Prozza");
-        FLog.info("Version " + aggregate.buildInfo().formattedVersion());
-        FLog.info("Compiled " + aggregate.buildInfo().date() + " by " + aggregate.buildInfo().author());
+        FLog.info("Version {}", aggregate.buildInfo().formattedVersion());
+        FLog.info("Compiled {} by {}", aggregate.buildInfo().date(), aggregate.buildInfo().author());
 
         final MethodTimer timer = new MethodTimer();
         timer.start();
@@ -80,7 +80,7 @@ public class TotalFreedomMod extends JavaPlugin implements FreedomAPI
         aggregate.enable();
 
         timer.update();
-        FLog.info("Version " + getPluginMeta().getVersion() + " enabled in " + timer.getTotal() + "ms");
+        FLog.info("Version {} enabled in {}ms", getPluginMeta().getVersion(), timer.getTotal());
     }
 
     @Override

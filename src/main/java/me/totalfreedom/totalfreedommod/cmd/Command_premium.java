@@ -71,7 +71,7 @@ public class Command_premium extends FCommand
                         {
                             if (throwable != null)
                             {
-                                FLog.error(throwable);
+                                FLog.error("Failed to query Minecraft Services", throwable);
                                 msg(sender, "<red>There was an error querying Minecraft Services.");
                                 return;
                             }

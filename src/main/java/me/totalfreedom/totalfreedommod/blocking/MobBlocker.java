@@ -98,9 +98,8 @@ public class MobBlocker extends FreedomService
         loadTypes(ConfigEntry.MOB_LIMITER_DISABLED_MOBS.getStringList(), disabledMobs, "blocked mob");
         loadLimits(ConfigEntry.MOB_LIMITER_GLOBAL_LIMITS.getStringList(), globalEntityLimits, "global");
         loadLimits(ConfigEntry.MOB_LIMITER_CHUNK_LIMITS.getStringList(), chunkEntityLimits, "per-chunk");
-        FLog.info("[MobLimiter] Loaded " + disabledMobs.size() + " blocked mob type(s), "
-                + globalEntityLimits.size() + " global entity limit(s), and "
-                + chunkEntityLimits.size() + " per-chunk entity limit(s).");
+        FLog.info("[MobLimiter] Loaded {} blocked mob type(s), {} global entity limit(s), and {} per-chunk entity limit(s).",
+                disabledMobs.size(), globalEntityLimits.size(), chunkEntityLimits.size());
     }
 
     @Override
@@ -300,13 +299,13 @@ public class MobBlocker extends FreedomService
         {
             if (!Key.parseable(value))
             {
-                FLog.warn("[MobLimiter] Ignoring invalid " + description + " type key: " + value);
+                FLog.warn("[MobLimiter] Ignoring invalid {} type key: {}", description, value);
                 return;
             }
             final Key key = Key.key(value);
             if (entityTypes.get(key) == null)
             {
-                FLog.warn("[MobLimiter] Ignoring unknown " + description + " type: " + value);
+                FLog.warn("[MobLimiter] Ignoring unknown {} type: {}", description, value);
                 return;
             }
             destination.add(key);
@@ -321,14 +320,14 @@ public class MobBlocker extends FreedomService
             final String[] parts = value.split("=", 2);
             if (parts.length != 2 || !Key.parseable(parts[0]))
             {
-                FLog.warn("[MobLimiter] Ignoring invalid " + scope + " entity limit: " + value);
+                FLog.warn("[MobLimiter] Ignoring invalid {} entity limit: {}", scope, value);
                 return;
             }
 
             final Key key = Key.key(parts[0]);
             if (entityTypes.get(key) == null)
             {
-                FLog.warn("[MobLimiter] Ignoring unknown " + scope + " entity type: " + parts[0]);
+                FLog.warn("[MobLimiter] Ignoring unknown {} entity type: {}", scope, parts[0]);
                 return;
             }
 
@@ -337,14 +336,14 @@ public class MobBlocker extends FreedomService
                 final int limit = Integer.parseInt(parts[1]);
                 if (limit <= 0)
                 {
-                    FLog.warn("[MobLimiter] Ignoring non-positive " + scope + " entity limit: " + value);
+                    FLog.warn("[MobLimiter] Ignoring non-positive {} entity limit: {}", scope, value);
                     return;
                 }
                 destination.put(key, limit);
             }
             catch (NumberFormatException ex)
             {
-                FLog.warn("[MobLimiter] Ignoring invalid " + scope + " entity limit: " + value);
+                FLog.warn("[MobLimiter] Ignoring invalid {} entity limit: {}", scope, value);
             }
         });
     }

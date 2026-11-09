@@ -105,7 +105,7 @@ public class SshConsoleCommandFactory implements CommandFactory
             Executor mainExecutor = Bukkit.getScheduler().getMainThreadExecutor(plugin);
             CompletableFuture.runAsync(() ->
             {
-                FLog.info("[SSH: " + resolvedName + "] " + command);
+                FLog.info("[SSH: {}] {}", resolvedName, command);
                 String stripped = command.startsWith("/") ? command.substring(1) : command;
                 RemoteDispatchContext.dispatch(session, stripped);
             }, mainExecutor).whenComplete((v, ex) ->

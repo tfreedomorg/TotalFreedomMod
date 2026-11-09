@@ -109,8 +109,7 @@ public class SpectatorBlocker extends FreedomService
         }
         catch (Throwable ex)
         {
-            FLog.error("[SpectatorBlocker] Could not register the PacketEvents listener.");
-            FLog.error(ex);
+            FLog.error("[SpectatorBlocker] Could not register the PacketEvents listener.", ex);
         }
     }
 
@@ -146,7 +145,7 @@ public class SpectatorBlocker extends FreedomService
             }
             catch (Throwable ex)
             {
-                FLog.warn("[SpectatorBlocker] Could not unregister the PacketEvents listener: " + ex.getMessage());
+                FLog.warn("[SpectatorBlocker] Could not unregister the PacketEvents listener", ex);
             }
 
             registeredListener = null;

@@ -1,5 +1,6 @@
 package me.totalfreedom.totalfreedommod.rank;
 
+import me.totalfreedom.api.title.ITitle;
 import me.totalfreedom.totalfreedommod.discord.DiscordBridge;
 
 import me.totalfreedom.api.FreedomAPI;
@@ -232,7 +233,7 @@ public class RankManager extends FreedomService implements IRankManager
         resolveInheritance();
         updateAllPlayerTeams();
         refreshConsoleBindings();
-        FLog.info(String.format("Loaded %d custom ranks from SQL database.", customRanks.size()));
+        FLog.info("Loaded {} custom ranks from SQL database.", customRanks.size());
 
         reconcileFromJsonIfNewer(repo);
         plugin.players().cleanUpAfterSqlLoad();
@@ -285,18 +286,17 @@ public class RankManager extends FreedomService implements IRankManager
         }
         catch (IllegalArgumentException ex)
         {
-            FLog.error(String.format("No bundled %s to install: %s", RANKS_FILENAME, ex.getMessage()));
+            FLog.error("No bundled {} to install", RANKS_FILENAME, ex);
             return;
         }
 
         if (!ranksFile.exists())
         {
-            FLog.error(String.format("Could not install a default %s; all guarded commands will be denied.",
-                    RANKS_FILENAME));
+            FLog.error("Could not install a default {}; all guarded commands will be denied.", RANKS_FILENAME);
             return;
         }
 
-        FLog.info(String.format("Installed the default %s.", RANKS_FILENAME));
+        FLog.info("Installed the default {}.", RANKS_FILENAME);
         loadFromJson();
     }
 
@@ -309,13 +309,13 @@ public class RankManager extends FreedomService implements IRankManager
         }
         catch (IOException ex)
         {
-            FLog.error("Could not read " + RANKS_FILENAME + ": " + ex.getMessage());
+            FLog.error("Could not read {}", RANKS_FILENAME, ex);
         }
 
         selfHealLegacyMarkers();
         resolveInheritance();
         updateAllPlayerTeams();
-        FLog.info("Loaded " + customRanks.size() + " custom ranks.");
+        FLog.info("Loaded {} custom ranks.", customRanks.size());
     }
 
     private Map<String, CustomRank> readJsonRanks() throws IOException
@@ -372,7 +372,7 @@ public class RankManager extends FreedomService implements IRankManager
         }
         catch (IOException ex)
         {
-            FLog.warn(String.format("Failed to read %s: %s", RANKS_FILENAME, ex.getMessage()));
+            FLog.warn("Failed to read {}", RANKS_FILENAME);
             return;
         }
 
@@ -393,8 +393,8 @@ public class RankManager extends FreedomService implements IRankManager
               .filter(Boolean::booleanValue)
               .flatMap(ignored ->
               {
-                FLog.info(String.format("%s is newer than the database; rebuilding it from the file's %d rank(s).",
-                                        RANKS_FILENAME, jsonRanks.size()));
+                FLog.info("{} is newer than the database; rebuilding it from the file's {} rank(s).",
+                        RANKS_FILENAME, jsonRanks.size());
                 return Flux.fromIterable(jsonRanks.values())
                            .concatMap(repo::save)
                            .then(repo.loadAllAsync())
@@ -405,8 +405,7 @@ public class RankManager extends FreedomService implements IRankManager
               })
               .onErrorResume(ex ->
               {
-                  FLog.warn(String.format("Failed to reconcile %s into the database: %s",
-                                             RANKS_FILENAME, ex.getMessage()));
+                  FLog.warn("Failed to reconcile {} into the database: {}", RANKS_FILENAME, ex.getMessage());
                   return Mono.empty();
               })
               .then());
@@ -443,9 +442,7 @@ public class RankManager extends FreedomService implements IRankManager
               .concatMap(rank -> repo.save(rank)
                                      .onErrorResume(ex ->
                                      {
-                                         FLog.error(String.format("Could not save rank %s to SQL: %s",
-                                                                   rank.getId(), 
-                                                                   ex.getMessage()));
+                                         FLog.error("Could not save rank {} to SQL", rank.getId(), ex);
                                          return Mono.empty();
                                      }))
               .then(writeJsonAsync()));
@@ -474,7 +471,7 @@ public class RankManager extends FreedomService implements IRankManager
         }
         catch (IOException ex)
         {
-            FLog.error(String.format("Could not save %s: %s", RANKS_FILENAME, ex.getMessage()));
+            FLog.error("Could not save {}: {}", RANKS_FILENAME, ex);
         }
     }
 
@@ -523,8 +520,8 @@ public class RankManager extends FreedomService implements IRankManager
         if (!rank.hasPermission(LEGACY_ADMIN_STATUS_NODE))
             return;
 
-        FLog.info("Rank '" + rank.getId() + "' holds " + LEGACY_ADMIN_STATUS_NODE
-                + "; replacing it with the " + ADMIN_STATUS_NODE + " marker.");
+        FLog.info("Rank '{}' holds {}; replacing it with the {} marker.",
+                rank.getId(), LEGACY_ADMIN_STATUS_NODE, ADMIN_STATUS_NODE);
         rank.removePermission(LEGACY_ADMIN_STATUS_NODE);
         rank.addPermission(ADMIN_STATUS_NODE);
     }
@@ -535,8 +532,8 @@ public class RankManager extends FreedomService implements IRankManager
             || !registry.getTrie().grants(rank.getId(), LEGACY_SENIOR_STATUS_NODE))
             return;
 
-        FLog.info("Rank '" + rank.getId() + "' already qualified as senior without the "
-                + SENIOR_STATUS_NODE + " node; granting it automatically.");
+        FLog.info("Rank '{}' already qualified as senior without the {} node; granting it automatically.",
+                rank.getId(), SENIOR_STATUS_NODE);
         rank.addPermission(SENIOR_STATUS_NODE);
     }
 
@@ -547,7 +544,7 @@ public class RankManager extends FreedomService implements IRankManager
 
         if (visited.contains(rank.getId()))
         {
-            FLog.warn("Circular inheritance detected for rank: " + rank.getId());
+            FLog.warn("Circular inheritance detected for rank: {}", rank.getId());
             return Set.of();
         }
         visited.add(rank.getId());
@@ -558,7 +555,7 @@ public class RankManager extends FreedomService implements IRankManager
         {
             CustomRank parent = customRanks.get(rank.getInheritFrom().toLowerCase());
             if (parent == null)
-                FLog.warn("Rank '" + rank.getId() + "' inherits from non-existent rank: " + rank.getInheritFrom());
+                FLog.warn("Rank '{}' inherits from non-existent rank: {}", rank.getId(), rank.getInheritFrom());
             else
                 perms.addAll(collectPermissions(parent, visited));
         }
@@ -699,9 +696,7 @@ public class RankManager extends FreedomService implements IRankManager
                   .deleteAsync(removed.getId())
                   .onErrorResume(ex ->
                   {
-                      FLog.error(String.format("Could not delete rank %s from SQL: %s",
-                                                removed.getId(), 
-                                                ex.getMessage()));
+                      FLog.error("Could not delete rank {} from SQL", removed.getId(), ex);
                       return Mono.empty();
                   })
                   .then());
@@ -894,7 +889,7 @@ public class RankManager extends FreedomService implements IRankManager
             catch (Exception ex)
             {
                 player.sendMessage(Component.text("Error processing input: " + ex.getMessage()).color(NamedTextColor.RED));
-                FLog.warn("Error in chat input callback: " + ex.getMessage());
+                FLog.warn("Error in chat input callback", ex);
             }
 
             return true;

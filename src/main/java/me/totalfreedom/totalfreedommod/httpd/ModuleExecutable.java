@@ -48,7 +48,7 @@ public abstract class ModuleExecutable
         }
         catch (Exception ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to execute", ex);
         }
         return null;
     }
@@ -78,7 +78,7 @@ public abstract class ModuleExecutable
                 }
                 catch (Exception ex)
                 {
-                    FLog.error(ex);
+                    FLog.error("Failed to create response", ex);
                     return null;
                 }
             }

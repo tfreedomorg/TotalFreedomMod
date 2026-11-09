@@ -203,7 +203,7 @@ public class Module_schematic extends HTTPDModule
         }
         catch (IOException ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to transfer schematic", ex);
             throw new SchematicTransferException();
         }
 

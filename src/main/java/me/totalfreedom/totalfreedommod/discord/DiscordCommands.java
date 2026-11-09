@@ -45,11 +45,9 @@ public class DiscordCommands
         return gateway.on(ChatInputInteractionEvent.class)
                       .flatMap(event -> handle(event).onErrorResume(thrown ->
                                                   {
-                                                      FLog.warn(String.format(
-                                                                                  "[Discord] /%s failed: %s",
-                                                                                  event.getCommandName(),
-                                                                                  DiscordConnection.describeFailure(thrown)
-                                                                                ));
+                                                      FLog.warn("[Discord] /{} failed: {}",
+                                                              event.getCommandName(),
+                                                              DiscordConnection.describeFailure(thrown));
                                                       return Mono.empty();
                                                   }))
                       .then();
@@ -102,8 +100,8 @@ public class DiscordCommands
                            return replyPrivately(event, "Internal error: admin record for the code is gone. Try again.");
 
                        final LinkResult linked = result.get();
-                       FLog.info(String.format("[Discord] Linked admin %s to Discord user %s as %s.",
-                               linked.username(), discordUserId, linked.identifier()));
+                       FLog.info("[Discord] Linked admin {} to Discord user {} as {}.",
+                               linked.username(), discordUserId, linked.identifier());
                        return replyPrivately(event, String.format("Linked as **%s** (%s). Your identifier is `%s`.",
                                linked.username(), linked.rankId(), linked.identifier()));
                    });
@@ -129,7 +127,7 @@ public class DiscordCommands
             return UnlinkOutcome.NOT_LINKED;
 
         plugin.players().unlinkDiscord(linked.get());
-        FLog.info(String.format("[Discord] Unlinked Discord user %s from %s.", discordUserId, linked.get().getUsername()));
+        FLog.info("[Discord] Unlinked Discord user {} from {}.", discordUserId, linked.get().getUsername());
         return UnlinkOutcome.REMOVED;
     }
 

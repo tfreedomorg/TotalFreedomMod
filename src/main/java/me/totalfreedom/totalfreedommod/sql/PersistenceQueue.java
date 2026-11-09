@@ -66,12 +66,12 @@ public final class PersistenceQueue
         catch (IllegalStateException ex)
         {
             // Reactor answers a blocking-read timeout with IllegalStateException.
-            FLog.warn(String.format("Gave up after %dms waiting for pending %s writes (%s); flushing anyway",
-                    timeoutMs, domain, ex.getMessage()));
+            FLog.warn("Gave up after {}ms waiting for pending {} writes ({}); flushing anyway",
+                    timeoutMs, domain, ex.getMessage());
         }
         catch (RuntimeException ex)
         {
-            FLog.warn(String.format("A queued %s write failed before shutdown: %s", domain, ex.getMessage()));
+            FLog.warn("A queued {} write failed before shutdown", domain, ex);
         }
     }
 

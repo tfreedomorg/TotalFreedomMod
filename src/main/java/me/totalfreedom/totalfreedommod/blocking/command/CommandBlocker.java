@@ -83,7 +83,7 @@ public class CommandBlocker extends FreedomService
             final String[] parts = rawEntry.split(":");
             if (parts.length < 3 || parts.length > 4)
             {
-                FLog.warn("Invalid command blocker entry: " + rawEntry);
+                FLog.warn("Invalid command blocker entry: {}", rawEntry);
                 continue;
             }
 
@@ -94,7 +94,7 @@ public class CommandBlocker extends FreedomService
 
             if (rank == null || action == null || commandSpec == null || commandSpec.isEmpty())
             {
-                FLog.warn("Invalid command blocker entry: " + rawEntry);
+                FLog.warn("Invalid command blocker entry: {}", rawEntry);
                 continue;
             }
 
@@ -113,7 +113,7 @@ public class CommandBlocker extends FreedomService
                 PatternToken token = PatternToken.of(specParts[i]);
                 if (token.type == TokenType.MULTI && i != specParts.length - 1)
                 {
-                    FLog.warn("Invalid command blocker entry (\"{*}\" may only appear as the last token): " + rawEntry);
+                    FLog.warn("Invalid command blocker entry (\"{*}\" may only appear as the last token): {}", rawEntry);
                     malformed = true;
                     break;
                 }
@@ -153,7 +153,7 @@ public class CommandBlocker extends FreedomService
             bucket.sort(MOST_SPECIFIC_FIRST);
         }
 
-        FLog.info("Loaded " + loadedCount + " blocked commands (" + (loadedCount - unknownCommands.size()) + " known).");
+        FLog.info("Loaded {} blocked commands ({} known).", loadedCount, loadedCount - unknownCommands.size());
     }
 
     private void registerEntry(String baseCommand, CommandBlockerEntry entry)
@@ -282,9 +282,8 @@ public class CommandBlocker extends FreedomService
 
         if (lastServerCommandBlockWarningTick == 0L || nowTick - lastServerCommandBlockWarningTick >= intervalTicks)
         {
-            FLog.warn("[TFM] Blocked " + blockedServerCommandsSinceLastWarning
-                    + " server-side command(s) from " + sender.getClass().getSimpleName()
-                    + " (\"" + sender.getName() + "\"). Last: " + rawCommand);
+            FLog.warn("[TFM] Blocked {} server-side command(s) from {} (\"{}\"). Last: {}",
+                    blockedServerCommandsSinceLastWarning, sender.getClass().getSimpleName(), sender.getName(), rawCommand);
 
             lastServerCommandBlockWarningTick = nowTick;
             blockedServerCommandsSinceLastWarning = 0L;

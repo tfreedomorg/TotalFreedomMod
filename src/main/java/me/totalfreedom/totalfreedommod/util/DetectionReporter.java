@@ -93,14 +93,14 @@ public final class DetectionReporter
 
     public static Consumer<String> warnOnly()
     {
-        return message -> FLog.warn(message, true);
+        return FLog::warn;
     }
 
     public static Consumer<String> warnAndBroadcastAdmins(FreedomAPI plugin)
     {
         return message ->
         {
-            FLog.warn(message, true);
+            FLog.warn(message);
             Component component = Component.text(message, NamedTextColor.RED);
             for (Player p : Bukkit.getOnlinePlayers())
             {

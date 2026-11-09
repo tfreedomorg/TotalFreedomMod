@@ -67,15 +67,15 @@ public final class VaultProviderRegistry
             {
                 if (chatProvider == null)
                 {
-                    FLog.info("Using a registered chat provider (" + providerName(existingProvider.getProvider())
-                            + "). To avoid this, set 'override_existing' to 'true' in config.yml.");
+                    FLog.info("Using a registered chat provider ({}). To avoid this, set 'override_existing' to 'true' in config.yml.",
+                            providerName(existingProvider.getProvider()));
                 }
                 return false;
             }
 
             if (!essentialsChatInstalled && existingProvider != null)
             {
-                FLog.info("Overriding existing chat provider (" + providerName(existingProvider.getProvider()) + ".");
+                FLog.info("Overriding existing chat provider ({}).", providerName(existingProvider.getProvider()));
             }
 
             Class<?> permissionServiceClass = Class.forName(PERMISSION_SERVICE);
@@ -97,8 +97,7 @@ public final class VaultProviderRegistry
         }
         catch (Throwable ex)
         {
-            FLog.warn("Failed to register Vault chat provider: " + ex.getMessage());
-            FLog.warn(ex);
+            FLog.warn("Failed to register Vault chat provider", ex);
             unregister();
             return false;
         }
@@ -115,7 +114,7 @@ public final class VaultProviderRegistry
             }
             catch (Throwable ex)
             {
-                FLog.warn("Failed to unregister Vault chat provider: " + ex.getMessage());
+                FLog.warn("Failed to unregister Vault chat provider", ex);
             }
             chatProvider = null;
         }
@@ -128,7 +127,7 @@ public final class VaultProviderRegistry
             }
             catch (Throwable ex)
             {
-                FLog.warn("Failed to unregister Vault permission provider: " + ex.getMessage());
+                FLog.warn("Failed to unregister Vault permission provider", ex);
             }
             permissionProvider = null;
         }

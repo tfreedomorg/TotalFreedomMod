@@ -142,7 +142,7 @@ public class StrikeList extends FreedomService
     private void finishLoad()
     {
         pruneDecayed();
-        FLog.info(String.format("Loaded %d strike records.", strikes.size()));
+        FLog.info("Loaded {} strike records.", strikes.size());
     }
 
     /**
@@ -165,7 +165,7 @@ public class StrikeList extends FreedomService
         }
         catch (IOException ex)
         {
-            FLog.warn(String.format("Failed to read strikes.json: %s", ex.getMessage()));
+            FLog.warn("Failed to read strikes.json", ex);
             return;
         }
 
@@ -186,8 +186,8 @@ public class StrikeList extends FreedomService
                     .filter(Boolean::booleanValue)
                     .flatMap(ignored ->
                     {
-                        FLog.info(String.format("strikes.json is newer than the database; rebuilding it from the file's %d strike record(s).",
-                                                jsonStrikes.size()));
+                        FLog.info("strikes.json is newer than the database; rebuilding it from the file's {} strike record(s).",
+                                jsonStrikes.size());
                         return repo.loadAllAsync()
                                    .flatMapMany(existing -> Flux.fromIterable(jsonStrikes.values())
                                                                 .concatMap(repo::upsertAsync)
@@ -203,8 +203,7 @@ public class StrikeList extends FreedomService
                     })
                     .onErrorResume(ex ->
                     {
-                        FLog.warn(String.format("Failed to reconcile strikes.json into the database: %s",
-                                                   ex.getMessage()));
+                        FLog.warn("Failed to reconcile strikes.json into the database", ex);
                         return Mono.empty();
                     })
                     .then());
@@ -240,7 +239,7 @@ public class StrikeList extends FreedomService
         }
         catch (IOException ex)
         {
-            FLog.error("Could not read strikes.json: " + ex.getMessage());
+            FLog.error("Could not read strikes.json", ex);
         }
         usingSql = false;
     }
@@ -272,12 +271,7 @@ public class StrikeList extends FreedomService
                         .concatMap(ip -> repo.deleteByIpAsync(ip)
                                              .onErrorResume(ex ->
                                              {
-                                                 FLog.warn(String.format(
-                                                                            "Failed to prune decayed strike for %s: %s", 
-                                                                            ip, 
-                                                                            ex.getMessage()
-                                                                            )
-                                                                );
+                                                 FLog.warn("Failed to prune decayed strike for {}", ip, ex);
                                                  return Mono.<Boolean>empty();
                                              })
                                     )
@@ -288,7 +282,7 @@ public class StrikeList extends FreedomService
             enqueue(writeJsonAsync());
         }
 
-        FLog.info("Pruned " + prunedIps.size() + " decayed strike record(s).");
+        FLog.info("Pruned {} decayed strike record(s).", prunedIps.size());
     }
 
     private int decayHours()
@@ -346,7 +340,7 @@ public class StrikeList extends FreedomService
             enqueue(repo.deleteByIpAsync(ip)
                         .onErrorResume(ex ->
                         {
-                            FLog.warn("Failed to clear strike from SQL: " + ex.getMessage());
+                            FLog.warn("Failed to clear strike from SQL", ex);
                             return Mono.<Boolean>empty();
                         })
                         .then(writeJsonAsync()));
@@ -369,7 +363,7 @@ public class StrikeList extends FreedomService
             enqueue(repo.upsertAsync(r)
                         .onErrorResume(ex ->
                         {
-                            FLog.warn("Failed to persist strike to SQL: " + ex.getMessage());
+                            FLog.warn("Failed to persist strike to SQL", ex);
                             return Mono.empty();
                         })
                         .then(writeJsonAsync()));

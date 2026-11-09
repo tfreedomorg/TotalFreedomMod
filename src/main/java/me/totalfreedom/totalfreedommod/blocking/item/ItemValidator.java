@@ -267,7 +267,7 @@ public class ItemValidator extends FreedomService
         }
         if (acted > 0)
         {
-            FLog.warn("[ItemValidator] Radius sweep handled " + acted + " cursed container(s).", true);
+            FLog.warn("[ItemValidator] Radius sweep handled {} cursed container(s).", acted);
         }
     }
 
@@ -773,8 +773,9 @@ public class ItemValidator extends FreedomService
             return; // Returning here so it doesn't enter a recursive loop of spamming logs with nonsense. Instead, we will spam the logs with actual errors.
         }
         recordDetection(verdict, context + " [block destroyed]");
-        FLog.warn("[ItemValidator] Destroyed container block at " + FUtil.formatLocation(block.getLocation())
-                + " (" + verdict.reason() + ").", true);
+        FLog.warn("[ItemValidator] Destroyed container block at {} ({}).",
+                FUtil.formatLocation(block.getLocation()),
+                verdict.reason());
     }
 
     private void destroyHolder(InventoryHolder holder, String context, ItemScanner.Verdict verdict)
@@ -794,9 +795,9 @@ public class ItemValidator extends FreedomService
             {
             }
             recordDetection(verdict, context + " [entity removed]");
-            FLog.warn("[ItemValidator] Removed container entity at "
-                    + FUtil.formatLocation(entity.getLocation())
-                    + " (" + verdict.reason() + ").", true);
+            FLog.warn("[ItemValidator] Removed container entity at {} ({}).",
+                    FUtil.formatLocation(entity.getLocation()),
+                    verdict.reason());
         }
     }
 

@@ -134,8 +134,7 @@ public class EcoManager extends FreedomService implements IEcoManager
                              .save(snapshot)
                              .onErrorResume(ex ->
                              {
-                                 FLog.error(String.format("Could not save economy data for %s to SQL: %s", player.name(), ex.getMessage()));
-                                 FLog.error(ex);
+                                 FLog.error("Could not save economy data for {} to SQL", player.name(), ex);
                                  return Mono.empty();
                              }));
     }
@@ -151,7 +150,7 @@ public class EcoManager extends FreedomService implements IEcoManager
         }
         catch (Exception ex)
         {
-            FLog.warn("Failed to load economy data for " + username + " from SQL: " + ex.getMessage());
+            FLog.warn("Failed to load economy data for {} from SQL", username, ex);
             return Optional.empty();
         }
     }
@@ -177,8 +176,7 @@ public class EcoManager extends FreedomService implements IEcoManager
                              .saveBankAsync(snapshot)
                              .onErrorResume(ex ->
                              {
-                                 FLog.error(String.format("Could not save bank data to SQL: %s", ex.getMessage()));
-                                 FLog.error(ex);
+                                 FLog.error("Could not save bank data to SQL", ex);
                                  return Mono.empty();
                              }));
     }
@@ -203,7 +201,7 @@ public class EcoManager extends FreedomService implements IEcoManager
         }
         catch (Exception ex)
         {
-            FLog.warn("Failed to load bank data from SQL: " + ex.getMessage());
+            FLog.warn("Failed to load bank data from SQL", ex);
         }
     }
 

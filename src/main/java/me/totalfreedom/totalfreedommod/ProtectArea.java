@@ -148,7 +148,7 @@ public class ProtectArea extends FreedomService
 
         areas.clear();
         loaded.forEach(region -> areas.put(region.getUuid(), region));
-        FLog.info(String.format("Loaded %d protected area(s) from SQL database.", areas.size()));
+        FLog.info("Loaded {} protected area(s) from SQL database.", areas.size());
 
         reconcileFromJsonIfNewer(repo);
     }
@@ -176,9 +176,9 @@ public class ProtectArea extends FreedomService
         }
         catch (IOException ex)
         {
-            FLog.error("Failed to read " + DATA_FILENAME + ": " + ex.getMessage());
+            FLog.error("Failed to read {}", DATA_FILENAME, ex);
         }
-        FLog.info("Loaded " + areas.size() + " protected area(s).");
+        FLog.info("Loaded {} protected area(s).", areas.size());
     }
 
     private List<ProtectedRegion> readJsonAreas() throws IOException
@@ -210,7 +210,7 @@ public class ProtectArea extends FreedomService
         }
         catch (IOException ex)
         {
-            FLog.warn(String.format("Failed to read %s: %s", DATA_FILENAME, ex.getMessage()));
+            FLog.warn("Failed to read {}", DATA_FILENAME, ex);
             return;
         }
 
@@ -231,8 +231,8 @@ public class ProtectArea extends FreedomService
               .filter(Boolean::booleanValue)
               .flatMap(ignored ->
               {
-                FLog.info(String.format("%s is newer than the database; rebuilding it from the file's %d protected area(s).",
-                                        DATA_FILENAME, jsonAreas.size()));
+                FLog.info("{} is newer than the database; rebuilding it from the file's {} protected area(s).",
+                        DATA_FILENAME, jsonAreas.size());
                 final Set<UUID> keep = jsonAreas.stream()
                                                 .map(ProtectedRegion::getUuid)
                                                 .collect(Collectors.toSet());
@@ -252,8 +252,7 @@ public class ProtectArea extends FreedomService
               })
               .onErrorResume(ex ->
               {
-                  FLog.warn(String.format("Failed to reconcile %s into the database: %s",
-                               DATA_FILENAME, ex.getMessage()));
+                  FLog.warn("Failed to reconcile {} into the database", DATA_FILENAME, ex);
                   return Mono.empty();
               })
               .then());
@@ -287,15 +286,14 @@ public class ProtectArea extends FreedomService
 
             File oldFile = new File(legacyFile.getParent(), LEGACY_DATA_FILENAME + ".old");
             if (legacyFile.renameTo(oldFile))
-                FLog.info("Migration complete. Legacy file renamed to " + LEGACY_DATA_FILENAME + ".old");
+                FLog.info("Migration complete. Legacy file renamed to {}", oldFile.getName());
             else
                 FLog.warn("Migration complete but could not rename legacy file.");
 
         }
         catch (Exception ex)
         {
-            FLog.error("Failed to migrate legacy protected areas data: " + ex.getMessage());
-            FLog.error(ex);
+            FLog.error("Failed to migrate legacy protected areas data", ex);
         }
     }
 
@@ -337,14 +335,13 @@ public class ProtectArea extends FreedomService
                 }
                 catch (CantFindWorldException ex)
                 {
-                    FLog.warn(ex.getMessage());
+                    FLog.warn("Failed to find world", ex);
                 }
             }
         }
         catch (Exception ex)
         {
-            FLog.error("Failed to load protected areas: " + ex.getMessage());
-            FLog.error(ex);
+            FLog.error("Failed to load protected areas", ex);
         }
     }
 
@@ -383,8 +380,7 @@ public class ProtectArea extends FreedomService
                 .concatMap(region -> repo.save(region)
                         .onErrorResume(ex ->
                         {
-                            FLog.error(String.format("Could not save protected area %s to SQL: %s",
-                                    region.getName(), ex.getMessage()));
+                            FLog.error("Could not save protected area {} to SQL", region.getName(), ex);
                             return Mono.empty();
                         }))
                 .then(writeJsonAsync()));
@@ -416,8 +412,7 @@ public class ProtectArea extends FreedomService
         }
         catch (IOException ex)
         {
-            FLog.error("Failed to save protected areas: " + ex.getMessage());
-            FLog.error(ex);
+            FLog.error("Failed to save protected areas", ex);
         }
     }
 

@@ -91,8 +91,8 @@ public class PermbanList extends FreedomService
         {
             replaceViews(loaded);
             usingSql = true;
-            FLog.info(String.format("Loaded %d perm IP bans and %d perm username bans from SQL database.",
-                    permbannedIps.size(), permbannedNames.size()));
+            FLog.info("Loaded {} perm IP bans and {} perm username bans from SQL database.",
+                    permbannedIps.size(), permbannedNames.size());
         }
 
         reconcileFromJsonIfNewer(repo);
@@ -118,7 +118,7 @@ public class PermbanList extends FreedomService
         }
         catch (IOException ex)
         {
-            FLog.warn(String.format("Failed to read %s: %s", CONFIG_FILENAME, ex.getMessage()));
+            FLog.warn("Failed to read {}", CONFIG_FILENAME, ex);
             return;
         }
 
@@ -139,8 +139,8 @@ public class PermbanList extends FreedomService
                     .filter(Boolean::booleanValue)
                     .flatMap(ignored ->
                     {
-                        FLog.info(String.format("%s is newer than the database; rebuilding it from the file's %d permban(s).",
-                                                CONFIG_FILENAME, jsonPermbans.size()));
+                        FLog.info("{} is newer than the database; rebuilding it from the file's {} permban(s).",
+                                CONFIG_FILENAME, jsonPermbans.size());
                         final Set<UUID> keepUuids = jsonPermbans.values().stream()
                                                                 .map(PermBan::getUuid)
                                                                 .filter(Objects::nonNull)
@@ -161,8 +161,7 @@ public class PermbanList extends FreedomService
                     })
                     .onErrorResume(ex ->
                     {
-                        FLog.warn(String.format("Failed to reconcile %s into the database: %s",
-                                                   CONFIG_FILENAME, ex.getMessage()));
+                        FLog.warn("Failed to reconcile {} into the database", CONFIG_FILENAME, ex);
                         return Mono.empty();
                     })
                     .then());
@@ -237,7 +236,7 @@ public class PermbanList extends FreedomService
             }
             catch (IOException ex)
             {
-                FLog.error("Could not create " + CONFIG_FILENAME);
+                FLog.error("Could not create {}", CONFIG_FILENAME, ex);
             }
         }
 
@@ -259,11 +258,11 @@ public class PermbanList extends FreedomService
             }
             catch (IOException ex)
             {
-                FLog.error("Could not read " + CONFIG_FILENAME + ": " + ex.getMessage());
+                FLog.error("Could not read {}", CONFIG_FILENAME, ex);
             }
 
             usingSql = false;
-            FLog.info("Loaded " + permbannedIps.size() + " perm IP bans and " + permbannedNames.size() + " perm username bans from JSON.");
+            FLog.info("Loaded {} perm IP bans and {} perm username bans from JSON.", permbannedIps.size(), permbannedNames.size());
         }
     }
 
@@ -281,7 +280,7 @@ public class PermbanList extends FreedomService
         }
         catch (IOException ex)
         {
-            FLog.error("Could not save " + CONFIG_FILENAME);
+            FLog.error("Could not save {}", CONFIG_FILENAME, ex);
         }
     }
 
@@ -336,12 +335,12 @@ public class PermbanList extends FreedomService
             for (PermBan permban : snapshot)
                 repo.save(permban).block();
 
-            FLog.debug("Saved " + snapshot.size() + " permbans to SQL database");
+            FLog.debug("Saved {} permbans to SQL database", snapshot.size());
             saveToJson();
         }
         catch (Exception ex)
         {
-            FLog.warn("Failed to save permbans to SQL: " + ex.getMessage());
+            FLog.warn("Failed to save permbans to SQL", ex);
         }
     }
 
@@ -377,8 +376,7 @@ public class PermbanList extends FreedomService
                 .concatMap(permban -> repo.save(permban)
                         .onErrorResume(ex ->
                         {
-                            FLog.warn(String.format("Failed to save permban %s to SQL: %s",
-                                    permban.getUsername(), ex.getMessage()));
+                            FLog.warn("Failed to save permban {} to SQL", permban.getUsername(), ex);
                             return Mono.empty();
                         }))
                 .then(writeJsonAsync()));
@@ -531,7 +529,7 @@ public class PermbanList extends FreedomService
         enqueue(repo.save(permban)
                 .onErrorResume(ex ->
                 {
-                    FLog.warn("Failed to save permban to SQL: " + ex.getMessage());
+                    FLog.warn("Failed to save permban to SQL", ex);
                     return Mono.<Integer>empty();
                 })
                 .then(writeJsonAsync()));
@@ -555,7 +553,7 @@ public class PermbanList extends FreedomService
                 .subscribeOn(Schedulers.boundedElastic())
                 .onErrorResume(ex ->
                 {
-                    FLog.warn("Failed to remove permban from SQL: " + ex.getMessage());
+                    FLog.warn("Failed to remove permban from SQL", ex);
                     return Mono.<Boolean>empty();
                 })
                 .then(writeJsonAsync()));

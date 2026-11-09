@@ -48,7 +48,7 @@ public class MainConfig extends PluginComponent<TotalFreedomMod> implements IMai
             }
             catch (IOException ex)
             {
-                FLog.error(ex);
+                FLog.error("Failed to load configuration file", ex);
             }
 
             copyDefaultConfig(getConfigFile());
@@ -57,7 +57,7 @@ public class MainConfig extends PluginComponent<TotalFreedomMod> implements IMai
         }
         catch (Exception ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to load configuration file", ex);
         }
 
         defaults = tempDefaults;
@@ -85,8 +85,8 @@ public class MainConfig extends PluginComponent<TotalFreedomMod> implements IMai
                     }
                     else
                     {
-                        FLog.warn("Value for " + entry.getConfigName() + " is of type "
-                                + value.getClass().getSimpleName() + ". Needs to be " + entry.getType().getSimpleName() + ". Using default value.");
+                        FLog.warn("Value for {} is of type {}. Needs to be {}. Using default value.",
+                                entry.getConfigName(), value.getClass().getSimpleName(), entry.getType().getSimpleName());
                     }
                 }
                 else
@@ -108,7 +108,7 @@ public class MainConfig extends PluginComponent<TotalFreedomMod> implements IMai
         }
         catch (IOException | InvalidConfigurationException ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to load configuration file", ex);
         }
     }
 
@@ -125,7 +125,7 @@ public class MainConfig extends PluginComponent<TotalFreedomMod> implements IMai
         }
         catch (IllegalArgumentException ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to get {} as a String", entry.name(), ex);
         }
         return null;
     }
@@ -138,7 +138,7 @@ public class MainConfig extends PluginComponent<TotalFreedomMod> implements IMai
         }
         catch (IllegalArgumentException ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to set {} to a String", entry.name(), ex);
         }
     }
 
@@ -150,7 +150,7 @@ public class MainConfig extends PluginComponent<TotalFreedomMod> implements IMai
         }
         catch (IllegalArgumentException ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to get {} as a Double", entry.name(), ex);
         }
         return null;
     }
@@ -163,7 +163,7 @@ public class MainConfig extends PluginComponent<TotalFreedomMod> implements IMai
         }
         catch (IllegalArgumentException ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to set {} to a Double", entry.name(), ex);
         }
     }
 
@@ -175,7 +175,7 @@ public class MainConfig extends PluginComponent<TotalFreedomMod> implements IMai
         }
         catch (IllegalArgumentException ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to get {} as a Boolean", entry.name(), ex);
         }
         return null;
     }
@@ -188,7 +188,7 @@ public class MainConfig extends PluginComponent<TotalFreedomMod> implements IMai
         }
         catch (IllegalArgumentException ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to set {} to a Boolean", entry.name(), ex);
         }
     }
 
@@ -200,7 +200,7 @@ public class MainConfig extends PluginComponent<TotalFreedomMod> implements IMai
         }
         catch (IllegalArgumentException ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to get {} as an Integer", entry.name(), ex);
         }
         return null;
     }
@@ -213,7 +213,7 @@ public class MainConfig extends PluginComponent<TotalFreedomMod> implements IMai
         }
         catch (IllegalArgumentException ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to set {} to an Integer", entry.name(), ex);
         }
     }
 
@@ -225,7 +225,7 @@ public class MainConfig extends PluginComponent<TotalFreedomMod> implements IMai
         }
         catch (IllegalArgumentException ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to get {} as a List", entry.name(), ex);
         }
         return null;
     }
@@ -238,7 +238,7 @@ public class MainConfig extends PluginComponent<TotalFreedomMod> implements IMai
         }
         catch (IllegalArgumentException ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to set {} to a List", entry.name(), ex);
         }
     }
 
@@ -289,7 +289,7 @@ public class MainConfig extends PluginComponent<TotalFreedomMod> implements IMai
         }
         catch (IOException | InvalidConfigurationException ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to save configuration file", ex);
         }
     }
 
@@ -300,7 +300,7 @@ public class MainConfig extends PluginComponent<TotalFreedomMod> implements IMai
             return;
         }
 
-        FLog.info("Installing default configuration file template: " + targetFile.getPath());
+        FLog.info("Installing default configuration file template: {}", targetFile.getPath());
 
         try
         {
@@ -311,7 +311,7 @@ public class MainConfig extends PluginComponent<TotalFreedomMod> implements IMai
         }
         catch (IOException ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to copy default configuration file", ex);
         }
     }
 
@@ -339,13 +339,9 @@ public class MainConfig extends PluginComponent<TotalFreedomMod> implements IMai
                 defaults.load(isr);
                 isr.close();
             }
-            catch (IOException ex)
+            catch (IOException | InvalidConfigurationException ex)
             {
-                FLog.error(ex);
-            }
-            catch (InvalidConfigurationException ex)
-            {
-                FLog.error(ex);
+                FLog.error("Failed to read defaults", ex);
             }
         }
 

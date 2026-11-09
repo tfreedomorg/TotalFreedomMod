@@ -42,7 +42,7 @@ public class EssentialsBridge extends FreedomService
             }
             catch (Exception ex)
             {
-                FLog.error(ex);
+                FLog.error("Failed to get Essentials", ex);
             }
         }
         return essentialsPlugin;
@@ -64,7 +64,7 @@ public class EssentialsBridge extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to get Essentials user data for {}", username, ex);
         }
         return null;
     }
@@ -87,7 +87,7 @@ public class EssentialsBridge extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to get last activity for player {}", username, ex);
         }
         return 0L;
     }
@@ -108,7 +108,7 @@ public class EssentialsBridge extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to check AFK status of for user {}", username, ex);
         }
         return false;
     }
@@ -125,7 +125,7 @@ public class EssentialsBridge extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to check if Essentials is enabled", ex);
         }
         return false;
     }

@@ -139,13 +139,13 @@ public final class CommandProcessor
         Command meta = command.getClass().getAnnotation(Command.class);
         if (meta == null)
         {
-            FLog.warn(String.format("%s is missing @Command; skipped", command.getClass().getSimpleName()));
+            FLog.warn("{} is missing @Command; skipped", command.getClass().getSimpleName());
             return;
         }
 
         // Apparently, brigadier is case-sensitive for the primary literal. Usage of toLowerCase() is to enforce lowercasing on them.
         commands.put(meta.name().toLowerCase(), new CommandProcessor(command, plugin, meta));
-        FLog.debug(String.format("Queued /%s for Brigadier registration", meta.name().toLowerCase()));
+        FLog.debug("Queued /{} for Brigadier registration", meta.name().toLowerCase());
 
         if (hooked.compareAndSet(false, true))
         {
@@ -196,8 +196,8 @@ public final class CommandProcessor
 
             if (!registered.contains(commandName))
             {
-                FLog.error(String.format("/%s was rejected by the command registrar; another plugin already owns that label.",
-                    commandName));
+                FLog.error("/{} was rejected by the command registrar; another plugin already owns that label.",
+                        commandName);
                 return;
             }
 
@@ -207,15 +207,15 @@ public final class CommandProcessor
             List<String> lost = aliases.stream().filter(alias -> !registered.contains(alias)).toList();
             if (!lost.isEmpty())
             {
-                FLog.warn("/%s registered, but these aliases are owned by other plugins: %s",
-                    commandName, String.join(", ", lost));
+                FLog.warn("/{} registered, but these aliases are owned by other plugins: {}",
+                        commandName, String.join(", ", lost));
             }
 
-            FLog.info("Registered /%s (aliases: %s)", commandName, String.join(", ", aliases));
+            FLog.info("Registered /{} (aliases: {})", commandName, String.join(", ", aliases));
         }
         catch (Exception e)
         {
-            FLog.error("Failed to register /%s: \n%s", commandName, ExceptionUtils.getRootCauseMessage(e));
+            FLog.error("Failed to register /{}", commandName, e);
         }
     }
 
@@ -236,11 +236,11 @@ public final class CommandProcessor
 
         if (RootNodeEvictor.evict(registrar, label))
         {
-            FLog.debug("Evicted /%s from the dispatcher root (was %s)", label, owner);
+            FLog.debug("Evicted /{} from the dispatcher root (was {})", label, owner);
         }
         else
         {
-            FLog.warn("Could not evict /%s from the dispatcher root (owned by %s)", label, owner);
+            FLog.warn("Could not evict /{} from the dispatcher root (owned by {})", label, owner);
         }
     }
 
@@ -254,7 +254,7 @@ public final class CommandProcessor
         {
             return true;
         }
-        FLog.warn(String.format("%s.%s is not accessible; skipped.", command.getClass().getSimpleName(), method.getName()));
+        FLog.warn("{}.{} is not accessible; skipped.", command.getClass().getSimpleName(), method.getName());
         return false;
     }
 
@@ -269,7 +269,7 @@ public final class CommandProcessor
                 {
                     if (!isValidCompleterSignature(method))
                     {
-                        FLog.warn(String.format("%s has @Completer but an invalid signature (expected (SenderType, String) -> List<String>); skipped.", method.getName()));
+                        FLog.warn("{} has @Completer but an invalid signature (expected (SenderType, String) -> List<String>); skipped.", method.getName());
                         return;
                     }
                     Completer c = method.getAnnotation(Completer.class);
@@ -292,9 +292,8 @@ public final class CommandProcessor
                     {
                         rootHandlers.stream()
                                 .filter(prior -> conflicts(prior, method))
-                                .forEach(prior -> FLog.warn(String.format(
-                                        "Ambiguous root handlers on /%s:\n %s and %s cannot be told apart at parse time (%d argument(s) with overlapping tokens)",
-                                        commandName, method.getName(), prior.getName(), argumentCount(method))));
+                                .forEach(prior -> FLog.warn("Ambiguous root handlers on /{}:\n {} and {} cannot be told apart at parse time ({} argument(s) with overlapping tokens)",
+                                        commandName, method.getName(), prior.getName(), argumentCount(method)));
 
                         rootHandlers.add(method);
                         return;
@@ -308,9 +307,8 @@ public final class CommandProcessor
                     node.handlerMethods
                         .stream()
                         .filter(existing -> conflicts(existing, method))
-                        .forEach(existing -> FLog.warn(String.format(
-                                "Ambiguous handlers for subcommand \"%s\" on /%s:\n %s and %s cannot be told apart at parse time (%d argument(s) with overlapping tokens)",
-                                pathValue, commandName, method.getName(), existing.getName(), argumentCount(method))));
+                        .forEach(existing -> FLog.warn("Ambiguous handlers for subcommand \"{}\" on /{}:\n {} and {} cannot be told apart at parse time ({} argument(s) with overlapping tokens)",
+                                pathValue, commandName, method.getName(), existing.getName(), argumentCount(method)));
 
                     node.handlerMethods.add(method);
                 });
@@ -531,7 +529,7 @@ public final class CommandProcessor
             }
             catch (IllegalAccessException | InvocationTargetException e)
             {
-                FLog.error("Error in completer %s: \n%s", completerMethod.getName(), ExceptionUtils.getRootCauseMessage(e));
+                FLog.error("Error in completer {}", completerMethod.getName(), e);
             }
             return target.buildFuture();
         };
@@ -708,7 +706,7 @@ public final class CommandProcessor
                     
                     if (param.isAnnotationPresent(Switch.class) && !isSwitchParam(param)) 
                     {
-                        FLog.warn(String.format("@Switch on non-boolean parameter '%s' of /%s %s is ignored", param.getName(), commandName, subPath));
+                        FLog.warn("@Switch on non-boolean parameter '{}' of /{} {} is ignored", param.getName(), commandName, subPath);
                     }
                     
                     if (isSwitchParam(param)) 
@@ -789,7 +787,7 @@ public final class CommandProcessor
                         boolean greedy = param.isAnnotationPresent(Greedy.class);
                         
                         if (greedy && position != positionalParams.size() - 1) {
-                            FLog.warn(String.format("@Greedy on non-last parameter '%s' of /%s %s is ignored", param.getName(), commandName, subPath));
+                            FLog.warn("@Greedy on non-last parameter '{}' of /{} {} is ignored", param.getName(), commandName, subPath);
                             greedy = false;
                         }
 
@@ -945,13 +943,13 @@ public final class CommandProcessor
                     sender.sendMessage(are.getFormattedMessage());
                     return 0;
                 }
-                FLog.error(String.format("Error in /%s %s: \n%s", commandName, subPath, ExceptionUtils.getRootCauseMessage(e)));
+                FLog.error("Error in /{} {}: \n{}", commandName, subPath, ExceptionUtils.getRootCauseMessage(e));
                 sender.sendMessage(Component.text("Command error: " + (cause == null || cause.getMessage() == null ? "Unknown cause" : cause.getMessage()), NamedTextColor.RED));
                 return 0;
             }
             catch (Exception e)
             {
-                FLog.error(String.format("Error in /%s %s: \n%s", commandName, subPath, ExceptionUtils.getRootCauseMessage(e)));
+                FLog.error("Error in /{} {}: \n{}", commandName, subPath, ExceptionUtils.getRootCauseMessage(e));
                 return 0;
             }
         };

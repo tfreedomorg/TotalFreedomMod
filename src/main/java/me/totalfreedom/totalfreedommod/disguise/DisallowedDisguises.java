@@ -105,7 +105,7 @@ public class DisallowedDisguises extends FreedomService
                       .forEach(forbiddenOptions::add);
         }
 
-        FLog.info("Loaded " + forbiddenDisguiseTypes.size() + " forbidden disguise types.");
+        FLog.info("Loaded {} forbidden disguise types.", forbiddenDisguiseTypes.size());
     }
 
     /**
@@ -205,8 +205,8 @@ public class DisallowedDisguises extends FreedomService
 
         event.setCancelled(true);
         FUtil.playerMsg(event.getPlayer(), String.format("'%s' may not be used on a disguise.", forbidden), NamedTextColor.RED);
-        FLog.info(String.format("Blocked disguise modification '%s' from %s: %s",
-                forbidden, event.getPlayer().getName(), event.getMessage()));
+        FLog.info("Blocked disguise modification '{}' from {}: {}",
+                forbidden, event.getPlayer().getName(), event.getMessage());
     }
 
     /**

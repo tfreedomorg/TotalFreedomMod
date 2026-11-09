@@ -123,8 +123,8 @@ public abstract class AbstractDiscordChatRelay
                 .flatMap(event -> handleMessage(event)
                         .onErrorResume(thrown ->
                         {
-                            FLog.warn(String.format("[Discord] Dropped an inbound message: %s",
-                                    DiscordConnection.describeFailure(thrown)));
+                            FLog.warn("[Discord] Dropped an inbound message: {}",
+                                    DiscordConnection.describeFailure(thrown));
                             return Mono.empty();
                         }))
                 .then();
@@ -169,7 +169,7 @@ public abstract class AbstractDiscordChatRelay
             }
             catch (Exception ex)
             {
-                FLog.warn("[Discord] Failed to send system message to Discord: " + ex.getMessage());
+                FLog.warn("[Discord] Failed to send system message to Discord", ex);
             }
         });
     }
@@ -517,9 +517,9 @@ public abstract class AbstractDiscordChatRelay
 
     private void failRelayChannelSend(final String failureDescription, final Optional<Throwable> err)
     {
-        FLog.warn(String.format("[Discord] Failed to %s: %s", 
-                                   failureDescription,
-                                   err.map(thrown -> ": " + thrown.getMessage()).orElse("")));
+        FLog.warn("[Discord] Failed to {}: {}",
+                failureDescription,
+                err.map(thrown -> ": " + thrown.getMessage()).orElse(""));
     }
 
     /**

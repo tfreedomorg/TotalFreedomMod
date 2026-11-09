@@ -190,7 +190,7 @@ public class DiscordConsoleRelay
 
         return Mono.<Void>fromRunnable(() ->
                    {
-                       FLog.info("[Discord: " + admin.getUsername() + "] /" + commandLine);
+                       FLog.info("[Discord: {}] /{}", admin.getUsername(), commandLine);
                        RemoteDispatchContext.dispatch(session, commandLine);
                    })
                    .subscribeOn(bridge.mainThread());

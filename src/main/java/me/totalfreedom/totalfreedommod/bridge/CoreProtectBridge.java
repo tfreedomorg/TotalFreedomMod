@@ -133,7 +133,7 @@ public class CoreProtectBridge extends FreedomService
             }
             catch (Exception ex)
             {
-                FLog.error(ex);
+                FLog.error("Failed to execute rollback for {}", username, ex);
             }
         });
 
@@ -192,7 +192,7 @@ public class CoreProtectBridge extends FreedomService
             }
             catch (Exception ex)
             {
-                FLog.error(ex);
+                FLog.error("Failed to execute restore for {}", username, ex);
             }
         });
 
@@ -232,7 +232,7 @@ public class CoreProtectBridge extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to find CoreProtect API", ex);
             return null;
         }
     }

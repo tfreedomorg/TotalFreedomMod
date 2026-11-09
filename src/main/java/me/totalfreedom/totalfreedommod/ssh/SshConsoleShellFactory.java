@@ -255,20 +255,19 @@ public class SshConsoleShellFactory implements ShellFactory
                     final String displayName = sshSession != null ? sshSession.getUsername() : username;
                     CompletableFuture.runAsync(() ->
                     {
-                        FLog.info("[SSH: " + displayName + "] " + cmd);
+                        FLog.info("[SSH: {}] {}", displayName, cmd);
                         String stripped = cmd.startsWith("/") ? cmd.substring(1) : cmd;
                         RemoteDispatchContext.dispatch(sshSession, stripped);
                     }, mainExecutor).exceptionally(ex ->
                     {
-                        FLog.warn("[SSH] Command dispatch failed for " + displayName + ": " + ex.getMessage());
+                        FLog.warn("[SSH] Command dispatch failed for {}", displayName, ex);
                         return null;
                     });
                 }
             }
             catch (Exception e)
             {
-                FLog.error("Error processing SSH shell for user: " + username);
-                FLog.error(e);
+                FLog.error("Error processing SSH shell for user {}", username, e);
             }
             finally
             {

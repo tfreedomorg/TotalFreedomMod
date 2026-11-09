@@ -97,7 +97,7 @@ public final class DiscordConnection
         final int spent = consecutiveFailures.getAndSet(0);
 
         if (spent > 0)
-            FLog.info(String.format("[Discord] Reconnected after %d failed attempt(s).", spent));
+            FLog.info("[Discord] Reconnected after {} failed attempt(s).", spent);
     }
 
     /**
@@ -131,8 +131,8 @@ public final class DiscordConnection
                         if (attempt >= maxAttempts)
                             return false;
 
-                        FLog.warn(String.format("[Discord] Connection failure %d/%d (%s); retrying in %ds.",
-                                attempt, maxAttempts, describeFailure(thrown), retrySeconds));
+                        FLog.warn("[Discord] Connection failure {}/{} ({}); retrying in {}s.",
+                                attempt, maxAttempts, describeFailure(thrown), retrySeconds);
                         return true;
                     });
     }
@@ -142,16 +142,14 @@ public final class DiscordConnection
         if (stopping.get() || !givenUp.compareAndSet(false, true))
             return;
 
-        FLog.error(String.format(
-                                    """
-                                    [Discord] Giving up after %d consecutive failed connection attempts %ds apart. 
-                                    Last failure: %s.
-                                    """,
-                                     
-                                    consecutiveFailures.get(), 
-                                    retrySeconds, 
-                                    describeFailure(thrown)
-                                ));
+        FLog.error(
+                """
+                [Discord] Giving up after {} consecutive failed connection attempts {}s apart.\s
+                Last failure: {}.
+               \s""",
+                consecutiveFailures.get(),
+                retrySeconds,
+                describeFailure(thrown));
     }
 
     private static Throwable disconnected()

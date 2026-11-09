@@ -337,12 +337,12 @@ public class FreedomAggregate
             }
             else
             {
-                FLog.warn("Build resource '" + name + "' not found in plugin jar; using defaults.");
+                FLog.warn("Build resource '{}' not found in plugin jar; using defaults.", name);
             }
         }
         catch (Exception ex)
         {
-            FLog.warn("Could not read build resource '" + name + "': " + ex.getMessage());
+            FLog.warn("Could not read build resource '{}'", name, ex);
         }
         return properties;
     }

@@ -57,7 +57,7 @@ public class HTTPDaemon extends FreedomService
 
             if (httpd.isAlive())
             {
-                FLog.info("TFM HTTPd started. Listening on port: " + httpd.getListeningPort());
+                FLog.info("TFM HTTPd started. Listening on port {}", httpd.getListeningPort());
             }
             else
             {
@@ -66,7 +66,7 @@ public class HTTPDaemon extends FreedomService
         }
         catch (IOException ex)
         {
-            FLog.error(ex);
+            FLog.error("Failed to start HTTPd", ex);
         }
     }
 
@@ -123,7 +123,7 @@ public class HTTPDaemon extends FreedomService
             }
             catch (Exception ex)
             {
-                FLog.error(ex);
+                FLog.error("Failed to serve file", ex);
                 return new Response(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error 500: Internal Server Error\r\n" + ex.getMessage());
             }
         }
@@ -155,7 +155,7 @@ public class HTTPDaemon extends FreedomService
             }
             catch (IOException ex)
             {
-                FLog.error(ex);
+                FLog.error("Failed to serve file", ex);
             }
         }
 

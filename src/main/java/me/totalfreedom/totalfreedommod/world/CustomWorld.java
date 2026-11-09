@@ -101,7 +101,7 @@ public final class CustomWorld extends PluginComponent<TotalFreedomMod>
 
         if (world == null)
         {
-            FLog.warn("Could not load world: %s", name);
+            FLog.warn("Could not load world: {}", name);
             return null;
         }
 
@@ -123,7 +123,7 @@ public final class CustomWorld extends PluginComponent<TotalFreedomMod>
 
         if (profile.isEmpty())
         {
-            FLog.error("No generation profile for world \"" + name + "\"; it will not be created.");
+            FLog.error("No generation profile for world \"{}\"; it will not be created.", name);
             return null;
         }
 
@@ -178,7 +178,7 @@ public final class CustomWorld extends PluginComponent<TotalFreedomMod>
         }
         catch (final IOException ex)
         {
-            FLog.warn("Could not read the profile marker for world \"" + name + "\", leaving its data as is: " + ex.getMessage());
+            FLog.warn("Could not read the profile marker for world \"{}\", leaving its data as is", name, ex);
             return;
         }
 
@@ -209,12 +209,11 @@ public final class CustomWorld extends PluginComponent<TotalFreedomMod>
         try
         {
             Files.move(worldFolder.toPath(), target.toPath());
-            FLog.info("World \"" + name + "\"'s profile changed since it was last generated; archived its old data to \"" + target.getName() + "\".");
+            FLog.info("World \"{}\"'s profile changed since it was last generated; archived its old data to \"{}\".", name, target.getName());
         }
         catch (final IOException ex)
         {
-            FLog.error("Could not archive stale data for world \"" + name + "\" (tried to move it to \"" + target.getName() + "\"): "
-                    + ex.getMessage() + ". It will be regenerated in place, which may show seams at existing chunk borders.");
+            FLog.error("Could not archive stale data for world \"{}\" (tried to move it to \"{}\"). It will be regenerated in place, which may show seams at existing chunk borders.", name, target.getName(), ex);
         }
     }
 
@@ -226,7 +225,7 @@ public final class CustomWorld extends PluginComponent<TotalFreedomMod>
         }
         catch (final IOException ex)
         {
-            FLog.warn("Could not write the profile marker for world \"" + name + "\": " + ex.getMessage());
+            FLog.warn("Could not write the profile marker for world \"{}\"", name, ex);
         }
     }
 
@@ -247,11 +246,11 @@ public final class CustomWorld extends PluginComponent<TotalFreedomMod>
 
         if (Bukkit.getServer().getWorld(this.name) != null)
         {
-            FLog.error("Can't wipe " + this.name + ", it is already loaded.");
+            FLog.error("Can't wipe {}, it is already loaded.", this.name);
             return;
         }
 
-        FLog.info("Wiping " + this.name + ".");
+        FLog.info("Wiping {}.", this.name);
         plugin.services().require(SavedFlags.class).setSavedFlag(flagKey, false);
         FileUtils.deleteQuietly(worldFolder());
     }
@@ -438,7 +437,7 @@ public final class CustomWorld extends PluginComponent<TotalFreedomMod>
         if (lastTP == null || lastTP + TP_COOLDOWN_TIME <= currentTimeMillis)
         {
             teleportCooldown.put(player, currentTimeMillis);
-            FLog.info(player.getName() + " attempted to access " + this.name + ".");
+            FLog.info("{} attempted to access {}.", player.getName(), this.name);
             event.setTo(Bukkit.getWorlds().get(0).getSpawnLocation());
         }
         return false;
