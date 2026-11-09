@@ -68,17 +68,16 @@ public class AntiSpam extends FreedomService
 
         final Player player = event.getPlayer();
         final PlayerData playerdata = plugin.players().getData(player);
+        final int count = playerdata.incrementAndGetMsgCount();
 
-        // We do not use FSync.autoEject() here because we want to immediately terminate the connection, not wait for
-        //  the next tick. This is because AsyncChatEvent can still be fired even while the main server is hanging. We
-        //  want to make sure players can't spam the chat by just causing the server to hang.
-        if (plugin.autoEject().ejectIf(event.getPlayer(),
-                "chat_spam",
-                "was spamming chat",
-                "Kicked for spamming chat.",
-                () -> playerdata.incrementAndGetMsgCount() >= limit()))
+        if (count >= limit())
         {
             event.setCancelled(true);
+            FSync.ejectIf(player,
+                    "chat_spam",
+                    "was spamming chat",
+                    "Kicked for spamming chat.",
+                    () -> count == limit());
             return;
         }
 

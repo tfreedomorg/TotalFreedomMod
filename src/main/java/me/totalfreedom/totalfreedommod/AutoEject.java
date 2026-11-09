@@ -66,7 +66,7 @@ public class AutoEject extends FreedomService implements IAutoEject
         // Log what just happened
         FLog.info("[AutoEject]"
                 + (" name: " + player.getName() + " -")
-                + (server.isLoggingIPs() ? (" ip: " + player.getName() + " -") : "")
+                + (server.isLoggingIPs() ? (" ip: " + ip + " -") : "")
                 + (" strike: " + strikeNumber + " -")
                 + (" cause: " + cause));
 
@@ -74,7 +74,7 @@ public class AutoEject extends FreedomService implements IAutoEject
         FUtil.bcastMsg("<red><username> <description> and has been <sanction>.",
                 Placeholder.unparsed("username", player.getName()),
                 Placeholder.parsed("description", causeDescription),
-                Placeholder.unparsed("sanction", strikeNumber == 0 ? "kicked"
+                Placeholder.unparsed("sanction", strikeNumber == 1 ? "kicked"
                         : "banned for " + banDurationByStrikes(strikeNumber) + " minutes"));
 
         // Perform the sanction
@@ -123,7 +123,7 @@ public class AutoEject extends FreedomService implements IAutoEject
         }
 
         // Ban the player if they have any existing strikes
-        if (strike > 0)
+        if (strike > 1)
         {
             final Calendar cal = new GregorianCalendar();
             cal.add(Calendar.MINUTE, banDurationByStrikes(strike));
@@ -137,17 +137,17 @@ public class AutoEject extends FreedomService implements IAutoEject
 
     private int banDurationByStrikes(int strike)
     {
-        if (strike == 0)
+        if (strike == 1)
         {
             return 0;
         }
 
         return timeoutMinutes(switch (strike)
         {
-            case 1 -> ConfigEntry.AUTOEJECT_STRIKE_ONE_TIMEOUT;
-            case 2 -> ConfigEntry.AUTOEJECT_STRIKE_TWO_TIMEOUT;
+            case 2 -> ConfigEntry.AUTOEJECT_STRIKE_ONE_TIMEOUT;
+            case 3 -> ConfigEntry.AUTOEJECT_STRIKE_TWO_TIMEOUT;
             default -> ConfigEntry.AUTOEJECT_STRIKE_THREE_TIMEOUT;
-        }, strike * 5);
+        }, (strike - 1) * 5);
     }
 
     private int timeoutMinutes(ConfigEntry entry, int fallback)
