@@ -43,7 +43,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
 public class TextFilterService extends FreedomService
@@ -315,31 +314,30 @@ public class TextFilterService extends FreedomService
         }
         if (shouldNotify("mob", "contains prohibited text: " + filteredText.get()))
         {
-            final String coordinates = String.format("%d, %d, %d",
+            final String mobName = mob.getType().name().toLowerCase(Locale.ROOT).replace('_', ' ');
+            final String displayName = Character.toUpperCase(mobName.charAt(0)) + mobName.substring(1);
+            final String world = location.getWorld().getName();
+            final String coords = location.getBlockX() + ", " + location.getBlockY() + ", " + location.getBlockZ();
+            final String alert = String.format("[%s] at %s (%s) filtered: %s",
+                    displayName,
+                    world,
+                    coords,
+                    filteredText.get());
+            final String teleportCommand = String.format("/tppos %d %d %d",
                     location.getBlockX(),
                     location.getBlockY(),
                     location.getBlockZ());
-            final String mobName = mob.getType().name().toLowerCase(Locale.ROOT).replace('_', ' ');
-            final String displayName = Character.toUpperCase(mobName.charAt(0)) + mobName.substring(1);
-            final String locationText = String.format("%s (%s)",
-                    location.getWorld().getName(),
-                    coordinates);
-            final String description = String.format(" at %s filtered: %s",
-                    locationText,
-                    filteredText.get());
-            final String alert = String.format("[%s]%s", displayName, description);
-            final Component label = Component.text("[" + displayName + "]", NamedTextColor.YELLOW)
-                .hoverEvent(HoverEvent.showText(mob.customName()))
-                .append(Component.text(" at ", NamedTextColor.GRAY))
-                .append(Component.text(location.getWorld().getName() + " (", NamedTextColor.GRAY))
-                .append(Component.text(coordinates, NamedTextColor.AQUA)
-                    .decorate(TextDecoration.UNDERLINED)
-                    .clickEvent(ClickEvent.runCommand(String.format("/tppos %d %d %d",
-                        location.getBlockX(),
-                        location.getBlockY(),
-                        location.getBlockZ()))))
-                .append(Component.text(") filtered: ", NamedTextColor.GRAY))
-                .append(Component.text(filteredText.get(), NamedTextColor.RED));
+
+            final Component label = MessageUtils.parse(
+                    String.format("<yellow><hover:show_text:'<gray><mob_name></gray>'>[<type>]</hover></yellow> "
+                                    + "<gray>at <world> (<aqua><underlined><click:run_command:'%s'><coords>"
+                                    + "</click></underlined></aqua>) filtered: <red><filtered_text></red>",
+                            teleportCommand),
+                    MessageUtils.unparsed("type", displayName),
+                    MessageUtils.unparsed("mob_name", MessageUtils.toPlainText(mob.customName())),
+                    MessageUtils.unparsed("world", world),
+                    MessageUtils.unparsed("coords", coords),
+                    MessageUtils.unparsed("filtered_text", filteredText.get()));
             notifyAdmins(alert, label);
         }
 
