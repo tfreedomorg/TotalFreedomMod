@@ -100,6 +100,11 @@ public class CommandBlocker extends FreedomService
             final String[] specParts = commandSpec.split("\\s+");
             String commandName = specParts[0];
 
+            // Keyed on the label as written in config (minus the first slash), not the resolved
+            // command name, so the node is always stable regardless of plugin load order and "//fill"
+            // stays distinct from "/fill".
+            final String bypassNode = String.format("tfm.blocker.bypass.%s", commandName);
+
             final List<PatternToken> patternTokens = new ArrayList<>();
             boolean malformed = false;
             for (int i = 1; i < specParts.length; i++)
@@ -135,7 +140,7 @@ public class CommandBlocker extends FreedomService
                 commandName = command.getName().toLowerCase();
             }
 
-            final CommandBlockerEntry blockedCommandEntry = new CommandBlockerEntry(rank, action, commandName, patternTokens, message);
+            final CommandBlockerEntry blockedCommandEntry = new CommandBlockerEntry(rank, action, commandName, patternTokens, message, bypassNode);
             registerEntry(commandName, blockedCommandEntry);
 
             Stream.concat(command != null ? command.getAliases().stream() : Stream.empty(),
@@ -411,7 +416,8 @@ public class CommandBlocker extends FreedomService
             return false;
         }
 
-        if (!ignoreRank && match.getRank().hasPermission(sender))
+        if (!ignoreRank && (match.getRank().hasPermission(sender)
+                || plugin.rm.hasPermission(sender, match.getBypassNode())))
         {
             return false;
         }

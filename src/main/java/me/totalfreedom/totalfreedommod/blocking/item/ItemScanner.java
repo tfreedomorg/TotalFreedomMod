@@ -35,6 +35,7 @@ final class ItemScanner
     private static final int MAX_BOOK_PAGE_LENGTH = 1024;
     private static final int MAX_BOOK_PAGES = 100;
     private static final int MAX_INSTRUMENT_DESC_LENGTH = 256;
+    private static final float MAX_INSTRUMENT_RANGE = 1024.0F;
     private static final long MAX_AGGREGATE_TEXT = 262_144L;
     private static final double MAX_ITEM_SCALE = 4.0;
     private static final double MAX_WAYPOINT_RANGE = 16_384.0;
@@ -761,6 +762,9 @@ final class ItemScanner
             {
                 return Verdict.CLEAN;
             }
+            // Horn volume is range / 16, so huge or non-finite ranges broadcast an unbounded sound to every client
+            if (!(instrument.getRange() <= MAX_INSTRUMENT_RANGE))
+                return new Verdict(Reason.CURSED_COMPONENT, -1L, depth);
             description = instrument.description();
         }
         catch (Throwable t)
