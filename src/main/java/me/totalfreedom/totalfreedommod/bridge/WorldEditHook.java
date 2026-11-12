@@ -112,6 +112,8 @@ public final class WorldEditHook implements Listener
         RADIUS_COMMANDS.put("rock", 1);
     }
 
+    private static final String UNLIMITED_LIMIT_NODE = "tfm.worldedit.limit.unlimited";
+
     private static final String[] BYPASS_NODES = {
         "fawe.bypass",
         "fawe.bypass.regions",
@@ -212,7 +214,11 @@ public final class WorldEditHook implements Listener
 
                 if (bukkitPlayer != null && !admin)
                 {
-                    wrapped = new LimitExtent(wrapped, wePlayer.getUniqueId(), getLimitFor(wePlayer.getUniqueId()));
+                    final int limit = getLimitFor(wePlayer.getUniqueId());
+                    if (limit >= 0)
+                    {
+                        wrapped = new LimitExtent(wrapped, wePlayer.getUniqueId(), limit);
+                    }
                     final int containerCap = getMaxContainers();
                     if (containerCap >= 0)
                     {
@@ -468,6 +474,14 @@ public final class WorldEditHook implements Listener
         {
             player.sendMessage(Component.text("Only admins can change the limit for other players!", NamedTextColor.RED));
             event.setCancelled(true);
+            return;
+        }
+
+        // Holders may set any limit for themselves, including -1. The event is left
+        // uncancelled so WorldEdit applies the same value to the session.
+        if (plugin.rm.hasPermission(player, UNLIMITED_LIMIT_NODE))
+        {
+            playerLimits.put(player.getUniqueId(), limit);
             return;
         }
 

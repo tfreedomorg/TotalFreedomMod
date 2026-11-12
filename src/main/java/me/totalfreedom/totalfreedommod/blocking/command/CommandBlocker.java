@@ -357,8 +357,11 @@ public class CommandBlocker extends FreedomService
             return true;
         }
 
-        boolean bypassNegativeOneBlock = sender instanceof Player
-                && plugin.al.isAdmin((Player) sender);
+        // Admins may pass -1 to anything; others only to commands they hold the node for,
+        // keyed like the blocker bypass nodes (e.g. tfm.blocker.negative_one./limit for //limit -1).
+        final boolean bypassNegativeOneBlock = sender instanceof Player player
+                && (plugin.al.isAdmin(player)
+                || plugin.rm.hasPermission(player, String.format("tfm.blocker.negative_one.%s", commandParts[0])));
 
         if (!bypassNegativeOneBlock)
         {
