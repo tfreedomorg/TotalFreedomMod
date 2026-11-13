@@ -18,7 +18,7 @@ import me.totalfreedom.totalfreedommod.player.PlayerData;
 import me.totalfreedom.totalfreedommod.player.SpyMode;
 import me.totalfreedom.totalfreedommod.sql.StatementHandler;
 import me.totalfreedom.totalfreedommod.sql.adapter.DatabaseAdapter;
-import me.totalfreedom.api.sql.adapter.PlayerRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.PlayerRepository;
 import me.totalfreedom.totalfreedommod.util.AdventureUtil;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FUtil;

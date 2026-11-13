@@ -10,7 +10,6 @@ import org.bukkit.Bukkit;
 import me.totalfreedom.api.FreedomAPI;
 import me.totalfreedom.totalfreedommod.sql.ConnectionHandler;
 import me.totalfreedom.totalfreedommod.sql.StatementHandler;
-import me.totalfreedom.api.sql.adapter.*;
 import me.totalfreedom.totalfreedommod.sql.adapter.*;
 import me.totalfreedom.totalfreedommod.sql.adapter.generic.*;
 import me.totalfreedom.totalfreedommod.sql.adapter.sqlite.SQLitePunishmentHistoryRepository;

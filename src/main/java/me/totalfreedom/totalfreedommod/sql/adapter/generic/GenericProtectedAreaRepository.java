@@ -3,7 +3,6 @@ package me.totalfreedom.totalfreedommod.sql.adapter.generic;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -14,7 +13,7 @@ import me.totalfreedom.totalfreedommod.ProtectArea.ProtectedRegion;
 import me.totalfreedom.totalfreedommod.ProtectArea.ProtectedRegion.CantFindWorldException;
 import me.totalfreedom.totalfreedommod.sql.StatementHandler;
 import me.totalfreedom.totalfreedommod.sql.adapter.DatabaseAdapter;
-import me.totalfreedom.api.sql.adapter.ProtectedAreaRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.ProtectedAreaRepository;
 import me.totalfreedom.totalfreedommod.util.FLog;
 
 /**

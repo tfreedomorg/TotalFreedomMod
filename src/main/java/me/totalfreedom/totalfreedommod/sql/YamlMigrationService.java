@@ -21,7 +21,6 @@ import me.totalfreedom.totalfreedommod.banning.Ban;
 import me.totalfreedom.totalfreedommod.banning.PermBan;
 import me.totalfreedom.totalfreedommod.player.LegacyAdmin;
 import me.totalfreedom.totalfreedommod.player.PlayerData;
-import me.totalfreedom.api.sql.adapter.*;
 import me.totalfreedom.totalfreedommod.sql.adapter.*;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FUtil;

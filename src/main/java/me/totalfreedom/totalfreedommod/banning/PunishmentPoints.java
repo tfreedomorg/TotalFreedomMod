@@ -11,7 +11,7 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
 import me.totalfreedom.api.FreedomAPI;
-import me.totalfreedom.api.sql.adapter.PunishmentHistoryRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.PunishmentHistoryRepository;
 import me.totalfreedom.totalfreedommod.cmd.MessageUtils;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.sql.PunishmentHistoryEntry;

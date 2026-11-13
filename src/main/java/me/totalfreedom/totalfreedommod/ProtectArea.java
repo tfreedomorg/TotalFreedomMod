@@ -16,9 +16,6 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
-import org.bukkit.event.block.*;
-import org.bukkit.event.entity.*;
-import org.bukkit.event.hanging.*;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockBurnEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
@@ -55,7 +52,7 @@ import reactor.core.scheduler.Schedulers;
 import me.totalfreedom.totalfreedommod.ProtectArea.ProtectedRegion.CantFindWorldException;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.sql.PersistenceQueue;
-import me.totalfreedom.api.sql.adapter.ProtectedAreaRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.ProtectedAreaRepository;
 import me.totalfreedom.totalfreedommod.util.*;
 
 import com.google.common.collect.Maps;

@@ -14,7 +14,6 @@ import reactor.core.scheduler.Schedulers;
 import me.totalfreedom.api.FreedomAPI;
 import me.totalfreedom.api.sql.DatabaseType;
 import me.totalfreedom.api.sql.IFreedomDatabase;
-import me.totalfreedom.api.sql.adapter.*;
 import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.banning.PunishmentPoints;
 import me.totalfreedom.totalfreedommod.sql.adapter.*;

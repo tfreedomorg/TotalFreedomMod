@@ -27,7 +27,7 @@ import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.player.PlayerData;
 import me.totalfreedom.totalfreedommod.sql.PersistenceQueue;
-import me.totalfreedom.api.sql.adapter.BanRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.BanRepository;
 import me.totalfreedom.totalfreedommod.sql.PunishmentHistoryEntry;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FUtil;
