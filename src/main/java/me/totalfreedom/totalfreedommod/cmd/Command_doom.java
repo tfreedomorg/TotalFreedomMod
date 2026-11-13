@@ -30,8 +30,6 @@ public class Command_doom extends FCommand
         adminAction(sender, "<red>Casting oblivion over <player>", name);
         MessageUtils.broadcast("<red><player> will be completely obliviated!", name);
 
-        final String ip = player.getAddress().getAddress().getHostAddress().trim();
-
         // Remove from superadmin
         final Admin admin = getAdmin(player);
         if (admin != null)
@@ -79,7 +77,7 @@ public class Command_doom extends FCommand
 
         sync(() ->
         {
-            adminAction(sender, "<red>Banning <player>");
+            adminAction(sender, "<red>Banning <player>", name);
             player.getWorld().createExplosion(player.getLocation(), 0F, false);
             kickPlayer(player, "<red>FUCKOFF, and get your shit together!");
         }, 3L * 20L);
