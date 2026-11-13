@@ -2,7 +2,7 @@ package me.totalfreedom.api.cmd.annotation;
 
 import java.lang.annotation.*;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.CooldownUnit;
+import me.totalfreedom.api.cmd.CooldownUnit;
 
 /**
  * Applies a per-player cooldown to the annotated subcommand handler.

@@ -3,7 +3,7 @@ package me.totalfreedom.totalfreedommod;
 import org.bukkit.event.Listener;
 
 import me.totalfreedom.api.FreedomAPI;
-import me.totalfreedom.totalfreedommod.framework.AbstractService;
+import me.totalfreedom.api.framework.AbstractService;
 
 public abstract class FreedomService extends AbstractService implements Listener
 {

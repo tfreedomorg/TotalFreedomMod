@@ -35,7 +35,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.cmd.CommandFailException;
+import me.totalfreedom.api.cmd.CommandFailException;
 import me.totalfreedom.api.cmd.FCommand;
 import me.totalfreedom.totalfreedommod.cmd.MessageUtils;
 import me.totalfreedom.api.cmd.annotation.Callback;

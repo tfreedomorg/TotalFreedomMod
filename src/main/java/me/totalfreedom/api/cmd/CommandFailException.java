@@ -1,4 +1,4 @@
-package me.totalfreedom.totalfreedommod.cmd;
+package me.totalfreedom.api.cmd;
 
 /**
  * Thrown from a command handler to abort execution and message the sender.

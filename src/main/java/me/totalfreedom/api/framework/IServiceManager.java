@@ -5,7 +5,6 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import me.totalfreedom.api.FreedomAPI;
-import me.totalfreedom.totalfreedommod.framework.AbstractService;
 
 public interface IServiceManager
 {
