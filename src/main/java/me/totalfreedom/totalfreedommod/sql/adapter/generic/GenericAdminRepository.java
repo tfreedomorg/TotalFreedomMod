@@ -334,20 +334,26 @@ public class GenericAdminRepository implements AdminRepository
         insertIps(adminId, ips);
     }
 
+    /**
+     * Saves {@code admin} under {@code uuid}. Rows are looked up by UUID, then by name: the admin
+     * list holds one entry per name, so when an entry's UUID changes its existing row is moved onto
+     * the new UUID instead of a second row being inserted beside it. A second row under the same
+     * name would be read back over the live one on the next start.
+     */
     @Override
     public int saveOrUpdate(UUID uuid, Admin admin) throws SQLException
     {
-        if (existsByUuid(uuid))
-        {
-            update(uuid, admin);
-            int adminId = getAdminIdByUuid(uuid);
-            syncIps(adminId, admin.getIps());
-            return adminId;
-        }
-        else
-        {
+        final int byUuid = getAdminIdByUuid(uuid);
+        final int adminId = byUuid >= 0 ? byUuid : getAdminId(admin.getName());
+        if (adminId < 0)
             return insert(uuid, admin);
-        }
+
+        if (byUuid < 0)
+            moveRowToUuid(adminId, uuid);
+
+        update(uuid, admin);
+        syncIps(adminId, admin.getIps());
+        return adminId;
     }
 
     @Override
@@ -461,6 +467,12 @@ public class GenericAdminRepository implements AdminRepository
             return customRank.toLowerCase();
 
         return legacyRank == null || legacyRank.isBlank() ? null : legacyRank.toLowerCase();
+    }
+
+    private void moveRowToUuid(int adminId, UUID uuid) throws SQLException
+    {
+        final String sql = String.format("UPDATE %s SET %s = ? WHERE %s = ?", tblAdmins, colUuid, colId);
+        statementHandler.executeUpdate(sql, uuid.toString(), adminId);
     }
 
     private Admin loadAdminFromRow(ResultSet rs) throws SQLException
