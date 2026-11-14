@@ -136,8 +136,7 @@ public class DiscordCommands
         if (player == null || admin == null || !admin.isActive() || !admin.getName().equalsIgnoreCase(player.getName()))
             return "That player is no longer online. Rejoin the server for a fresh code.";
 
-        if (!plugin.al.verifyIdentity(player, admin))
-            return "This admin entry belongs to a premium account, but you joined through Eaglercraft. Rejoin with Java Minecraft, or use your Eaglercraft admin account.";
+        plugin.al.verifyIdentity(player, admin);
 
         FLog.info(String.format("[Discord] Verified %s as admin %s.", player.getName(), admin.getName()));
 

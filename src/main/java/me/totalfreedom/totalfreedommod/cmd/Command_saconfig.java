@@ -117,13 +117,6 @@ public class Command_saconfig extends FCommand
             }
         }
 
-        if (admin != null && !plugin().al.canBindIdentity(target, admin))
-        {
-            msg(sender, "<red>That entry is bound to a premium account, but <player> joined through Eaglercraft. Have them rejoin with Java Minecraft, or add their Eaglercraft account under a different name.",
-                    Placeholder.unparsed("player", target.getName()));
-            return true;
-        }
-
         adminAction(sender, "<red><new_entry:A:Re-a>dding <player> to the admin list",
                 Formatter.booleanChoice("new_entry", admin == null),
                 Placeholder.unparsed("player", target.getName()));

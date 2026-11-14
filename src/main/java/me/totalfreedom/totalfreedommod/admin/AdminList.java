@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -256,11 +257,13 @@ public class AdminList extends FreedomService
         {
             if (ConfigEntry.ADMINLIST_USE_UUID_ONLY.getBoolean())
             {
-                Admin uuidAdmin = uuidTable.get(player.getUniqueId());
-                if (uuidAdmin == null || !uuidAdmin.isActive())
-                {
+                final Admin uuidAdmin = uuidTable.get(player.getUniqueId());
+                if (uuidAdmin == null)
+                    return getOfflineSessionAdmin(player);
+
+                if (!uuidAdmin.isActive())
                     return null;
-                }
+
                 // Rewrite the stored display name if Mojang has changed it.
                 if (!uuidAdmin.getName().equalsIgnoreCase(player.getName()))
                 {
@@ -373,40 +376,22 @@ public class AdminList extends FreedomService
     }
 
     /**
-     * Whether {@code player}'s current session may be bound to {@code admin}. Where entries are
-     * matched by UUID alone, an entry already bound to a premium (version 4) UUID may not be moved
-     * to an offline one: that would let the name's offline route, Eaglercraft included, stand in for
-     * a premium account. Eaglercraft admins keep separate entries bound to their offline UUIDs.
-     */
-    public boolean canBindIdentity(Player player, Admin admin)
-    {
-        if (!ConfigEntry.ADMINLIST_USE_UUID_ONLY.getBoolean() || admin.getUuid() == null)
-            return true;
-
-        return admin.getUuid().version() != 4 || player.getUniqueId().version() == 4;
-    }
-
-    /**
      * Registers {@code player} against the existing entry {@code admin} after their identity was
-     * confirmed out of band, which is what turns an impostor back into the admin. The entry gains
-     * the player's address, and takes their UUID where entries are matched by UUID alone.
-     *
-     * @return false, changing nothing, when {@link #canBindIdentity} refuses the player's session
+     * confirmed out of band, which is what turns an imposter back into the admin. The entry always
+     * gains the player's address, which is what admits their offline sessions. It takes the
+     * player's UUID only when that UUID is premium (version 4): an offline UUID is derived from the
+     * name, so storing one would admit the name from any address.
      */
-    public boolean verifyIdentity(final Player player, final Admin admin)
+    public void verifyIdentity(final Player player, final Admin admin)
     {
-        if (!canBindIdentity(player, admin))
-            return false;
-
         admin.addIp(player.getAddress().getAddress().getHostAddress());
 
-        if (ConfigEntry.ADMINLIST_USE_UUID_ONLY.getBoolean())
+        if (ConfigEntry.ADMINLIST_USE_UUID_ONLY.getBoolean() && player.getUniqueId().version() == 4)
             admin.setUuid(player.getUniqueId());
 
         updateTables();
         saveAdminAsync(admin);
         plugin.rm.restoreVerifiedAdmin(player);
-        return true;
     }
 
     public boolean isIdentityMatched(Player player)
@@ -1131,6 +1116,33 @@ public class AdminList extends FreedomService
     {
         return UUID.nameUUIDFromBytes(String.format("OfflinePlayer:%s", name.toLowerCase())
                 .getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * The admin an offline session stands for, or null. The proxy gives offline sessions
+     * (Eaglercraft, and premium owners connecting without premium login) a UUID derived from the
+     * username alone, so that UUID proves nothing by itself. The session is accepted only when its
+     * UUID is exactly the name's offline UUID and it comes from an address already stored on the
+     * admin's entry; a new address leaves the player flagged until they verify.
+     */
+    private Admin getOfflineSessionAdmin(Player player)
+    {
+        if (!player.getUniqueId().equals(sessionOfflineUuid(player.getName())))
+            return null;
+
+        final String ip = player.getAddress().getAddress().getHostAddress();
+        return Optional.ofNullable(getEntryByName(player.getName()))
+                       .filter(admin -> admin.getIps().contains(ip))
+                       .orElse(null);
+    }
+
+    /**
+     * The UUID the proxy assigns an offline session for {@code name}. Unlike {@link #offlineUuid},
+     * this keeps the name's case, as the proxy does.
+     */
+    private static UUID sessionOfflineUuid(String name)
+    {
+        return UUID.nameUUIDFromBytes(String.format("OfflinePlayer:%s", name).getBytes(StandardCharsets.UTF_8));
     }
 
     /**
