@@ -413,6 +413,11 @@ public class AdminList extends FreedomService
             return false;
         }
 
+        // An unset rank means "the default admin role", but display code (teams, /list, /ph) reads
+        // the id directly and treats null as "not an admin", so pin the concrete id now
+        if (admin.getRankId() == null)
+            admin.setRankId(effectiveRankId(admin));
+
         final String key = admin.getConfigKey();
 
         // Store admin, update views
