@@ -20,6 +20,7 @@ public class Command_setspawn extends FCommand
     {
         final Location location = player.getLocation();
         plugin().services().require(SpawnManager.class).setSpawnLocation(location);
+        location.getWorld().setSpawnLocation(location);
         msg(player, "<gray>Server spawn set to: <location>", Placeholder.unparsed("location", FUtil.formatLocation(location)));
     }
 }
