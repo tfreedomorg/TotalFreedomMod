@@ -46,7 +46,6 @@ import me.totalfreedom.totalfreedommod.framework.ServiceManager;
 import me.totalfreedom.totalfreedommod.freeze.Freezer;
 import me.totalfreedom.totalfreedommod.lockup.LockupManager;
 import me.totalfreedom.totalfreedommod.fun.*;
-import me.totalfreedom.totalfreedommod.httpd.HTTPDaemon;
 import me.totalfreedom.totalfreedommod.player.PlayerData;
 import me.totalfreedom.totalfreedommod.player.PlayerList;
 import me.totalfreedom.totalfreedommod.rank.ConsoleSenderRegistry;
@@ -183,9 +182,6 @@ public class FreedomAggregate
         services.register(MP44.class, MP44::new);
         services.register(Jumppads.class, Jumppads::new);
         services.register(Trailer.class, Trailer::new);
-
-        // HTTPD
-        services.register(HTTPDaemon.class, HTTPDaemon::new);
 
         // SSH
         services.register(SshDaemon.class, SshDaemon::new);

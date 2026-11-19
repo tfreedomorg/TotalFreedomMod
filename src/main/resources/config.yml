@@ -824,20 +824,6 @@ disguises:
   # Maximum length of a disguise's tab list name.
   max_tablist_name_length: 32
 
-# HTTPD server
-httpd:
-  enabled: false
-  port: 28966
-  public_folder: ./public_html
-  # Folder schematics are served from. Leave blank to auto-detect
-  schem_folder: ''
-  # Whitelist for trusted proxies so that HTTD doesn't have to be served directly.
-  # If using a reverse proxy (e.g. nginx) then you *must* include the proxy IP here,
-  # which for Docker configurations is usually the bridge gateway, e.g. 172.18.0.1.
-  trusted_proxies:
-    - '127.0.0.1'
-    - '::1'
-
 # SSH server
 ssh:
   enabled: false

@@ -37,12 +37,6 @@ public enum ConfigEntry
     MOB_LIMITER_GLOBAL_LIMITS(List.class, "moblimiter.global_limits"),
     MOB_LIMITER_CHUNK_LIMITS(List.class, "moblimiter.chunk_limits"),
     //
-    HTTPD_ENABLED(Boolean.class, "httpd.enabled"),
-    HTTPD_PORT(Integer.class, "httpd.port"),
-    HTTPD_PUBLIC_FOLDER(String.class, "httpd.public_folder"),
-    HTTPD_SCHEM_FOLDER(String.class, "httpd.schem_folder"),
-    HTTPD_TRUSTED_PROXIES(List.class, "httpd.trusted_proxies"),
-    //
     SSH_ENABLED(Boolean.class, "ssh.enabled"),
     SSH_PORT(Integer.class, "ssh.port"),
     SSH_AUTH_PASSWORD(Boolean.class, "ssh.auth.password"),
