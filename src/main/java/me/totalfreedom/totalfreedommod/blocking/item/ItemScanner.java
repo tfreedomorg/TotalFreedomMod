@@ -11,6 +11,7 @@ import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.*;
 import io.papermc.paper.datacomponent.item.attribute.AttributeModifierDisplay;
 import io.papermc.paper.datacomponent.item.blocksattacks.DamageReduction;
+import io.papermc.paper.datacomponent.item.consumable.ConsumeEffect;
 import io.papermc.paper.registry.set.RegistryKeySet;
 import io.papermc.paper.registry.tag.Tag;
 import io.papermc.paper.text.Filtered;
@@ -92,7 +93,9 @@ final class ItemScanner
         CURSED_COMPONENT,
         CURSED_EQUIP_SOUND,
         SCAN_BUDGET_EXCEEDED,
-        PANIC_BLANKET_REJECT;
+        PANIC_BLANKET_REJECT,
+        OVERSIZED_TELEPORT,
+        INVALID_TELEPORT_DIAMETER;
 
         boolean isHangClass()
         {
@@ -177,6 +180,12 @@ final class ItemScanner
         if (effects.isCursed())
         {
             return effects;
+        }
+
+        Verdict teleport = inspectTeleportConsumable(item, depth);
+        if (teleport.isCursed())
+        {
+            return teleport;
         }
 
         Verdict firework = inspectFirework(item, depth);
@@ -481,6 +490,69 @@ final class ItemScanner
         {
             return new Verdict(Reason.OVERSIZED_FIREWORK, Math.max(colors, fadeColors), depth);
         }
+        return Verdict.CLEAN;
+    }
+
+    private static Verdict inspectTeleportConsumable(ItemStack item, int depth)
+    {
+        if (!item.hasData(DataComponentTypes.CONSUMABLE))
+        {
+            return Verdict.CLEAN;
+        }
+
+        try
+        {
+            Consumable consumable = item.getData(DataComponentTypes.CONSUMABLE);
+            if (consumable == null)
+            {
+                return Verdict.CLEAN;
+            }
+
+            int teleportCount = 0;
+            boolean invalidDiameter = false;
+            long observedDiameter = -1L;
+
+            for (ConsumeEffect effect : consumable.consumeEffects())
+            {
+                if (!(effect instanceof ConsumeEffect.TeleportRandomly teleport))
+                {
+                    continue;
+                }
+
+                teleportCount++;
+
+                // Reject multiple teleport effects
+                if (teleportCount > 1)
+                {
+                    return new Verdict(Reason.OVERSIZED_TELEPORT, teleportCount, depth);
+                }
+
+                float diameter = teleport.diameter();
+
+                if (!Float.isFinite(diameter)
+                        || diameter <= 0.0F
+                        || diameter > 64.0F)
+                {
+                    invalidDiameter = true;
+
+                    if (Float.isFinite(diameter))
+                    {
+                        observedDiameter = (long) Math.ceil(diameter);
+                    }
+                }
+            }
+
+            // Reject invalid teleport diamter
+            if (invalidDiameter)
+            {
+                return new Verdict(Reason.INVALID_TELEPORT_DIAMETER, observedDiameter, depth);
+            }
+        }
+        catch (Throwable t)
+        {
+            return new Verdict(Reason.UNINSPECTABLE_NBT, -1L, depth);
+        }
+
         return Verdict.CLEAN;
     }
 
