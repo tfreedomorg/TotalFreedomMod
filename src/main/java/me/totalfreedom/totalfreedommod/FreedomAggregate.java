@@ -35,6 +35,7 @@ import me.totalfreedom.totalfreedommod.blocking.sweep.SweepScheduler;
 import me.totalfreedom.totalfreedommod.bridge.CoreProtectBridge;
 import me.totalfreedom.totalfreedommod.bridge.EssentialsBridge;
 import me.totalfreedom.totalfreedommod.bridge.LibsDisguisesBridge;
+import me.totalfreedom.totalfreedommod.bridge.EaglerBridge;
 import me.totalfreedom.totalfreedommod.bridge.WorldEditBridge;
 import me.totalfreedom.totalfreedommod.caging.Cager;
 import me.totalfreedom.api.cmd.CommandLoader;
@@ -204,6 +205,7 @@ public class FreedomAggregate
         bridges.register(CoreProtectBridge.class, CoreProtectBridge::new);
         bridges.register(EssentialsBridge.class, EssentialsBridge::new);
         bridges.register(LibsDisguisesBridge.class, LibsDisguisesBridge::new);
+        bridges.register(EaglerBridge.class, EaglerBridge::new);
         bridges.register(WorldEditBridge.class, WorldEditBridge::new);
         bridges.start();
     }

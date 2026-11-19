@@ -57,29 +57,15 @@ public class CommandBlockerEntry
     private final String message;
     private final List<PatternToken> patternTokens;
     private final boolean wildcardPattern;
+    private final String bypassNode;
 
-    public CommandBlockerEntry(CommandBlockerRank rank,
-            CommandBlockerAction action, String command, String message)
-    {
-        this(rank, action, command, (List<PatternToken>) null, message);
-    }
-
-    public CommandBlockerEntry(CommandBlockerRank rank,
-            CommandBlockerAction action, String command, String subCommand,
-            String message)
-    {
-        this(rank, action, command, tokenize(subCommand), message);
-    }
-
-    public CommandBlockerEntry(CommandBlockerRank rank,
-            CommandBlockerAction action, String command,
-            List<PatternToken> patternTokens, String message)
+    public CommandBlockerEntry(CommandBlockerRank rank, CommandBlockerAction action, String command, List<PatternToken> patternTokens, String message, String bypassNode)
     {
         this.rank = rank;
         this.action = action;
         this.command = command;
-        this.patternTokens = patternTokens == null ? Collections.emptyList()
-                : Collections.unmodifiableList(new ArrayList<>(patternTokens));
+        this.bypassNode = bypassNode;
+        this.patternTokens = patternTokens == null ? Collections.emptyList() : Collections.unmodifiableList(new ArrayList<>(patternTokens));
         this.subCommand = renderTokens(this.patternTokens);
         boolean anyWildcard = false;
         for (PatternToken t : this.patternTokens)
@@ -91,6 +77,11 @@ public class CommandBlockerEntry
         this.wildcardPattern = anyWildcard;
         this.message = "&7" + (message == null || message.equals("_")
                 ? "That command is blocked." : message);
+    }
+
+    public String getBypassNode()
+    {
+        return bypassNode;
     }
 
     public static List<PatternToken> tokenize(String raw)

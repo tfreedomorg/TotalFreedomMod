@@ -21,6 +21,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import com.destroystokyo.paper.profile.PlayerProfile;
+
+import io.papermc.paper.connection.PlayerLoginConnection;
+import io.papermc.paper.event.connection.PlayerConnectionValidateLoginEvent;
+
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -28,7 +33,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 import net.kyori.adventure.text.Component;
@@ -78,6 +82,13 @@ public class PlayerList extends FreedomService implements IPlayerList
      * while the player is online.
      */
     private final Map<UUID, PlayerData> staff = new ConcurrentHashMap<>();
+
+    /**
+     * Players whose SQL lookup threw. Their in-memory record may be a JSON fallback or a fresh one,
+     * so saving it would overwrite the real row.
+     */
+    private final Set<UUID> unverifiedUuids = ConcurrentHashMap.newKeySet();
+
     private final File configFolder;
     private final PersistenceQueue writes = new PersistenceQueue("player data");
 
@@ -516,24 +527,46 @@ public class PlayerList extends FreedomService implements IPlayerList
 
     /**
      * A login refused after pre-login (whitelist, full server, a kick from another plugin) never
-     * produces a quit, so the record pre-login cached would otherwise stay in {@link #dataMap}.
+     * produces a quit, so drop the record pre-login cached.
      */
     @EventHandler(priority = EventPriority.MONITOR)
-    public void onLogin(PlayerLoginEvent event)
+    public void onValidateLogin(PlayerConnectionValidateLoginEvent event)
     {
-        if (event.getResult() != PlayerLoginEvent.Result.ALLOWED)
-            dataMap.remove(event.getPlayer().getUniqueId());
+        if (event.isAllowed() || !(event.getConnection() instanceof PlayerLoginConnection login))
+            return;
+
+        // The profile is null until authentication finishes, and a refusal can come before that.
+        Optional.ofNullable(login.getAuthenticatedProfile())
+                .map(PlayerProfile::getId)
+                .ifPresent(this::releasePlayer);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerQuit(PlayerQuitEvent event)
     {
-        final PlayerData data = dataMap.remove(event.getPlayer().getUniqueId());
+        final UUID uuid = event.getPlayer().getUniqueId();
 
-        if (data != null && plugin.isEnabled())
+        if (!plugin.isEnabled())
         {
-            saveOne(data);
+            dataMap.remove(uuid);
+            return;
         }
+
+        server.getScheduler().runTask(plugin, () -> releasePlayer(uuid));
+    }
+
+    /**
+     * Drops and saves a player's cached record, unless a newer session for the same account is
+     * online by now.
+     */
+    private void releasePlayer(final UUID uuid)
+    {
+        if (server.getPlayer(uuid) != null)
+            return;
+
+        Optional.ofNullable(dataMap.remove(uuid))
+                .ifPresent(this::saveOne);
+        unverifiedUuids.remove(uuid);
     }
 
     protected File getConfigFile(UUID uuid)
@@ -649,10 +682,13 @@ public class PlayerList extends FreedomService implements IPlayerList
             final PlayerRepository repo = plugin.database().getPlayerRepository();
             reconcileFromJsonIfNewer(uuid, repo);
 
-            return repo.findByUuid(uuid).orElse(null);
+            final PlayerData found = repo.findByUuid(uuid).orElse(null);
+            unverifiedUuids.remove(uuid);
+            return found;
         }
         catch (Exception ex)
         {
+            unverifiedUuids.add(uuid);
             FLog.warn("Failed to load player data for {} from SQL, falling back to JSON", uuid, ex);
             return null;
         }
@@ -764,6 +800,12 @@ public class PlayerList extends FreedomService implements IPlayerList
      */
     private void saveOne(final PlayerData data)
     {
+        if (unverifiedUuids.contains(data.getUuid()))
+        {
+            FLog.warn("Not saving player data for {}: its SQL lookup failed, so the record is unverified.", data.getUsername());
+            return;
+        }
+
         indexStaff(data);
 
         if (!usingSql())

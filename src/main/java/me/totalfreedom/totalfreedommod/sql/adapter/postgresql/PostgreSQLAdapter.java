@@ -400,11 +400,13 @@ public class PostgreSQLAdapter extends DatabaseAdapter
                 "discord_identifier" VARCHAR(8),
                 "trusted_ips" TEXT,
                 "titles" TEXT,
+                "displayed_title" TEXT,
                 "updated_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
             """;
         statementHandler.executeUpdate(sql);
         statementHandler.executeUpdate("ALTER TABLE \"player_data\" ADD COLUMN IF NOT EXISTS \"trusted_ips\" TEXT");
+        statementHandler.executeUpdate("ALTER TABLE \"player_data\" ADD COLUMN IF NOT EXISTS \"displayed_title\" TEXT");
     }
 
     /**
@@ -419,6 +421,7 @@ public class PostgreSQLAdapter extends DatabaseAdapter
 
         statementHandler.executeUpdate("ALTER TABLE \"players\" ADD COLUMN IF NOT EXISTS \"updated_at\" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP");
         statementHandler.executeUpdate("ALTER TABLE \"players\" ADD COLUMN IF NOT EXISTS \"titles\" TEXT");
+        statementHandler.executeUpdate("ALTER TABLE \"players\" ADD COLUMN IF NOT EXISTS \"displayed_title\" TEXT");
         statementHandler.executeUpdate("ALTER TABLE \"players\" ADD COLUMN IF NOT EXISTS \"potion_spy_mode\" VARCHAR(16) NOT NULL DEFAULT 'off'");
         statementHandler.executeUpdate("ALTER TABLE \"players\" ADD COLUMN IF NOT EXISTS \"command_spy_alert_sound\" VARCHAR(128) NOT NULL DEFAULT 'entity.ender_dragon.growl'");
         statementHandler.executeUpdate("ALTER TABLE \"players\" ADD COLUMN IF NOT EXISTS \"command_spy_alert_regex\" TEXT");

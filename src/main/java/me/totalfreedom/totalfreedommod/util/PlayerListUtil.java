@@ -1,10 +1,8 @@
 package me.totalfreedom.totalfreedommod.util;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -13,6 +11,8 @@ import me.totalfreedom.api.FreedomAPI;
 import me.totalfreedom.api.PluginProvider;
 import me.totalfreedom.totalfreedommod.rank.CustomRank;
 import me.totalfreedom.api.rank.RankRole;
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.title.Title;
 
 /**
  * Plaintext online player list shared by automated console contexts.
@@ -55,9 +55,17 @@ public final class PlayerListUtil
         if (defaultRank == null)
             return buildPlainList();
 
+        final Map<Title, List<Player>> playerTitles = new HashMap<>();
+
         playerRanks.put(defaultRank, new ArrayList<>());
         for (final var player : players)
         {
+            if (plugin.ranks().getDisplay(player) instanceof Title title)
+            {
+                playerTitles.computeIfAbsent(title, ignored -> new ArrayList<>()).add(player);
+                continue;
+            }
+
             final var admin = plugin.players().getVerifiedStaff(player);
             // If they're an admin, we can pull their rank
             if (admin.isPresent())
@@ -84,28 +92,62 @@ public final class PlayerListUtil
 
         final int max = Bukkit.getMaxPlayers();
 
-        final List<String> playerListings = plugin.ranks().getCustomRanks()
+        final Comparator<Player> byDisplayOrder = plugin.ranks().byDisplayOrder();
+
+        final List<String> titleListings = playerTitles.keySet()
+            .stream()
+            .sorted()
+            .map(title -> formatListing(title.getName(), playerTitles.get(title), byDisplayOrder))
+            .toList();
+
+        final List<String> rankListings = plugin.ranks().getCustomRanks()
             .values()
             .stream()
             .sorted((r1, r2) -> Integer.compare(r2.getLevel(), r1.getLevel())) // Sort in reverse level order, highest ranks listed first
             .filter(playerRanks::containsKey)
-            .map(rank -> {
-                // Get all players with that rank
-                final List<Player> rankedPlayers = playerRanks.get(rank);
-                final List<String> rankedPlayerNames = rankedPlayers
-                    .stream()
-                    .map(Player::getName)
-                    .collect(Collectors.toCollection(ArrayList::new));
-                // Make a nice message out of it
-                return String.format("%ss (%s): %s",
-                    rank.getName(),
-                    rankedPlayers.size(),
-                    String.join(", ",rankedPlayerNames));
-            }).collect(Collectors.toCollection(ArrayList::new));
+            .map(rank -> formatListing(rank.getName(), playerRanks.get(rank), byDisplayOrder))
+            .toList();
+
+        final List<String> playerListings = Stream.concat(titleListings.stream(), rankListings.stream())
+            .toList();
 
         return String.format("There are %s/%s players online.\n\n%s",
             players.size(),
             max,
             String.join("\n", playerListings));
+    }
+
+    /**
+     * The players matching {@code membership} as a single group, for the filtered Discord list.
+     */
+    public static String buildFilteredList(final String groupName, final Predicate<Player> membership)
+    {
+        final FreedomAPI plugin = PluginProvider.get();
+
+        final List<Player> members = Bukkit.getOnlinePlayers()
+                                           .stream()
+                                           .map(Player.class::cast)
+                                           .filter(membership)
+                                           .toList();
+
+        return String.format("There are %s/%s players online.\n\n%s",
+            Bukkit.getOnlinePlayers().size(),
+            Bukkit.getMaxPlayers(),
+            formatListing(groupName, members, plugin.ranks().byDisplayOrder()));
+    }
+
+    public static boolean isFamous(final Player player)
+    {
+        return ConfigEntry.FAMOUS_PLAYERS.getList().contains(player.getName().toLowerCase());
+    }
+
+    private static String formatListing(final String groupName, final List<Player> members, final Comparator<Player> order)
+    {
+        final List<String> names = members.stream()
+                                          .sorted(order)
+                                          .map(Player::getName)
+                                          .toList();
+
+        return String.format("%ss (%s): %s", groupName, names.size(), names.isEmpty() ? "None" : String.join(", ", names));
     }
 }

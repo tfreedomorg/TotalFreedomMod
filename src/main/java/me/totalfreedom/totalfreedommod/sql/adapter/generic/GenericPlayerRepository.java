@@ -49,6 +49,7 @@ public class GenericPlayerRepository implements PlayerRepository
     private final String colStrikes;
     private final String colSavedTag;
     private final String colTitles;
+    private final String colDisplayedTitle;
     private final String colNickname;
     private final String colIp;
     private final String colRankId;
@@ -95,6 +96,7 @@ public class GenericPlayerRepository implements PlayerRepository
         this.colStrikes = adapter.quoteIdentifier("strikes");
         this.colSavedTag = adapter.quoteIdentifier("saved_tag");
         this.colTitles = adapter.quoteIdentifier("titles");
+        this.colDisplayedTitle = adapter.quoteIdentifier("displayed_title");
         this.colNickname = adapter.quoteIdentifier("nickname");
         this.colIp = adapter.quoteIdentifier("ip");
         this.colRankId = adapter.quoteIdentifier("rank_id");
@@ -105,11 +107,10 @@ public class GenericPlayerRepository implements PlayerRepository
         this.colTrustedIps = adapter.quoteIdentifier("trusted_ips");
         this.colId = adapter.quoteIdentifier("id");
         this.colUpdatedAt = adapter.quoteIdentifier("updated_at");
-
         this.legacyColumns = List.of(colUsername, colFirstJoin, colLastJoin, colPotionSpyMode, colCommandSpyMode,
                 colCommandSpyAlertSound, colCommandSpyAlertRegex, colSignSpyMode, colBookSpyMode,
                 colMuted, colFrozen, colCommandsBlocked, colJoinLeaveMessages, colStrikes, colSavedTag,
-                colTitles, colNickname);
+                colTitles, colDisplayedTitle, colNickname);
         this.dataColumns = Stream.concat(legacyColumns.stream(),
                                          Stream.of(colIp, colRankId, colAdminActive, colLoginMessage, colDiscordId, colDiscordIdentifier,
                                          colTrustedIps))
@@ -439,6 +440,7 @@ public class GenericPlayerRepository implements PlayerRepository
                 data.getStrikes(),
                 data.getSavedTag(),
                 serializeList(data.getTitles()),
+                data.getDisplayedTitle(),
                 serializeNickname(data),
                 data.getStoredIp().orElse(null),
                 data.getRankId().orElse(null),
@@ -509,6 +511,7 @@ public class GenericPlayerRepository implements PlayerRepository
         data.setStrikes(rs.getInt("strikes"));
         data.setSavedTag(rs.getString("saved_tag"));
         data.setTitles(parseList(rs.getString("titles")));
+        data.setDisplayedTitle(rs.getString("displayed_title"));
 
         final String alertSound = rs.getString("command_spy_alert_sound");
         if (alertSound != null && !alertSound.isBlank())

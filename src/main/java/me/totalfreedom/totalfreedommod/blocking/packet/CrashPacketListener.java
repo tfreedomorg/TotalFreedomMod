@@ -495,6 +495,8 @@ final class CrashPacketListener extends PacketListenerAbstract
     private void handleBlockEntityData(PacketSendEvent event)
     {
         WrapperPlayServerBlockEntityData wrapper = new WrapperPlayServerBlockEntityData(event);
+        // PacketEvents re-encodes every wrapped packet by default, so opt out until we actually change it
+        event.markForReEncode(false);
         NBTCompound nbt = wrapper.getNBT();
 
         if ((blockAllSignPackets || signBlockEntityGuard) && SignPacketGuard.isSignBlockEntity(nbt))
@@ -530,6 +532,8 @@ final class CrashPacketListener extends PacketListenerAbstract
         }
 
         WrapperPlayServerChunkData wrapper = new WrapperPlayServerChunkData(event);
+        // PacketEvents re-encodes every wrapped packet by default, so opt out until we actually change it
+        event.markForReEncode(false);
         Column column = wrapper.getColumn();
         boolean dirty = false;
 
@@ -554,7 +558,7 @@ final class CrashPacketListener extends PacketListenerAbstract
 
         if (dirty)
         {
-            event.markForReEncode(true);
+            event.markForReEncode(dirty);
         }
     }
 
@@ -582,6 +586,8 @@ final class CrashPacketListener extends PacketListenerAbstract
     private void handleEntityEquipment(PacketSendEvent event)
     {
         WrapperPlayServerEntityEquipment wrapper = new WrapperPlayServerEntityEquipment(event);
+        // PacketEvents re-encodes every wrapped packet by default, so opt out until we actually change it
+        event.markForReEncode(false);
         List<Equipment> equipment = wrapper.getEquipment();
         boolean dirty = false;
         for (Equipment slot : equipment)
@@ -595,13 +601,15 @@ final class CrashPacketListener extends PacketListenerAbstract
         if (dirty)
         {
             wrapper.setEquipment(equipment);
-            event.markForReEncode(true);
+            event.markForReEncode(dirty);
         }
     }
 
     private void handleSetSlot(PacketSendEvent event)
     {
         WrapperPlayServerSetSlot wrapper = new WrapperPlayServerSetSlot(event);
+        // PacketEvents re-encodes every wrapped packet by default, so opt out until we actually change it
+        event.markForReEncode(false);
         if (isCursed(wrapper.getItem()))
         {
             wrapper.setItem(EMPTY);
@@ -612,6 +620,8 @@ final class CrashPacketListener extends PacketListenerAbstract
     private void handleWindowItems(PacketSendEvent event)
     {
         WrapperPlayServerWindowItems wrapper = new WrapperPlayServerWindowItems(event);
+        // PacketEvents re-encodes every wrapped packet by default, so opt out until we actually change it
+        event.markForReEncode(false);
         boolean dirty = false;
 
         List<com.github.retrooper.packetevents.protocol.item.ItemStack> items = wrapper.getItems();
@@ -637,13 +647,15 @@ final class CrashPacketListener extends PacketListenerAbstract
 
         if (dirty)
         {
-            event.markForReEncode(true);
+            event.markForReEncode(dirty);
         }
     }
 
     private void handleMerchantOffers(PacketSendEvent event)
     {
         WrapperPlayServerMerchantOffers wrapper = new WrapperPlayServerMerchantOffers(event);
+        // PacketEvents re-encodes every wrapped packet by default, so opt out until we actually change it
+        event.markForReEncode(false);
         List<MerchantOffer> offers = wrapper.getMerchantOffers();
         List<MerchantOffer> safe = new ArrayList<>(offers.size());
         boolean dirty = false;
@@ -669,6 +681,8 @@ final class CrashPacketListener extends PacketListenerAbstract
     private void handleEntityMetadata(PacketSendEvent event)
     {
         WrapperPlayServerEntityMetadata wrapper = new WrapperPlayServerEntityMetadata(event);
+        // PacketEvents re-encodes every wrapped packet by default, so opt out until we actually change it
+        event.markForReEncode(false);
         List<EntityData<?>> metadata = wrapper.getEntityMetadata();
         boolean dirty = false;
         if (sanitizeOutbound)
@@ -688,13 +702,15 @@ final class CrashPacketListener extends PacketListenerAbstract
         if (dirty)
         {
             wrapper.setEntityMetadata(metadata);
-            event.markForReEncode(true);
+            event.markForReEncode(dirty);
         }
     }
 
     private void handleSpawnLivingEntity(PacketSendEvent event)
     {
         WrapperPlayServerSpawnLivingEntity wrapper = new WrapperPlayServerSpawnLivingEntity(event);
+        // PacketEvents re-encodes every wrapped packet by default, so opt out until we actually change it
+        event.markForReEncode(false);
         List<EntityData<?>> metadata = wrapper.getEntityMetadata();
         boolean dirty = false;
         if (sanitizeOutbound)
@@ -714,7 +730,7 @@ final class CrashPacketListener extends PacketListenerAbstract
         if (dirty)
         {
             wrapper.setEntityMetadata(metadata);
-            event.markForReEncode(true);
+            event.markForReEncode(dirty);
         }
     }
 
@@ -725,6 +741,8 @@ final class CrashPacketListener extends PacketListenerAbstract
             return;
         }
         WrapperPlayServerUpdateAttributes wrapper = new WrapperPlayServerUpdateAttributes(event);
+        // PacketEvents re-encodes every wrapped packet by default, so opt out until we actually change it
+        event.markForReEncode(false);
         List<WrapperPlayServerUpdateAttributes.Property> properties = wrapper.getProperties();
         if (EntityMetaPacketGuard.sanitizeAttributes(properties, entityLimits.maxScale()))
         {
@@ -760,6 +778,12 @@ final class CrashPacketListener extends PacketListenerAbstract
     private boolean isCursed(com.github.retrooper.packetevents.protocol.item.ItemStack peItem)
     {
         if (peItem == null || peItem.isEmpty())
+        {
+            return false;
+        }
+        // PacketEvents can't convert instruments on 26.3 and prints a stack trace every attempt;
+        // horns are still checked server side by ItemScanner.inspectInstrument
+        if (peItem.hasComponent(ComponentTypes.INSTRUMENT))
         {
             return false;
         }

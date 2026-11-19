@@ -46,6 +46,12 @@ public interface ITitleManager
     ITitle getDisplayTitle(Player player);
 
     /**
+     * Records which identity {@code player} wants shown: a held title's id, {@code "@rank"} to
+     * show their rank instead, or {@code null} to go back to the heaviest held title.
+     */
+    void setDisplayedTitle(Player player, String choice);
+
+    /**
      * Whether any title {@code sender} holds grants {@code permission}.
      */
     boolean grants(CommandSender sender, String permission);

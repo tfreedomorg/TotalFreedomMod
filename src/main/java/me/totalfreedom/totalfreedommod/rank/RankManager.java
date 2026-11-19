@@ -59,6 +59,7 @@ import me.totalfreedom.api.display.Displayable;
 import me.totalfreedom.totalfreedommod.sql.PersistenceQueue;
 import me.totalfreedom.totalfreedommod.sql.adapter.RankRepository;
 import me.totalfreedom.totalfreedommod.player.PlayerData;
+import me.totalfreedom.totalfreedommod.title.Title;
 import me.totalfreedom.totalfreedommod.util.*;
 
 import com.google.common.base.Function;
@@ -598,25 +599,23 @@ public class RankManager extends FreedomService implements IRankManager
 
         final boolean admin = rank != null && registry.hasMarker(rank, RankRegistry.ADMIN_TAG);
 
-        // same precedence as getDisplay: a held title outranks the rank on screen
-        final String teamName;
+        // names take the colour of the rank; a displayed title goes in the team prefix
+        final String rankTeamName;
         final NamedTextColor color;
 
-        if (title != null)
+        if (admin)
         {
-            teamName = createTeamName(title.getWeight(), title.getId());
-            color = title.getColor();
-        }
-        else if (admin)
-        {
-            teamName = createTeamName(rank.getLevel(), rank.getId());
+            rankTeamName = createTeamName(rank.getLevel(), rank.getId());
             color = rank.getColor();
         }
         else
         {
-            teamName = DEFAULT_TEAM_NAME;
+            rankTeamName = DEFAULT_TEAM_NAME;
             color = NamedTextColor.WHITE;
         }
+
+        final int rankLevel = admin ? rank.getLevel() : 0;
+        final String teamName = title == null ? rankTeamName : createTitleTeamName(rankTeamName, rankLevel, title);
 
         if (currentTeam != null && !currentTeam.getName().equals(teamName))
             currentTeam.removeEntry(player.getName());
@@ -627,19 +626,65 @@ public class RankManager extends FreedomService implements IRankManager
             team = scoreboard.registerNewTeam(teamName);
 
         team.color(color);
-        team.prefix(Component.empty());
+        team.prefix(title == null ? Component.empty() : title.getColoredTag().append(Component.space()));
         team.addEntry(player.getName());
     }
 
     private static final String DEFAULT_TEAM_NAME = "zz_default";
 
-    private static String createTeamName(final int sortKey, final String id)
+    /**
+     * The tab list sorts teams by name. Rank teams start with {@code 1} so they follow every title
+     * team, which starts with {@code 0}, and the two digits after it put higher levels first.
+     */
+    private static String createTeamName(final int level, final String id)
     {
-        final String name = String.format("%02d_%s",
-                99 - Math.max(0, Math.min(99, sortKey)),
+        final String name = String.format("1%02d_%s",
+                sortSlot(level),
                 id.replaceAll("[^A-Za-z0-9_\\-]", "_"));
 
         return name.length() > 16 ? name.substring(0, 16) : name;
+    }
+
+    /**
+     * A team name for one rank and title pair. Titles order by weight, then by the holder's rank
+     * level, and a hash of the pair keeps each pair distinct within the 16 character limit.
+     */
+    private static String createTitleTeamName(final String rankTeamName, final int rankLevel, final ITitle title)
+    {
+        return String.format("0%02d%02d_%08x",
+                sortSlot(title.getWeight()),
+                sortSlot(rankLevel),
+                (rankTeamName + "/" + title.getId()).hashCode());
+    }
+
+    private static int sortSlot(final int value)
+    {
+        return 99 - Math.max(0, Math.min(99, value));
+    }
+
+    /**
+     * Orders players for listings: everyone displaying a title first, heaviest title first, then
+     * everyone displaying their rank, highest level first. Ties fall back to rank level and then
+     * name.
+     */
+    public Comparator<Player> byDisplayOrder()
+    {
+        return Comparator.comparing((Player player) -> !(getDisplay(player) instanceof Title))
+                         .thenComparing(Comparator.comparingInt(this::titleWeight).reversed())
+                         .thenComparing(Comparator.comparingInt(this::rankLevel).reversed())
+                         .thenComparing(Player::getName, String.CASE_INSENSITIVE_ORDER);
+    }
+
+    private int titleWeight(final Player player)
+    {
+        return getDisplay(player) instanceof Title title ? title.getWeight() : 0;
+    }
+
+    private int rankLevel(final Player player)
+    {
+        final CustomRank rank = getEffectiveRank(player);
+
+        return rank == null ? 0 : rank.getLevel();
     }
 
     public void updateAllPlayerTeams()
@@ -1268,8 +1313,10 @@ public class RankManager extends FreedomService implements IRankManager
                   .stream()
                   .filter(this::isAdmin)
                   .forEach(admin -> MessageUtils.send(admin,
-                          "<gray>[Verify] <white><player></white> joined on a staff record from an address it doesn't trust. If it's them, verify from console with <yellow>/saconfig add <player>",
-                          Placeholder.unparsed("player", player.getName())));
+                            "<gray>[Verify] <white><player></white> joined on a staff record from an address it doesn't trust. If it's them, verify from console with <yellow>/saconfig add <player></yellow>.",
+                            Placeholder.unparsed("player", player.getName())));
+
+            plugin.services().require(DiscordBridge.class).offerImpostorVerification(player);
             return;
         }
 

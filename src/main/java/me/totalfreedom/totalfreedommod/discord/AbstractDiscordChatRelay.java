@@ -2,6 +2,7 @@
 package me.totalfreedom.totalfreedommod.discord;
 
 import java.time.Duration;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -75,14 +76,6 @@ public abstract class AbstractDiscordChatRelay
             NamedTextColor.WHITE
     };
 
-    private static final List<String> DISPLAY_ROLE_PRIORITY = List.of(
-            "Exec",
-            "Dev",
-            "SrA",
-            "SA",
-            "Master Builder",
-            "Operator"
-    );
 
     /**
      * Resolved per send rather than captured at construction, so a reconnect that produces a new
@@ -267,32 +260,16 @@ public abstract class AbstractDiscordChatRelay
         return new DiscordRole("everyone", NamedTextColor.GRAY);
     }
 
-    private static Optional<String> displayRoleName(final String discordRoleName)
-    {
-        return switch (discordRoleName.trim().toLowerCase(Locale.ROOT))
-        {
-            case "exec", "executive" -> Optional.of("Exec");
-            case "dev", "developer" -> Optional.of("Dev");
-            case "sra", "senior admin" -> Optional.of("SrA");
-            case "sa", "super admin" -> Optional.of("SA");
-            case "master builder", "mb" -> Optional.of("Master Builder");
-            case "operator", "op" -> Optional.of("Operator");
-            default -> Optional.empty();
-        };
-    }
-
+    /**
+     * The member's highest role in the server's own role order, shown by its Discord name and
+     * color regardless of any rank or title they hold in game.
+     */
     private static DiscordRole pickRole(final List<Role> roles)
     {
-        return DISPLAY_ROLE_PRIORITY.stream()
-                .map(desired -> roles.stream()
-                        .filter(role -> displayRoleName(role.getName())
-                                .filter(desired::equals)
-                                .isPresent())
-                        .findFirst())
-                .flatMap(Optional::stream)
-                .findFirst()
+        return roles.stream()
+                .max(Comparator.comparingInt(Role::getRawPosition))
                 .map(role -> new DiscordRole(
-                        displayRoleName(role.getName()).orElseThrow(),
+                        role.getName(),
                         colorOf(role)
                                 .map(color -> closestMinecraftColor(color.getRGB() & 0xFFFFFF))
                                 .orElse(NamedTextColor.GRAY)))

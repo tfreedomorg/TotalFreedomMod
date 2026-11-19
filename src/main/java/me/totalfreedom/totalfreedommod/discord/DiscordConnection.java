@@ -59,7 +59,8 @@ public final class DiscordConnection
         subscription = Optional.of(DiscordClient.builder(token)
                                                 .build()
                                                 .gateway()
-                                                .setEnabledIntents(IntentSet.of(Intent.GUILD_MESSAGES,
+                                                .setEnabledIntents(IntentSet.of(Intent.GUILDS,
+                                                                                Intent.GUILD_MESSAGES,
                                                                                 Intent.MESSAGE_CONTENT,
                                                                                 Intent.DIRECT_MESSAGES))
                                                 .withGateway(handler::apply)

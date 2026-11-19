@@ -101,6 +101,11 @@ public class CommandBlocker extends FreedomService
             final String[] specParts = commandSpec.split("\\s+");
             String commandName = specParts[0];
 
+            // Keyed on the label as written in config (minus the first slash), not the resolved
+            // command name, so the node is always stable regardless of plugin load order and "//fill"
+            // stays distinct from "/fill".
+            final String bypassNode = String.format("tfm.blocker.bypass.%s", commandName);
+
             final List<PatternToken> patternTokens = new ArrayList<>();
             boolean malformed = false;
             for (int i = 1; i < specParts.length; i++)
@@ -136,7 +141,7 @@ public class CommandBlocker extends FreedomService
                 commandName = command.getName().toLowerCase();
             }
 
-            final CommandBlockerEntry blockedCommandEntry = new CommandBlockerEntry(rank, action, commandName, patternTokens, message);
+            final CommandBlockerEntry blockedCommandEntry = new CommandBlockerEntry(rank, action, commandName, patternTokens, message, bypassNode);
             registerEntry(commandName, blockedCommandEntry);
 
             Stream.concat(command != null ? command.getAliases().stream() : Stream.empty(),
@@ -352,8 +357,11 @@ public class CommandBlocker extends FreedomService
             return true;
         }
 
-        boolean bypassNegativeOneBlock = sender instanceof Player
-                && plugin.ranks().isAdmin((Player) sender);
+        // Admins may pass -1 to anything; others only to commands they hold the node for,
+        // keyed like the blocker bypass nodes (e.g. tfm.blocker.negative_one./limit for //limit -1).
+        final boolean bypassNegativeOneBlock = sender instanceof Player player
+                && (plugin.ranks().isAdmin(player)
+                || plugin.ranks().hasPermission(player, String.format("tfm.blocker.negative_one.%s", commandParts[0])));
 
         if (!bypassNegativeOneBlock)
         {
@@ -411,7 +419,8 @@ public class CommandBlocker extends FreedomService
             return false;
         }
 
-        if (!ignoreRank && match.getRank().hasPermission(sender))
+        if (!ignoreRank && (match.getRank().hasPermission(sender)
+                || plugin.ranks().hasPermission(sender, match.getBypassNode())))
         {
             return false;
         }
