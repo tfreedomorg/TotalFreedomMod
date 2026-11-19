@@ -8,6 +8,7 @@ import java.util.function.Function;
 import org.bukkit.event.Listener;
 
 import me.totalfreedom.api.FreedomAPI;
+import me.totalfreedom.api.framework.AbstractService;
 import me.totalfreedom.api.framework.IServiceManager;
 import me.totalfreedom.totalfreedommod.util.FLog;
 
@@ -61,8 +62,7 @@ public class ServiceManager implements IServiceManager
             }
             catch (Exception ex)
             {
-                FLog.error("Failed to start service: " + service.getClass().getName());
-                FLog.error(ex);
+                FLog.error("Failed to start service {}", service.getClass().getName(), ex);
             }
         }
     }
@@ -81,8 +81,7 @@ public class ServiceManager implements IServiceManager
             }
             catch (Exception ex)
             {
-                FLog.error("Failed to stop service: " + service.getClass().getName());
-                FLog.error(ex);
+                FLog.error("Failed to stop service {}", service.getClass().getName(), ex);
             }
         }
     }

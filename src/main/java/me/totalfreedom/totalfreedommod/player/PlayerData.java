@@ -67,8 +67,14 @@ public class PlayerData implements IPlayerData
 
     public static final int MAX_STRIKES = 3;
     public static final long AUTO_PURGE_TICKS = 5L * 60L * 20L;
+    /**
+     * Stored in {@code displayedTitle} to show the rank. Title ids are limited to
+     * {@code [a-z0-9_-]}.
+     */
+    public static final String DISPLAY_RANK = "@rank";
 
     private UUID uuid;
+
     private String username;
     private long firstJoinUnix;
     private long lastJoinUnix;
@@ -127,6 +133,12 @@ public class PlayerData implements IPlayerData
      * deleting a title simply stops it applying instead of stranding every holder.
      */
     private final Set<String> titles = Sets.newLinkedHashSet();
+
+    /**
+     * Which of the player's identities to show: a held title's id, {@link #DISPLAY_RANK} to show
+     * the rank underneath, or {@code null} to let the heaviest announced title win.
+     */
+    private String displayedTitle;
 
     private transient FreedomAPI plugin;
     private transient Player player;
@@ -411,6 +423,7 @@ public class PlayerData implements IPlayerData
         this.joinLeaveMessagesEnabled = cs.getBoolean("join_leave_messages", true);
         this.strikes = cs.getInt("strikes", 0);
         setTitles(cs.getStringList("titles"));
+        this.displayedTitle = cs.getString("displayed_title");
         this.savedTag = cs.getString("saved_tag");
         if (this.savedTag != null && this.savedTag.isEmpty())
         {
@@ -574,6 +587,16 @@ public class PlayerData implements IPlayerData
                     .map(String::toLowerCase)
                     .forEach(titles::add);
         }
+    }
+
+    public String getDisplayedTitle()
+    {
+        return displayedTitle;
+    }
+
+    public void setDisplayedTitle(String displayedTitle)
+    {
+        this.displayedTitle = displayedTitle == null || displayedTitle.isBlank() ? null : displayedTitle.toLowerCase();
     }
 
     /**

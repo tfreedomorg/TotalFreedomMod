@@ -305,10 +305,10 @@ public class LockupManager extends FreedomService
         }
         catch (IOException | JsonParseException ex)
         {
-            FLog.error(String.format("Could not read lockups.json: %s", ex.getMessage()));
+            FLog.error("Could not read lockups.json", ex);
         }
 
-        FLog.info(String.format("Loaded %d lockup(s).", lockups.size()));
+        FLog.info("Loaded {} lockup(s).", lockups.size());
     }
 
     private void save()
@@ -333,7 +333,7 @@ public class LockupManager extends FreedomService
         }
         catch (IOException ex)
         {
-            FLog.error(String.format("Could not save lockups.json: %s", ex.getMessage()));
+            FLog.error("Could not save lockups.json", ex);
         }
     }
 }

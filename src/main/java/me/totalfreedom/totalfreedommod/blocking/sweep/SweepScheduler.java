@@ -55,7 +55,7 @@ public class SweepScheduler extends FreedomService implements ISweepScheduler
         {
             activate(r);
         }
-        FLog.info("[SweepScheduler] active [budget=" + (DRAIN_BUDGET_NANOS / 1_000_000L) + "ms/tick]");
+        FLog.info("[SweepScheduler] active [budget={}ms/tick]", DRAIN_BUDGET_NANOS / 1_000_000L);
     }
 
     @Override

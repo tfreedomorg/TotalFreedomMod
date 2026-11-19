@@ -45,7 +45,7 @@ public final class AdapterFactory
     {
         DatabaseType type = properties.getDatabaseType();
 
-        FLog.info("Creating database adapter for type: " + type.name());
+        FLog.info("Creating database adapter for type {}", type.name());
 
         return switch (type)
         {

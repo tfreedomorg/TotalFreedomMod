@@ -2,6 +2,7 @@ package me.totalfreedom.api.display;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
 public interface Displayable
 {
@@ -21,19 +22,19 @@ public interface Displayable
     @Deprecated
     public default String getColoredNameLegacy()
     {
-        return me.totalfreedom.totalfreedommod.util.AdventureUtil.componentToLegacy(getColoredName());
+        return LegacyComponentSerializer.legacyAmpersand().serialize(getColoredName());
     }
 
     @Deprecated
     public default String getColoredTagLegacy()
     {
-        return me.totalfreedom.totalfreedommod.util.AdventureUtil.componentToLegacy(getColoredTag());
+        return LegacyComponentSerializer.legacyAmpersand().serialize(getColoredTag());
     }
 
     @Deprecated
     public default String getColoredLoginMessageLegacy()
     {
-        return me.totalfreedom.totalfreedommod.util.AdventureUtil.componentToLegacy(getColoredLoginMessage());
+        return LegacyComponentSerializer.legacyAmpersand().serialize(getColoredLoginMessage());
     }
 
 }

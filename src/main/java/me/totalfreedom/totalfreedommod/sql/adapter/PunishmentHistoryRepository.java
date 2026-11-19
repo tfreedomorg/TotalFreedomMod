@@ -1,4 +1,4 @@
-package me.totalfreedom.api.sql.adapter;
+package me.totalfreedom.totalfreedommod.sql.adapter;
 
 import me.totalfreedom.totalfreedommod.sql.PunishmentHistoryEntry;
 

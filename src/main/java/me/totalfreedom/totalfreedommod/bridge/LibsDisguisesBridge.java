@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.event.*;
@@ -136,7 +137,7 @@ public class LibsDisguisesBridge extends FreedomService
                                     if (params.length() > 0) params.append(", ");
                                     params.append(param.getSimpleName());
                                 }
-                                FLog.warn("  - " + method.getName() + "(" + params + ")");
+                                FLog.warn("  - {}({})", method.getName(), params);
                             }
                         }
                         FLog.warn("Expected methods: isDisguised(Entity), undisguiseToAll(Entity)");
@@ -166,8 +167,7 @@ public class LibsDisguisesBridge extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.error("Error initializing LibsDisguises bridge: " + ex.getMessage());
-            FLog.error(ex);
+            FLog.error("Failed to initialize LibsDisguises bridge", ex);
             return false;
         }
     }
@@ -206,8 +206,7 @@ public class LibsDisguisesBridge extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.error("Failed to register apply-time disguise checks: " + ex.getMessage());
-            FLog.error(ex);
+            FLog.error("Failed to register apply-time disguise checks", ex);
         }
         return false;
     }
@@ -239,10 +238,12 @@ public class LibsDisguisesBridge extends FreedomService
         final Object watcher = invokeNoArg(disguise, "getWatcher");
         final Object tablistName = invokeNoArg(watcher, "getTablistName");
 
-        final Optional<String> reason = disallowedDisguises.denyReason(
-            type instanceof Enum<?> constant ? constant.name() : null,
-            setOptions(watcher),
-            tablistName instanceof String name ? name : null);
+        final Optional<String> reason = isNonLivingDisguiseOnLivingEntity(event, type)
+            ? Optional.of("You cannot use non-living disguises.")
+            : disallowedDisguises.denyReason(
+                type instanceof Enum<?> constant ? constant.name() : null,
+                setOptions(watcher),
+                tablistName instanceof String name ? name : null);
 
         if (reason.isEmpty())
         {
@@ -256,8 +257,18 @@ public class LibsDisguisesBridge extends FreedomService
             FUtil.playerMsg(player, reason.get(), NamedTextColor.RED);
         }
 
-        FLog.info(String.format("Blocked disguise for %s: %s",
-            player != null ? player.getName() : "an entity", reason.get()));
+        FLog.info("Blocked disguise for {}: {}", player != null ? player.getName() : "an entity", reason.get());
+    }
+
+    /**
+     * A living entity shown as a non-living one (projectile, boat, falling block...) still
+     * broadcasts swing animations. The vanilla client casts the animation target to
+     * LivingEntity and disconnects every viewer with "Network Protocol Error".
+     */
+    private boolean isNonLivingDisguiseOnLivingEntity(final Event event, final Object type)
+    {
+        return invokeNoArg(event, "getEntity") instanceof LivingEntity
+            && Boolean.TRUE.equals(invokeNoArg(type, "isMisc"));
     }
 
     /**
@@ -362,8 +373,7 @@ public class LibsDisguisesBridge extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.error("Error checking if player is disguised: " + ex.getMessage());
-            FLog.error(ex);
+            FLog.error("Error checking if player is disguised", ex);
         }
 
         return null;
@@ -406,8 +416,7 @@ public class LibsDisguisesBridge extends FreedomService
         }
         catch (Exception ex)
         {
-            FLog.error("Error undisguising players: " + ex.getMessage());
-            FLog.error(ex);
+            FLog.error("Error undisguising players", ex);
         }
     }
 

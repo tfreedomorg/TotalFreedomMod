@@ -9,7 +9,7 @@ import reactor.core.publisher.Mono;
 
 import me.totalfreedom.totalfreedommod.sql.StatementHandler;
 import me.totalfreedom.totalfreedommod.sql.adapter.DatabaseAdapter;
-import me.totalfreedom.api.sql.adapter.MigrationRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.MigrationRepository;
 
 /**
  * All dialect differences are resolved through the {@link DatabaseAdapter} passed in.

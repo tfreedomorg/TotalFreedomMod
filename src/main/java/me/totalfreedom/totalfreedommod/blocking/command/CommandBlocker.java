@@ -83,7 +83,7 @@ public class CommandBlocker extends FreedomService
             final String[] parts = rawEntry.split(":");
             if (parts.length < 3 || parts.length > 4)
             {
-                FLog.warn("Invalid command blocker entry: " + rawEntry);
+                FLog.warn("Invalid command blocker entry: {}", rawEntry);
                 continue;
             }
 
@@ -94,12 +94,17 @@ public class CommandBlocker extends FreedomService
 
             if (rank == null || action == null || commandSpec == null || commandSpec.isEmpty())
             {
-                FLog.warn("Invalid command blocker entry: " + rawEntry);
+                FLog.warn("Invalid command blocker entry: {}", rawEntry);
                 continue;
             }
 
             final String[] specParts = commandSpec.split("\\s+");
             String commandName = specParts[0];
+
+            // Keyed on the label as written in config (minus the first slash), not the resolved
+            // command name, so the node is always stable regardless of plugin load order and "//fill"
+            // stays distinct from "/fill".
+            final String bypassNode = String.format("tfm.blocker.bypass.%s", commandName);
 
             final List<PatternToken> patternTokens = new ArrayList<>();
             boolean malformed = false;
@@ -113,7 +118,7 @@ public class CommandBlocker extends FreedomService
                 PatternToken token = PatternToken.of(specParts[i]);
                 if (token.type == TokenType.MULTI && i != specParts.length - 1)
                 {
-                    FLog.warn("Invalid command blocker entry (\"{*}\" may only appear as the last token): " + rawEntry);
+                    FLog.warn("Invalid command blocker entry (\"{*}\" may only appear as the last token): {}", rawEntry);
                     malformed = true;
                     break;
                 }
@@ -136,7 +141,7 @@ public class CommandBlocker extends FreedomService
                 commandName = command.getName().toLowerCase();
             }
 
-            final CommandBlockerEntry blockedCommandEntry = new CommandBlockerEntry(rank, action, commandName, patternTokens, message);
+            final CommandBlockerEntry blockedCommandEntry = new CommandBlockerEntry(rank, action, commandName, patternTokens, message, bypassNode);
             registerEntry(commandName, blockedCommandEntry);
 
             Stream.concat(command != null ? command.getAliases().stream() : Stream.empty(),
@@ -153,7 +158,7 @@ public class CommandBlocker extends FreedomService
             bucket.sort(MOST_SPECIFIC_FIRST);
         }
 
-        FLog.info("Loaded " + loadedCount + " blocked commands (" + (loadedCount - unknownCommands.size()) + " known).");
+        FLog.info("Loaded {} blocked commands ({} known).", loadedCount, loadedCount - unknownCommands.size());
     }
 
     private void registerEntry(String baseCommand, CommandBlockerEntry entry)
@@ -282,9 +287,8 @@ public class CommandBlocker extends FreedomService
 
         if (lastServerCommandBlockWarningTick == 0L || nowTick - lastServerCommandBlockWarningTick >= intervalTicks)
         {
-            FLog.warn("[TFM] Blocked " + blockedServerCommandsSinceLastWarning
-                    + " server-side command(s) from " + sender.getClass().getSimpleName()
-                    + " (\"" + sender.getName() + "\"). Last: " + rawCommand);
+            FLog.warn("[TFM] Blocked {} server-side command(s) from {} (\"{}\"). Last: {}",
+                    blockedServerCommandsSinceLastWarning, sender.getClass().getSimpleName(), sender.getName(), rawCommand);
 
             lastServerCommandBlockWarningTick = nowTick;
             blockedServerCommandsSinceLastWarning = 0L;
@@ -353,8 +357,11 @@ public class CommandBlocker extends FreedomService
             return true;
         }
 
-        boolean bypassNegativeOneBlock = sender instanceof Player
-                && plugin.ranks().isAdmin((Player) sender);
+        // Admins may pass -1 to anything; others only to commands they hold the node for,
+        // keyed like the blocker bypass nodes (e.g. tfm.blocker.negative_one./limit for //limit -1).
+        final boolean bypassNegativeOneBlock = sender instanceof Player player
+                && (plugin.ranks().isAdmin(player)
+                || plugin.ranks().hasPermission(player, String.format("tfm.blocker.negative_one.%s", commandParts[0])));
 
         if (!bypassNegativeOneBlock)
         {
@@ -412,7 +419,8 @@ public class CommandBlocker extends FreedomService
             return false;
         }
 
-        if (!ignoreRank && match.getRank().hasPermission(sender))
+        if (!ignoreRank && (match.getRank().hasPermission(sender)
+                || plugin.ranks().hasPermission(sender, match.getBypassNode())))
         {
             return false;
         }

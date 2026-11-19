@@ -30,7 +30,7 @@ public class SshHandshakeAuthenticator implements KeyboardInteractiveAuthenticat
 
         if (identity == null || identity.totpSecret() == null)
         {
-            FLog.warn("[SSH] Access denied — no TOTP secret configured for identity: " + identityId);
+            FLog.warn("[SSH] Access denied — no TOTP secret configured for identity: {}", identityId);
             return null;
         }
 
@@ -54,20 +54,20 @@ public class SshHandshakeAuthenticator implements KeyboardInteractiveAuthenticat
 
         if (identity == null || identity.totpSecret() == null)
         {
-            FLog.warn("[SSH] No TOTP secret configured for identity: " + identityId);
+            FLog.warn("[SSH] No TOTP secret configured for identity {}", identityId);
             return false;
         }
 
         if (!TotpUtil.verify(identity.totpSecret(), responses.get(0)))
         {
-            FLog.info("[SSH] TOTP verification failed for: " + identity.identifier());
+            FLog.info("[SSH] TOTP verification failed for {}", identity.identifier());
             return false;
         }
 
         session.setAttribute(SshDaemon.AUTH_METHOD_KEY, SshAuthMethod.KEY_TOKEN);
         identityStore.updateLastLogin(identityId);
 
-        FLog.info("[SSH] TOTP verified — session user: " + identity.identifier());
+        FLog.info("[SSH] TOTP verified — session user: {}", identity.identifier());
         return true;
     }
 }

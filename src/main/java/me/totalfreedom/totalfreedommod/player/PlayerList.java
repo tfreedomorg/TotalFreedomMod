@@ -21,6 +21,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import com.destroystokyo.paper.profile.PlayerProfile;
+
+import io.papermc.paper.connection.PlayerLoginConnection;
+import io.papermc.paper.event.connection.PlayerConnectionValidateLoginEvent;
+
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -28,7 +33,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 import net.kyori.adventure.text.Component;
@@ -40,7 +44,7 @@ import reactor.core.scheduler.Schedulers;
 import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.sql.PersistenceQueue;
-import me.totalfreedom.api.sql.adapter.PlayerRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.PlayerRepository;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FUtil;
 import me.totalfreedom.totalfreedommod.util.JsonUtil;
@@ -78,6 +82,13 @@ public class PlayerList extends FreedomService implements IPlayerList
      * while the player is online.
      */
     private final Map<UUID, PlayerData> staff = new ConcurrentHashMap<>();
+
+    /**
+     * Players whose SQL lookup threw. Their in-memory record may be a JSON fallback or a fresh one,
+     * so saving it would overwrite the real row.
+     */
+    private final Set<UUID> unverifiedUuids = ConcurrentHashMap.newKeySet();
+
     private final File configFolder;
     private final PersistenceQueue writes = new PersistenceQueue("player data");
 
@@ -226,7 +237,7 @@ public class PlayerList extends FreedomService implements IPlayerList
             }
             catch (Exception ex)
             {
-                FLog.warn("Failed to load all player data from SQL, falling back to JSON: " + ex.getMessage());
+                FLog.warn("Failed to load all player data from SQL, falling back to JSON", ex);
             }
         }
 
@@ -429,7 +440,7 @@ public class PlayerList extends FreedomService implements IPlayerList
         });
 
         dataMap.put(target.getUniqueId(), indexStaff(bind(record)));
-        FLog.info(String.format("Moving staff record %s from %s to %s.", target.getName(), previousUuid, target.getUniqueId()));
+        FLog.info("Moving staff record {} from {} to {}.", target.getName(), previousUuid, target.getUniqueId());
         moveRecord(record, previousUuid, Optional.empty());
 
         previousHolder.ifPresent(holder ->
@@ -516,24 +527,46 @@ public class PlayerList extends FreedomService implements IPlayerList
 
     /**
      * A login refused after pre-login (whitelist, full server, a kick from another plugin) never
-     * produces a quit, so the record pre-login cached would otherwise stay in {@link #dataMap}.
+     * produces a quit, so drop the record pre-login cached.
      */
     @EventHandler(priority = EventPriority.MONITOR)
-    public void onLogin(PlayerLoginEvent event)
+    public void onValidateLogin(PlayerConnectionValidateLoginEvent event)
     {
-        if (event.getResult() != PlayerLoginEvent.Result.ALLOWED)
-            dataMap.remove(event.getPlayer().getUniqueId());
+        if (event.isAllowed() || !(event.getConnection() instanceof PlayerLoginConnection login))
+            return;
+
+        // The profile is null until authentication finishes, and a refusal can come before that.
+        Optional.ofNullable(login.getAuthenticatedProfile())
+                .map(PlayerProfile::getId)
+                .ifPresent(this::releasePlayer);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerQuit(PlayerQuitEvent event)
     {
-        final PlayerData data = dataMap.remove(event.getPlayer().getUniqueId());
+        final UUID uuid = event.getPlayer().getUniqueId();
 
-        if (data != null && plugin.isEnabled())
+        if (!plugin.isEnabled())
         {
-            saveOne(data);
+            dataMap.remove(uuid);
+            return;
         }
+
+        server.getScheduler().runTask(plugin, () -> releasePlayer(uuid));
+    }
+
+    /**
+     * Drops and saves a player's cached record, unless a newer session for the same account is
+     * online by now.
+     */
+    private void releasePlayer(final UUID uuid)
+    {
+        if (server.getPlayer(uuid) != null)
+            return;
+
+        Optional.ofNullable(dataMap.remove(uuid))
+                .ifPresent(this::saveOne);
+        unverifiedUuids.remove(uuid);
     }
 
     protected File getConfigFile(UUID uuid)
@@ -580,7 +613,7 @@ public class PlayerList extends FreedomService implements IPlayerList
         {
             final UUID previousUuid = data.getUuid();
             data.setUuid(uuid);
-            FLog.info(String.format("Moving player data for %s from %s to %s.", username, previousUuid, uuid));
+            FLog.info("Moving player data for {} from {} to {}.", username, previousUuid, uuid);
             moveRecord(data, previousUuid, Optional.of(legacyFile));
         });
 
@@ -597,8 +630,8 @@ public class PlayerList extends FreedomService implements IPlayerList
         if (!data.isStaff() || data.getUuid().equals(uuid))
             return true;
 
-        FLog.warn(String.format("%s joined with the name on staff record %s but a different UUID, so it wasn't handed over. If it's the same admin, run /saconfig rekey %s %s from console.",
-                username, data.getUuid(), data.getUsername(), username));
+        FLog.warn("{} joined with the name on staff record {} but a different UUID, so it wasn't handed over. If it's the same admin, run /saconfig rekey {} {} from console.",
+                username, data.getUuid(), data.getUsername(), username);
         return false;
     }
 
@@ -628,7 +661,7 @@ public class PlayerList extends FreedomService implements IPlayerList
             }
             catch (Exception ex)
             {
-                FLog.warn("Failed to look up player data for " + username + " in SQL, falling back to JSON: " + ex.getMessage());
+                FLog.warn("Failed to look up player data for {} in SQL, falling back to JSON", username, ex);
             }
         }
 
@@ -649,11 +682,14 @@ public class PlayerList extends FreedomService implements IPlayerList
             final PlayerRepository repo = plugin.database().getPlayerRepository();
             reconcileFromJsonIfNewer(uuid, repo);
 
-            return repo.findByUuid(uuid).orElse(null);
+            final PlayerData found = repo.findByUuid(uuid).orElse(null);
+            unverifiedUuids.remove(uuid);
+            return found;
         }
         catch (Exception ex)
         {
-            FLog.warn("Failed to load player data for " + uuid + " from SQL, falling back to JSON: " + ex.getMessage());
+            unverifiedUuids.add(uuid);
+            FLog.warn("Failed to load player data for {} from SQL, falling back to JSON", uuid, ex);
             return null;
         }
     }
@@ -682,12 +718,12 @@ public class PlayerList extends FreedomService implements IPlayerList
                 return;
             }
 
-            FLog.info(jsonFile.getName() + " is newer than the database; re-importing player data for " + jsonData.getUsername() + " from it.");
+            FLog.info("{} is newer than the database; re-importing player data for {} from it.", jsonFile.getName(), jsonData.getUsername());
             repo.saveOrUpdate(jsonData);
         }
         catch (Exception ex)
         {
-            FLog.warn("Failed to reconcile player data for " + uuid + " into the database: " + ex.getMessage());
+            FLog.warn("Failed to reconcile player data for {} into the database", uuid, ex);
         }
     }
 
@@ -703,7 +739,7 @@ public class PlayerList extends FreedomService implements IPlayerList
 
         if (data == null || !data.isValid())
         {
-            FLog.warn("Could not load player data entry: " + uuid + ". Entry is not valid!");
+            FLog.warn("Could not load player data entry: {}. Entry is not valid!", uuid);
             configFile.delete();
             return null;
         }
@@ -735,7 +771,7 @@ public class PlayerList extends FreedomService implements IPlayerList
         }
         catch (Exception ex)
         {
-            FLog.error("Could not read player data from " + file.getName() + ": " + ex.getMessage());
+            FLog.error("Could not read player data from {}", file.getName(), ex);
             return null;
         }
     }
@@ -764,6 +800,12 @@ public class PlayerList extends FreedomService implements IPlayerList
      */
     private void saveOne(final PlayerData data)
     {
+        if (unverifiedUuids.contains(data.getUuid()))
+        {
+            FLog.warn("Not saving player data for {}: its SQL lookup failed, so the record is unverified.", data.getUsername());
+            return;
+        }
+
         indexStaff(data);
 
         if (!usingSql())
@@ -775,9 +817,7 @@ public class PlayerList extends FreedomService implements IPlayerList
         writes.enqueue(plugin.database().getPlayerRepository().save(data)
                 .onErrorResume(ex ->
                 {
-                    FLog.error(String.format("Could not save player data for %s to SQL: %s",
-                            data.getUsername(), ex.getMessage()));
-                    FLog.error(ex);
+                    FLog.error("Could not save player data for {} to SQL", data.getUsername(), ex);
                     return Mono.empty();
                 })
                 .then(writeJsonAsync(data))
@@ -813,7 +853,7 @@ public class PlayerList extends FreedomService implements IPlayerList
                 .then(jsonMove)
                 .onErrorResume(ex ->
                 {
-                    FLog.error(String.format("Could not move player data for %s: %s", data.getUsername(), ex.getMessage()));
+                    FLog.error("Could not move player data for {}", data.getUsername(), ex);
                     return Mono.empty();
                 })
                 .then());
@@ -838,8 +878,7 @@ public class PlayerList extends FreedomService implements IPlayerList
         }
         catch (IOException ex)
         {
-            FLog.error("Could not save player data for " + data.getUsername());
-            FLog.error(ex);
+            FLog.error("Could not save player data for {}", data.getUsername(), ex);
             return false;
         }
     }
@@ -850,7 +889,7 @@ public class PlayerList extends FreedomService implements IPlayerList
      */
     private PlayerData newRecord(UUID uuid, String username, String ip)
     {
-        FLog.info(String.format("Creating new player data entry for %s", username));
+        FLog.info("Creating new player data entry for {}", username);
 
         final long unix = FUtil.getUnixTime();
         final PlayerData data = new PlayerData(username);
@@ -947,7 +986,7 @@ public class PlayerList extends FreedomService implements IPlayerList
               .forEach(data -> staff.put(data.getUuid(), data));
         dataMap.values().forEach(this::indexStaff);
 
-        FLog.info(String.format("Loaded %d staff record(s) from JSON.", staff.size()));
+        FLog.info("Loaded {} staff record(s) from JSON.", staff.size());
         warnSharedStaffNames();
     }
 
@@ -966,7 +1005,7 @@ public class PlayerList extends FreedomService implements IPlayerList
                         .forEach(data -> staff.put(data.getUuid(), data));
                     dataMap.values().forEach(this::indexStaff);
 
-                    FLog.info(String.format("Loaded %d staff record(s) from SQL.", staff.size()));
+                    FLog.info("Loaded {} staff record(s) from SQL.", staff.size());
                     warnSharedStaffNames();
                     staffFromSql = true;
                     cleanUpAfterSqlLoad();
@@ -986,10 +1025,10 @@ public class PlayerList extends FreedomService implements IPlayerList
              .values()
              .stream()
              .filter(records -> records.size() > 1)
-             .forEach(records -> FLog.warn(String.format("%d staff records share the name %s: %s. Lookups by name pick the active one that joined last; move the right one with /saconfig rekey.",
+             .forEach(records -> FLog.warn("{} staff records share the name {}: {}. Lookups by name pick the active one that joined last; move the right one with /saconfig rekey.",
                      records.size(), records.getFirst().getUsername(), records.stream()
-                                                                          .map(data -> String.format("%s (%s)", data.getUuid(), data.isActiveStaff() ? "active" : "inactive"))
-                                                                          .collect(Collectors.joining(", ")))));
+                             .map(data -> String.format("%s (%s)", data.getUuid(), data.isActiveStaff() ? "active" : "inactive"))
+                             .collect(Collectors.joining(", "))));
     }
 
     /**

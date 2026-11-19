@@ -9,8 +9,6 @@ import java.util.Set;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import me.totalfreedom.totalfreedommod.title.Title;
-
 public interface ITitleManager
 {
     /**
@@ -19,14 +17,14 @@ public interface ITitleManager
      */
     void loadTitles();
 
-    Title getTitle(String id);
+    ITitle getTitle(String id);
 
-    Map<String, Title> getTitles();
+    Map<String, ? extends ITitle> getTitles();
 
     /**
      * All titles ordered for display, heaviest first.
      */
-    List<Title> getTitlesSorted();
+    List<? extends ITitle> getTitlesSorted();
 
     boolean hasTitle(String id);
 
@@ -34,18 +32,24 @@ public interface ITitleManager
      * The titles {@code player} actually holds, skipping any id that no longer resolves so that a
      * deleted title simply stops applying rather than breaking every lookup for its holders.
      */
-    List<Title> getHeldTitles(Player player);
+    List<? extends ITitle> getHeldTitles(Player player);
 
     /**
      * Resolves a set of stored ids into titles, ordered for display.
      */
-    List<Title> resolve(Collection<String> ids);
+    List<? extends ITitle> resolve(Collection<String> ids);
 
     /**
      * The title that should represent {@code player} on screen, or {@code null} when they hold
      * none. The heaviest held title wins.
      */
-    Title getDisplayTitle(Player player);
+    ITitle getDisplayTitle(Player player);
+
+    /**
+     * Records which identity {@code player} wants shown: a held title's id, {@code "@rank"} to
+     * show their rank instead, or {@code null} to go back to the heaviest held title.
+     */
+    void setDisplayedTitle(Player player, String choice);
 
     /**
      * Whether any title {@code sender} holds grants {@code permission}.
@@ -63,10 +67,6 @@ public interface ITitleManager
      * Revokes a title from a player. Returns false when they did not hold it.
      */
     boolean revokeTitle(Player player, String titleId);
-
-    void setTitle(Title title);
-
-    boolean removeTitle(String id);
 
     /**
      * Queue a write of every title to SQL, followed by a refresh of the JSON snapshot. Falls back
@@ -90,5 +90,5 @@ public interface ITitleManager
     /**
      * The title filling a given id, wrapped for callers that would rather not null-check.
      */
-    Optional<Title> find(String id);
+    Optional<ITitle> find(String id);
 }

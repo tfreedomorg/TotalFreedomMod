@@ -62,7 +62,7 @@ public class BlockBlocker extends FreedomService
             {
                 if (ConfigEntry.ALLOW_LAVA_PLACE.getBoolean())
                 {
-                    FLog.info(String.format("%s placed lava @ %s", player.getName(), FUtil.formatLocation(event.getBlock().getLocation())));
+                    FLog.info("{} placed lava @ {}", player.getName(), FUtil.formatLocation(event.getBlock().getLocation()));
 
                     player.getInventory().clear(player.getInventory().getHeldItemSlot());
                 }
@@ -79,7 +79,7 @@ public class BlockBlocker extends FreedomService
             {
                 if (ConfigEntry.ALLOW_WATER_PLACE.getBoolean())
                 {
-                    FLog.info(String.format("%s placed water @ %s", player.getName(), FUtil.formatLocation(event.getBlock().getLocation())));
+                    FLog.info("{} placed water @ {}", player.getName(), FUtil.formatLocation(event.getBlock().getLocation()));
 
                     player.getInventory().clear(player.getInventory().getHeldItemSlot());
                 }
@@ -96,7 +96,7 @@ public class BlockBlocker extends FreedomService
             {
                 if (ConfigEntry.ALLOW_FIRE_PLACE.getBoolean())
                 {
-                    FLog.info(String.format("%s placed fire @ %s", player.getName(), FUtil.formatLocation(event.getBlock().getLocation())));
+                    FLog.info("{} placed fire @ {}", player.getName(), FUtil.formatLocation(event.getBlock().getLocation()));
 
                     player.getInventory().clear(player.getInventory().getHeldItemSlot());
                 }
@@ -113,7 +113,7 @@ public class BlockBlocker extends FreedomService
             {
                 if (ConfigEntry.ALLOW_EXPLOSIONS.getBoolean())
                 {
-                    FLog.info(String.format("%s placed TNT @ %s", player.getName(), FUtil.formatLocation(event.getBlock().getLocation())));
+                    FLog.info("{} placed TNT @ {}", player.getName(), FUtil.formatLocation(event.getBlock().getLocation()));
 
                     player.getInventory().clear(player.getInventory().getHeldItemSlot());
                 }

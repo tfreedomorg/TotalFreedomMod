@@ -11,7 +11,7 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
 import me.totalfreedom.api.FreedomAPI;
-import me.totalfreedom.api.sql.adapter.PunishmentHistoryRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.PunishmentHistoryRepository;
 import me.totalfreedom.totalfreedommod.cmd.MessageUtils;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.sql.PunishmentHistoryEntry;
@@ -82,7 +82,7 @@ public final class PunishmentPoints
             return;
 
         final String name = Optional.ofNullable(recorded.targetName()).orElse(recorded.targetUuid());
-        FLog.warn(String.format("%s has reached %d punishment points; a senior admin should review them for a permanent ban.", name, now));
+        FLog.warn("{} has reached {} punishment points; a senior admin should review them for a permanent ban.", name, now);
 
         plugin.getServer().getScheduler().runTask(plugin, () -> plugin.getServer().getOnlinePlayers()
                 .stream()

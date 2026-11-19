@@ -14,7 +14,6 @@ import reactor.core.scheduler.Schedulers;
 import me.totalfreedom.api.FreedomAPI;
 import me.totalfreedom.api.sql.DatabaseType;
 import me.totalfreedom.api.sql.IFreedomDatabase;
-import me.totalfreedom.api.sql.adapter.*;
 import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.banning.PunishmentPoints;
 import me.totalfreedom.totalfreedommod.sql.adapter.*;
@@ -100,16 +99,14 @@ public class FreedomDatabase extends FreedomService implements IFreedomDatabase
             {
                 adapter = built;
                 initialized = true;
-                FLog.info(String.format("Database initialized successfully (%s)", dbType.getName()));
+                FLog.info("Database initialized successfully ({})", dbType.getName());
             })
             // Migrations have to finish before any domain reads SQL, so they ride this
             // chain rather than registering as another ready callback.
             .then(Mono.defer(() -> new YamlMigrationService(plugin, this).runMigrations()))
             .subscribe(
                     ignored -> {},
-                    ex -> FLog.error(String.format(
-                            "Failed to initialize database, every domain stays on its JSON fallback: %s",
-                            ex.getMessage())),
+                    ex -> FLog.error("Failed to initialize database, every domain stays on its JSON fallback", ex),
                     () -> sync("FreedomDatabase/ready", this::fireReady));
     }
 
@@ -143,7 +140,7 @@ public class FreedomDatabase extends FreedomService implements IFreedomDatabase
                         result -> sync(label, () -> apply.accept(result)),
                         ex ->
                         {
-                            FLog.warn(String.format("%s failed: %s", label, ex.getMessage()));
+                            FLog.warn("{} failed", label, ex);
                             sync(label, onFailure);
                         });
     }
@@ -397,7 +394,7 @@ public class FreedomDatabase extends FreedomService implements IFreedomDatabase
                 }
                 catch (SQLException | IllegalStateException ex)
                 {
-                    FLog.warn("Failed to record punishment history: " + ex.getMessage());
+                    FLog.warn("Failed to record punishment history", ex);
                 }
             }
         });

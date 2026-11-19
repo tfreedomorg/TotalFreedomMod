@@ -62,7 +62,7 @@ final class LegacyStaffJsonMigration
         final Optional<JsonObject> admins = readObject(adminsFile);
         if (admins.isEmpty())
         {
-            FLog.warn(String.format("Could not read %s; leaving it in place and moving no admins from it.", ADMINS_FILE));
+            FLog.warn("Could not read {}; leaving it in place and moving no admins from it.", ADMINS_FILE);
             return;
         }
 
@@ -87,7 +87,7 @@ final class LegacyStaffJsonMigration
             final Optional<LegacyAdmin> admin = toLegacyAdmin(entry.getKey(), entry.getValue().getAsJsonObject(), unconfirmedNames);
             if (admin.isEmpty())
             {
-                FLog.warn(String.format("Skipping admin '%s' in %s: no name or rank.", entry.getKey(), ADMINS_FILE));
+                FLog.warn("Skipping admin '{}' in {}: no name or rank.", entry.getKey(), ADMINS_FILE);
                 continue;
             }
 
@@ -99,12 +99,12 @@ final class LegacyStaffJsonMigration
         if (linksFile.exists())
             renameAside(linksFile);
 
-        FLog.info(String.format("Moved %d admin(s) from %s onto their player data; the old file is kept as %s%s.",
-                moved, ADMINS_FILE, ADMINS_FILE, MIGRATED_SUFFIX));
+        FLog.info("Moved {} admin(s) from {} onto their player data; the old file is kept as {}{}.",
+                moved, ADMINS_FILE, ADMINS_FILE, MIGRATED_SUFFIX);
 
         if (!unconfirmedNames.isEmpty())
-            FLog.warn(String.format("Couldn't confirm how these admins capitalise their names: %s. Any that are wrong won't be recognised on join; move them with /saconfig rekey <name> <player> once they're online.",
-                    String.join(", ", unconfirmedNames)));
+            FLog.warn("Couldn't confirm how these admins capitalise their names: {}. Any that are wrong won't be recognised on join; move them with /saconfig rekey <name> <player> once they're online.",
+                    String.join(", ", unconfirmedNames));
     }
 
     /**
@@ -149,7 +149,7 @@ final class LegacyStaffJsonMigration
 
         if (!data.isValid())
         {
-            FLog.warn(String.format("Skipping admin '%s': their record would be missing details (no stored address?).", admin.username()));
+            FLog.warn("Skipping admin '{}': their record would be missing details (no stored address?).", admin.username());
             return false;
         }
 
@@ -231,7 +231,7 @@ final class LegacyStaffJsonMigration
         }
         catch (IOException | RuntimeException ex)
         {
-            FLog.warn(String.format("Could not read %s: %s", file.getName(), ex.getMessage()));
+            FLog.warn("Could not read {}", file.getName(), ex);
             return Optional.empty();
         }
     }
@@ -240,6 +240,6 @@ final class LegacyStaffJsonMigration
     {
         final File target = new File(file.getParentFile(), file.getName() + MIGRATED_SUFFIX);
         if (!file.renameTo(target))
-            FLog.warn(String.format("Could not rename %s to %s; it will be read again next start.", file.getName(), target.getName()));
+            FLog.warn("Could not rename {} to {}; it will be read again next start.", file.getName(), target.getName());
     }
 }

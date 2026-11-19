@@ -17,7 +17,7 @@ public class TFMLibraryLoader implements PluginLoader
 {
 
     private static final String[] LIBRARIES = {
-            "com.discord4j:discord4j-core:3.3.2",
+            "com.discord4j:discord4j-core:3.3.3",
             "org.apache.sshd:sshd-core:2.17.1",
             "net.i2p.crypto:eddsa:0.3.0",
             "org.postgresql:postgresql:42.7.7",

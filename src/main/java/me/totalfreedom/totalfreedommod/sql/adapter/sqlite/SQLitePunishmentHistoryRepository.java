@@ -2,7 +2,7 @@ package me.totalfreedom.totalfreedommod.sql.adapter.sqlite;
 
 import me.totalfreedom.totalfreedommod.sql.PunishmentHistoryEntry;
 import me.totalfreedom.totalfreedommod.sql.StatementHandler;
-import me.totalfreedom.api.sql.adapter.PunishmentHistoryRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.PunishmentHistoryRepository;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;

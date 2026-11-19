@@ -165,8 +165,8 @@ public class MovementValidator extends FreedomService
         final World world = loc != null ? loc.getWorld() : event.getPlayer().getWorld();
         event.getPlayer().setRespawnLocation(world.getSpawnLocation(), true);
         event.getPlayer().teleport(world.getSpawnLocation()); // It doesn't actually teleport the player, so we have to do it manually.
-        FLog.warn("[MovementValidator] " + event.getPlayer().getName()
-                + " joined out of bounds; relocated to " + world.getName() + " spawn.");
+        FLog.warn("[MovementValidator] {} joined out of bounds; relocated to {} spawn.",
+                event.getPlayer().getName(), world.getName());
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -198,8 +198,7 @@ public class MovementValidator extends FreedomService
         }
         catch (Throwable t)
         {
-            FLog.warn("[MovementValidator] Failed to apply world border to "
-                    + world.getName() + ": " + t.getMessage());
+            FLog.warn("[MovementValidator] Failed to apply world border to {}", world.getName(), t);
         }
     }
 

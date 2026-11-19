@@ -10,7 +10,6 @@ import org.bukkit.Bukkit;
 import me.totalfreedom.api.FreedomAPI;
 import me.totalfreedom.totalfreedommod.sql.ConnectionHandler;
 import me.totalfreedom.totalfreedommod.sql.StatementHandler;
-import me.totalfreedom.api.sql.adapter.*;
 import me.totalfreedom.totalfreedommod.sql.adapter.*;
 import me.totalfreedom.totalfreedommod.sql.adapter.generic.*;
 import me.totalfreedom.totalfreedommod.sql.adapter.sqlite.SQLitePunishmentHistoryRepository;
@@ -403,11 +402,13 @@ public class MySQLAdapter extends DatabaseAdapter
                 `discord_identifier` VARCHAR(8),
                 `trusted_ips` TEXT,
                 `titles` TEXT,
+                `displayed_title` TEXT,
                 `updated_at` DATETIME NOT NULL DEFAULT NOW()
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """;
         statementHandler.executeUpdate(sql);
         addColumnIfMissing("player_data", "trusted_ips", "TEXT");
+        addColumnIfMissing("player_data", "displayed_title", "TEXT");
     }
 
     /**
@@ -422,6 +423,7 @@ public class MySQLAdapter extends DatabaseAdapter
 
         addColumnIfMissing("players", "updated_at", "DATETIME NOT NULL DEFAULT NOW()");
         addColumnIfMissing("players", "titles", "TEXT");
+        addColumnIfMissing("players", "displayed_title", "TEXT");
         addColumnIfMissing("players", "potion_spy_mode", "VARCHAR(16) NOT NULL DEFAULT 'off'");
         addColumnIfMissing("players", "command_spy_alert_sound", "VARCHAR(128) NOT NULL DEFAULT 'entity.ender_dragon.growl'");
         addColumnIfMissing("players", "command_spy_alert_regex", "TEXT");

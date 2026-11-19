@@ -1,6 +1,7 @@
 package me.totalfreedom.totalfreedommod.title;
 
 import me.totalfreedom.api.FreedomAPI;
+import me.totalfreedom.api.title.ITitle;
 import me.totalfreedom.api.title.ITitleManager;
 
 import java.io.File;
@@ -29,7 +30,8 @@ import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.api.display.Displayable;
 import me.totalfreedom.totalfreedommod.player.PlayerData;
 import me.totalfreedom.totalfreedommod.sql.PersistenceQueue;
-import me.totalfreedom.api.sql.adapter.TitleRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.TitleRepository;
+import me.totalfreedom.totalfreedommod.tablist.TabList;
 import me.totalfreedom.totalfreedommod.util.*;
 
 import com.google.common.collect.Maps;
@@ -161,15 +163,45 @@ public class TitleManager extends FreedomService implements ITitleManager
     }
 
     /**
-     * The title that should represent {@code player} on screen, or {@code null} when they hold
-     * none. The heaviest held title wins; see {@link Title#getWeight()}.
+     * The title that should represent {@code player} on screen, or {@code null} when the rank
+     * should be shown instead.
+     * <p>
+     * A title the player picked wins, as does their choice of the rank. When nothing is picked, or
+     * the pick has been revoked, the heaviest announced title is used; see
+     * {@link Title#getWeight()}.
      */
     public Title getDisplayTitle(Player player)
     {
-        return getHeldTitles(player).stream()
-                                    .filter(Title::isAnnounce)
-                                    .findFirst()
-                                    .orElse(null);
+        final PlayerData data = plugin.players().getData(player);
+        final String picked = data == null ? null : data.getDisplayedTitle();
+
+        if (PlayerData.DISPLAY_RANK.equals(picked))
+            return null;
+
+        final List<Title> held = getHeldTitles(player);
+
+        return held.stream()
+                   .filter(title -> title.getId().equals(picked))
+                   .findFirst()
+                   .or(() -> held.stream()
+                                 .filter(Title::isAnnounce)
+                                 .findFirst())
+                   .orElse(null);
+    }
+
+    /**
+     * Records which identity {@code player} wants shown: a held title's id, {@link
+     * PlayerData#DISPLAY_RANK}, or {@code null} to go back to the heaviest title.
+     */
+    public void setDisplayedTitle(Player player, String choice)
+    {
+        final PlayerData data = plugin.players().getData(player);
+        if (data == null)
+            return;
+
+        data.setDisplayedTitle(choice);
+        plugin.players().saveData(data);
+        refreshDisplay(player);
     }
 
     // ========================================================================
@@ -229,6 +261,16 @@ public class TitleManager extends FreedomService implements ITitleManager
     }
 
     /**
+     * Rebuilds every online player's scoreboard team, so a changed tag or colour reaches nametags
+     * and the tab list.
+     */
+    private void refreshAllTeams()
+    {
+        if (plugin.ranks() != null)
+            plugin.ranks().updateAllPlayerTeams();
+    }
+
+    /**
      * Re-applies the player's tag after their titles changed.
      * <p>
      * A tag the player set by hand is left alone: they chose it deliberately, and having a title
@@ -240,6 +282,7 @@ public class TitleManager extends FreedomService implements ITitleManager
             return;
 
         plugin.ranks().updatePlayerTeam(player);
+        player.updateCommands();
 
         // A title can gate access to a managed world, and that check is cached per player for 30s.
         // Drop the cache now so a grant or revoke takes effect immediately rather than on the next sweep.
@@ -258,6 +301,8 @@ public class TitleManager extends FreedomService implements ITitleManager
             plugin.players().getData(player)
                      .setTag(AdventureUtil.componentToLegacySection(display.getColoredTag()));
         }
+
+        plugin.services().get(TabList.class).ifPresent(tabList -> tabList.refresh(player));
     }
 
     // ========================================================================
@@ -268,6 +313,7 @@ public class TitleManager extends FreedomService implements ITitleManager
     {
         titles.put(title.getId(), title);
         saveTitles();
+        refreshAllTeams();
     }
 
     public boolean removeTitle(String id)
@@ -287,14 +333,14 @@ public class TitleManager extends FreedomService implements ITitleManager
                     .deleteAsync(removed.getId())
                     .onErrorResume(ex ->
                     {
-                        FLog.error(String.format("Could not delete title %s from SQL: %s",
-                                removed.getId(), ex.getMessage()));
+                        FLog.error("Could not delete title {} from SQL", removed.getId(), ex);
                         return Mono.empty();
                     })
                     .then());
         }
 
         saveTitles();
+        refreshAllTeams();
 
         return true;
     }
@@ -331,7 +377,10 @@ public class TitleManager extends FreedomService implements ITitleManager
 
         titles.clear();
         titles.putAll(loaded);
-        FLog.info(String.format("Loaded %d titles from SQL database.", titles.size()));
+        FLog.info("Loaded {} titles from SQL database.", titles.size());
+        refreshAllTeams();
+        FLog.info("Loaded {} titles.", titles.size());
+        refreshAllTeams();
 
         reconcileFromJsonIfNewer(repo);
     }
@@ -357,7 +406,7 @@ public class TitleManager extends FreedomService implements ITitleManager
         }
         catch (IOException ex)
         {
-            FLog.warn(String.format("Failed to read %s: %s", TITLES_FILENAME, ex.getMessage()));
+            FLog.warn("Failed to read {}", TITLES_FILENAME, ex);
             return;
         }
 
@@ -378,8 +427,8 @@ public class TitleManager extends FreedomService implements ITitleManager
                 .filter(Boolean::booleanValue)
                 .flatMap(ignored ->
                 {
-                    FLog.info(String.format("%s is newer than the database; rebuilding it from the file's %d title(s).",
-                            TITLES_FILENAME, jsonTitles.size()));
+                    FLog.info("{} is newer than the database; rebuilding it from the file's {} title(s).",
+                            TITLES_FILENAME, jsonTitles.size());
                     return repo.deleteAll()
                                .thenMany(Flux.fromIterable(jsonTitles.values())
                                              .concatMap(repo::save))
@@ -387,8 +436,7 @@ public class TitleManager extends FreedomService implements ITitleManager
                 })
                 .onErrorResume(ex ->
                 {
-                    FLog.warn(String.format("Failed to reconcile %s into the database: %s",
-                            TITLES_FILENAME, ex.getMessage()));
+                    FLog.warn("Failed to reconcile {} into the database", TITLES_FILENAME, ex);
                     return Mono.empty();
                 })
                 .then());
@@ -398,6 +446,7 @@ public class TitleManager extends FreedomService implements ITitleManager
     {
         titles.clear();
         titles.putAll(jsonTitles);
+        refreshAllTeams();
     }
 
     private void loadFromJsonOrDefaults()
@@ -424,18 +473,17 @@ public class TitleManager extends FreedomService implements ITitleManager
         }
         catch (IllegalArgumentException ex)
         {
-            FLog.error(String.format("No bundled %s to install: %s", TITLES_FILENAME, ex.getMessage()));
+            FLog.error("No bundled {} to install", TITLES_FILENAME, ex);
             return;
         }
 
         if (!titlesFile.exists())
         {
-            FLog.error(String.format("Could not install a default %s; no titles will be available.",
-                    TITLES_FILENAME));
+            FLog.error("Could not install a default {}; no titles will be available.", TITLES_FILENAME);
             return;
         }
 
-        FLog.info(String.format("Installed the default %s.", TITLES_FILENAME));
+        FLog.info("Installed the default {}.", TITLES_FILENAME);
         loadFromJson();
     }
 
@@ -449,10 +497,11 @@ public class TitleManager extends FreedomService implements ITitleManager
         }
         catch (IOException ex)
         {
-            FLog.error(String.format("Could not read %s: %s", TITLES_FILENAME, ex.getMessage()));
+            FLog.error("Could not read {}: {}", TITLES_FILENAME, ex);
         }
 
-        FLog.info(String.format("Loaded %d titles.", titles.size()));
+        FLog.info("Loaded {} titles.", titles.size());
+        refreshAllTeams();
     }
 
     private Map<String, Title> readJsonTitles() throws IOException
@@ -506,8 +555,7 @@ public class TitleManager extends FreedomService implements ITitleManager
                 .concatMap(title -> repo.save(title)
                         .onErrorResume(ex ->
                         {
-                            FLog.error(String.format("Could not save title %s to SQL: %s",
-                                    title.getId(), ex.getMessage()));
+                            FLog.error("Could not save title {} to SQL", title.getId(), ex);
                             return Mono.empty();
                         }))
                 .then(writeJsonAsync()));
@@ -539,7 +587,7 @@ public class TitleManager extends FreedomService implements ITitleManager
         }
         catch (IOException ex)
         {
-            FLog.error(String.format("Could not save %s: %s", TITLES_FILENAME, ex.getMessage()));
+            FLog.error("Could not save {}", TITLES_FILENAME, ex);
         }
     }
 
@@ -564,7 +612,7 @@ public class TitleManager extends FreedomService implements ITitleManager
     /**
      * The title filling a given id, wrapped for callers that would rather not null-check.
      */
-    public Optional<Title> find(String id)
+    public Optional<ITitle> find(String id)
     {
         return Optional.ofNullable(getTitle(id));
     }

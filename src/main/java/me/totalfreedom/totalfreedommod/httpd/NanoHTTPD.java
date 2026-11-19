@@ -198,7 +198,7 @@ public abstract class NanoHTTPD
                                         // to break the  "keep alive" loop above.
                                         if (!(e instanceof SocketException && "NanoHttpd Shutdown".equals(e.getMessage())))
                                         {
-                                            FLog.error(e);
+                                            FLog.error("Failed to handle session", e);
                                         }
                                     }
                                     finally
@@ -234,7 +234,7 @@ public abstract class NanoHTTPD
         }
         catch (Exception e)
         {
-            FLog.error(e);
+            FLog.error("Failed to stop the HTTPd server", e);
         }
     }
 
@@ -634,7 +634,7 @@ public abstract class NanoHTTPD
             }
             catch (java.io.UnsupportedEncodingException uee)
             {
-                FLog.error(uee);
+                FLog.error("Failed to encode response", uee);
             }
         }
 
@@ -1325,7 +1325,7 @@ public abstract class NanoHTTPD
                 }
                 catch (Exception e)
                 { // Catch exception if any
-                    FLog.error(e);
+                    FLog.error("Failed to save temporary file", e);
                 }
                 finally
                 {
@@ -1344,7 +1344,7 @@ public abstract class NanoHTTPD
             }
             catch (Exception e)
             {
-                FLog.error(e);
+                FLog.error("Failed to get temporary bucket", e);
             }
             return null;
         }

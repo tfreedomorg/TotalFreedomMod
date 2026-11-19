@@ -4,6 +4,7 @@ import me.totalfreedom.api.FreedomAPI;
 
 import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -14,6 +15,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
@@ -48,6 +50,7 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 public class TextFilterService extends FreedomService
 {
     private static final int ITEM_DATA_PREVIEW_LIMIT = 512;
+    private static final long ALERT_COOLDOWN_MS = 5_000L;
 
     private static final Map<Character, Character> LEET = Map.ofEntries(
         Map.entry('0', 'O'), Map.entry('1', 'I'), Map.entry('3', 'E'),
@@ -56,6 +59,8 @@ public class TextFilterService extends FreedomService
 
     private List<Pattern> filters = List.of();
     private List<Pattern> usernameFilters = List.of();
+    private final Map<AlertKey, Long> alertCooldowns = new HashMap<>();
+    private long lastAlertCleanup;
 
     public TextFilterService(FreedomAPI plugin)
     {
@@ -73,6 +78,8 @@ public class TextFilterService extends FreedomService
     {
         filters = List.of();
         usernameFilters = List.of();
+        alertCooldowns.clear();
+        lastAlertCleanup = 0L;
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
@@ -274,13 +281,8 @@ public class TextFilterService extends FreedomService
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onPlayerInteractEntity(PlayerInteractEntityEvent event)
     {
-        if (!shouldFilter(event.getPlayer()) || !(event.getRightClicked() instanceof Mob))
-        {
-            return;
-        }
-
         final ItemStack item = event.getPlayer().getInventory().getItem(event.getHand());
-        if (item.getType() != Material.NAME_TAG)
+        if (!shouldFilter(event.getPlayer()) || !(event.getRightClicked() instanceof Mob) || item.getType() != Material.NAME_TAG)
         {
             return;
         }
@@ -306,26 +308,53 @@ public class TextFilterService extends FreedomService
         {
             return;
         }
-
+        final Location location = mob.getLocation();
         final Optional<String> filteredText = findFilteredText(mob.customName());
         if (filteredText.isEmpty())
         {
             return;
         }
+        if (shouldNotify("mob", "contains prohibited text: " + filteredText.get()))
+        {
+            final String mobName = mob.getType().name().toLowerCase(Locale.ROOT).replace('_', ' ');
+            final String displayName = Character.toUpperCase(mobName.charAt(0)) + mobName.substring(1);
+            final String world = location.getWorld().getName();
+            final String coords = location.getBlockX() + ", " + location.getBlockY() + ", " + location.getBlockZ();
+            final String alert = String.format("[%s] at %s (%s) filtered: %s",
+                    displayName,
+                    world,
+                    coords,
+                    filteredText.get());
+            final String teleportCommand = String.format("/tppos %d %d %d",
+                    location.getBlockX(),
+                    location.getBlockY(),
+                    location.getBlockZ());
 
-        final Component label = Component.text("[Mob]", NamedTextColor.YELLOW)
-            .hoverEvent(HoverEvent.showText(mob.customName()));
-        notifyAdmins(String.format("[Mob] contains prohibited text: %s", filteredText.get()), label);
+            final Component label = MessageUtils.parse(
+                    String.format("<yellow><hover:show_text:'<gray><mob_name></gray>'>[<type>]</hover></yellow> "
+                                    + "<gray>at <world> (<aqua><underlined><click:run_command:'%s'><coords>"
+                                    + "</click></underlined></aqua>) filtered: <red><filtered_text></red>",
+                            teleportCommand),
+                    MessageUtils.unparsed("type", displayName),
+                    MessageUtils.unparsed("mob_name", MessageUtils.toPlainText(mob.customName())),
+                    MessageUtils.unparsed("world", world),
+                    MessageUtils.unparsed("coords", coords),
+                    MessageUtils.unparsed("filtered_text", filteredText.get()));
+            notifyAdmins(alert, label);
+        }
+
         Bukkit.getScheduler().runTask(plugin, FTask.guard("TextFilterService/removeMob", mob::remove));
     }
+
+    private record AlertKey(String playerName, String text) {}
 
     private void reloadFilters()
     {
         filters = compile(ConfigEntry.TEXT_FILTER_REGEX_FILTERS.getStringList());
         usernameFilters = compile(ConfigEntry.TEXT_FILTER_USERNAME_FILTERS.getStringList());
 
-        FLog.info("Loaded " + filters.size() + " text filter regex pattern(s) and "
-            + usernameFilters.size() + " username pattern(s).");
+        FLog.info("Loaded {} text filter regex pattern(s) and {} username pattern(s).",
+                filters.size(), usernameFilters.size());
     }
 
     private static List<Pattern> compile(List<String> raw)
@@ -345,7 +374,7 @@ public class TextFilterService extends FreedomService
             }
             catch (PatternSyntaxException ex)
             {
-                FLog.warn("Skipping invalid text filter regex: " + ex.getDescription());
+                FLog.warn("Skipping invalid text filter regex: {}", ex.getDescription());
             }
         }
 
@@ -451,11 +480,16 @@ public class TextFilterService extends FreedomService
 
         player.sendMessage(MessageUtils.parse("<red>Your message was blocked by the text filter."));
         plugin.players().getOnlineStaff().forEach(admin -> admin.sendMessage(feedback));
-        FLog.warn(String.format("[TextFilter] Blocked message from %s: %s", player.getName(), message), true);
+        FLog.warn("[TextFilter] Blocked message from {}: {}", player.getName(), message);
     }
 
     private void notifyAdmins(Player player, ItemStack item, String message)
     {
+        if (!shouldNotify(player.getName(), message))
+        {
+            return;
+        }
+
         final String itemName = itemName(item);
         final String consoleMessage = String.format("%s: [%s] %s", player.getName(), itemName, message);
         final String itemData = truncateItemData(item);
@@ -468,6 +502,25 @@ public class TextFilterService extends FreedomService
             .append(Component.text(" " + message, NamedTextColor.GRAY));
 
         notifyAdmins(consoleMessage, feedback);
+    }
+
+    private boolean shouldNotify(String playerName, String text)
+    {
+        final long now = System.currentTimeMillis();
+        if (now - lastAlertCleanup >= ALERT_COOLDOWN_MS)
+        {
+            alertCooldowns.values().removeIf(lastAlert -> now - lastAlert >= ALERT_COOLDOWN_MS);
+            lastAlertCleanup = now;
+        }
+
+        final AlertKey key = new AlertKey(playerName.toLowerCase(Locale.ROOT), text.toLowerCase(Locale.ROOT));
+        if (alertCooldowns.containsKey(key))
+        {
+            return false;
+        }
+
+        alertCooldowns.put(key, now);
+        return true;
     }
 
     private static String truncateItemData(ItemStack item)
@@ -494,9 +547,9 @@ public class TextFilterService extends FreedomService
 
     private void notifyAdmins(String message, Component feedback)
     {
-        FLog.warn("[Text Filter] " + message, true);
+        FLog.warn("[Text Filter] {}", message);
         final Component notification = Component.text("[Text Filter] ", NamedTextColor.RED)
-            .append(feedback);
+                .append(feedback);
 
         plugin.players().getOnlineStaff().forEach(admin -> admin.sendMessage(notification));
     }

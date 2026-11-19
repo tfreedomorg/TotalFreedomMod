@@ -58,7 +58,7 @@ public class ConsoleSenderRegistry implements IConsoleSenderRegistry
         raw.forEach(this::loadEntry);
         applyHostChannelFloor();
 
-        FLog.info(String.format("Loaded %d console whitelist binding(s).", senderToRankId.size()));
+        FLog.info("Loaded {} console whitelist binding(s).", senderToRankId.size());
     }
 
     public String getRankIdForSender(String senderName)
@@ -79,7 +79,7 @@ public class ConsoleSenderRegistry implements IConsoleSenderRegistry
     {
         if (!(obj instanceof String))
         {
-            FLog.warn(String.format("Console whitelist entry is not a string, skipping: %s", obj));
+            FLog.warn("Console whitelist entry is not a string, skipping: {}", obj);
             return;
         }
 
@@ -87,8 +87,7 @@ public class ConsoleSenderRegistry implements IConsoleSenderRegistry
         final int colon = entry.indexOf(ENTRY_SEPARATOR);
         if (colon <= 0 || colon == entry.length() - 1)
         {
-            FLog.warn(String.format(
-                    "Console whitelist entry is malformed (expected '<rank_id>:<sender_name>'), skipping: %s", entry));
+            FLog.warn("Console whitelist entry is malformed (expected '<rank_id>:<sender_name>'), skipping: {}", entry);
             return;
         }
 
@@ -97,16 +96,14 @@ public class ConsoleSenderRegistry implements IConsoleSenderRegistry
 
         if (!isKnownRank(rankId))
         {
-            FLog.warn(String.format("Console whitelist entry references unknown rank '%s', skipping: %s",
-                    rankId, entry));
+            FLog.warn("Console whitelist entry references unknown rank '{}', skipping: {}", rankId, entry);
             return;
         }
 
         final String existing = senderToRankId.put(senderName, rankId);
         if (existing != null && !existing.equals(rankId))
         {
-            FLog.warn(String.format("Console whitelist binds sender '%s' to multiple ranks; using %s",
-                    senderName, rankId));
+            FLog.warn("Console whitelist binds sender '{}' to multiple ranks; using {}", senderName, rankId);
         }
     }
 
@@ -134,9 +131,8 @@ public class ConsoleSenderRegistry implements IConsoleSenderRegistry
 
             if (boundId != null)
             {
-                FLog.warn(String.format(
-                        "Console whitelist binds host channel '%s' to '%s', below the '%s' floor for host "
-                        + "channels; raising it.", channel, boundId, floor.getId()));
+                FLog.warn("Console whitelist binds host channel '{}' to '{}', below the '{}' floor for host "
+                        + "channels; raising it.", channel, boundId, floor.getId());
             }
 
             senderToRankId.put(channel, floor.getId());

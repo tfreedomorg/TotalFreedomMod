@@ -65,23 +65,23 @@ public class AntiSpam extends FreedomService
         {
             return;
         }
+
         final Player player = event.getPlayer();
-        final String message = PlainTextComponentSerializer.plainText().serialize(event.message()).trim();
-
         final PlayerData playerdata = plugin.players().getData(player);
-
         final int count = playerdata.incrementAndGetMsgCount();
+
         if (count >= limit())
         {
             event.setCancelled(true);
-            if (count == limit())
-            {
-                FSync.bcastMsg(player.getName() + " was automatically kicked for spamming chat.", NamedTextColor.RED);
-                FSync.autoEject(player, "Kicked for spamming chat.");
-            }
+            FSync.ejectIf(player,
+                    "chat_spam",
+                    "was spamming chat",
+                    "Kicked for spamming chat.",
+                    () -> count == limit());
             return;
         }
 
+        final String message = PlainTextComponentSerializer.plainText().serialize(event.message()).trim();
         if (blockIfChatSpam(player, playerdata, message))
         {
             event.setCancelled(true);
@@ -221,15 +221,13 @@ public class AntiSpam extends FreedomService
             return;
         }
 
-        final int count = playerData.incrementAndGetMsgCount();
-        if (count >= limit())
+        if (plugin.autoEject().ejectIf(player,
+                "command_spam",
+                "was spamming commands",
+                "Kicked for spamming commands.",
+                () -> playerData.incrementAndGetMsgCount() >= limit()))
         {
             event.setCancelled(true);
-            if (count == limit())
-            {
-                FUtil.bcastMsg(player.getName() + " was automatically kicked for spamming commands.", NamedTextColor.RED);
-                plugin.autoEject().autoEject(player, "Kicked for spamming commands.");
-            }
             return;
         }
 

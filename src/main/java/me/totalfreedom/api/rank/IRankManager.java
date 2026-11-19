@@ -1,5 +1,6 @@
 package me.totalfreedom.api.rank;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -120,6 +121,11 @@ public interface IRankManager
      * @return the sender's effective rank, or {@code null} when none could be resolved
      */
     CustomRank getEffectiveRank(CommandSender sender);
+
+    /**
+     * Orders players for listings: title displayers first by weight, then rank displayers by level.
+     */
+    Comparator<Player> byDisplayOrder();
 
     Component formatLoginMessage(Player player);
 }

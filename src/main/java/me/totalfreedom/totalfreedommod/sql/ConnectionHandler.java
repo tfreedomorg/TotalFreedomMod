@@ -94,11 +94,7 @@ public class ConnectionHandler
 
         try
         {
-            FLog.info(String.format(
-                                    "Connecting to database: %s at %s", 
-                                    dbType.getName(), 
-                                    maskPassword(config.getJdbcUrl())
-                                ));
+            FLog.info("Connecting to database: {} at {}", dbType.getName(), maskPassword(config.getJdbcUrl()));
             this.dataSource = new HikariDataSource(config);
             final int schedulerThreads = Math.max(dataSource.getMaximumPoolSize() * SCHEDULER_POOL_MULTIPLIER, SCHEDULER_MIN_THREADS);
             this.scheduler = Schedulers.newBoundedElastic(schedulerThreads, SCHEDULER_QUEUED_TASK_CAP, "tfm-sql-" + dbType.getName());
@@ -120,11 +116,8 @@ public class ConnectionHandler
                 }
             }
 
-            FLog.info(String.format(
-                                    "Database connection pool established (%s, poolSize %d)", 
-                                    dbType.getName(), 
-                                    dataSource.getMaximumPoolSize()
-                                ));
+            FLog.info("Database connection pool established ({}, poolSize {})",
+                    dbType.getName(), dataSource.getMaximumPoolSize());
         }
         catch (SQLException e)
         {
@@ -237,10 +230,7 @@ public class ConnectionHandler
         }
         catch (Exception e)
         {
-            FLog.error(String.format(
-                                    "Database connection test failed: %s", 
-                                    ExceptionUtils.getRootCauseMessage(e)
-                                ));
+            FLog.error("Database connection test failed: {}", ExceptionUtils.getRootCauseMessage(e));
             return false;
         }
     }

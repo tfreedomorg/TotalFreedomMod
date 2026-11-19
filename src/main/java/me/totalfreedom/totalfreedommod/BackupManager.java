@@ -60,7 +60,7 @@ public class BackupManager extends PluginComponent<TotalFreedomMod>
 
     private void performBackup(String file, String type)
     {
-        FLog.info("Backing up " + file + " to " + file + "." + type + ".bak");
+        FLog.info("Backing up {} to {}.{}.bak", file, file, type);
         final File backupFolder = new File(plugin.getDataFolder(), "backup");
 
         if (!backupFolder.exists())
@@ -87,7 +87,7 @@ public class BackupManager extends PluginComponent<TotalFreedomMod>
         }
         catch (IOException ex)
         {
-            FLog.error("Could not read backup.json: " + ex.getMessage());
+            FLog.error("Could not read backup.json", ex);
             return new HashMap<>();
         }
     }
@@ -104,7 +104,7 @@ public class BackupManager extends PluginComponent<TotalFreedomMod>
         }
         catch (IOException ex)
         {
-            FLog.error("Could not save backup.json: " + ex.getMessage());
+            FLog.error("Could not save backup.json", ex);
         }
     }
 

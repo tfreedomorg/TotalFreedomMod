@@ -57,29 +57,15 @@ public class CommandBlockerEntry
     private final String message;
     private final List<PatternToken> patternTokens;
     private final boolean wildcardPattern;
+    private final String bypassNode;
 
-    public CommandBlockerEntry(CommandBlockerRank rank,
-            CommandBlockerAction action, String command, String message)
-    {
-        this(rank, action, command, (List<PatternToken>) null, message);
-    }
-
-    public CommandBlockerEntry(CommandBlockerRank rank,
-            CommandBlockerAction action, String command, String subCommand,
-            String message)
-    {
-        this(rank, action, command, tokenize(subCommand), message);
-    }
-
-    public CommandBlockerEntry(CommandBlockerRank rank,
-            CommandBlockerAction action, String command,
-            List<PatternToken> patternTokens, String message)
+    public CommandBlockerEntry(CommandBlockerRank rank, CommandBlockerAction action, String command, List<PatternToken> patternTokens, String message, String bypassNode)
     {
         this.rank = rank;
         this.action = action;
         this.command = command;
-        this.patternTokens = patternTokens == null ? Collections.emptyList()
-                : Collections.unmodifiableList(new ArrayList<>(patternTokens));
+        this.bypassNode = bypassNode;
+        this.patternTokens = patternTokens == null ? Collections.emptyList() : Collections.unmodifiableList(new ArrayList<>(patternTokens));
         this.subCommand = renderTokens(this.patternTokens);
         boolean anyWildcard = false;
         for (PatternToken t : this.patternTokens)
@@ -91,6 +77,11 @@ public class CommandBlockerEntry
         this.wildcardPattern = anyWildcard;
         this.message = "&7" + (message == null || message.equals("_")
                 ? "That command is blocked." : message);
+    }
+
+    public String getBypassNode()
+    {
+        return bypassNode;
     }
 
     public static List<PatternToken> tokenize(String raw)
@@ -177,13 +168,12 @@ public class CommandBlockerEntry
     public void doActions(CommandSender sender)
     {
         if (action == CommandBlockerAction.BLOCK_AND_EJECT
-                && sender instanceof Player)
+                && sender instanceof Player player)
         {
-            PluginProvider.get().autoEject().autoEject((Player) sender,
+            PluginProvider.get().autoEject().eject(player,
+                    "harmful_command",
+                    "attempted to use a harmful command",
                     "You used a prohibited command: " + command);
-            FUtil.bcastMsg(sender.getName()
-                    + " was automatically kicked for using harmful commands.",
-                    NamedTextColor.RED);
             return;
         }
 

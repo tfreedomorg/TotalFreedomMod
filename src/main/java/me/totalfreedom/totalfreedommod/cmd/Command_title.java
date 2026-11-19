@@ -1,8 +1,6 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
 
 import org.bukkit.command.CommandSender;
@@ -13,16 +11,15 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
 import me.totalfreedom.api.cmd.FCommand;
-import me.totalfreedom.api.cmd.annotation.Callback;
-import me.totalfreedom.api.cmd.annotation.Command;
-import me.totalfreedom.api.cmd.annotation.Completer;
-import me.totalfreedom.api.cmd.annotation.Permission;
-import me.totalfreedom.api.cmd.annotation.Subcommand;
+import me.totalfreedom.api.cmd.CommandFailException;
+import me.totalfreedom.api.cmd.annotation.*;
+import me.totalfreedom.api.title.ITitle;
 import me.totalfreedom.totalfreedommod.dispatch.RemoteDispatchContext;
 import me.totalfreedom.totalfreedommod.title.Title;
+import me.totalfreedom.totalfreedommod.title.TitleManager;
 
 /**
- * Grants, revokes and inspects titles.
+ * Grants, revokes, edits and inspects titles.
  * <p>
  * Granting is guarded by {@code tfm.manage.titles} rather than by the node the title itself
  * carries: a title is a way to hand out a capability, so being able to hand out any of them is a
@@ -31,7 +28,7 @@ import me.totalfreedom.totalfreedommod.title.Title;
 @Command(
         name = "title",
         description = "View and manage player titles.",
-        usage = "/title [list | info <title> | of <player> | grant <player> <title> | revoke <player> <title>]",
+        usage = "/title [list | info <title> | of <player> | grant <player> <title> | revoke <player> <title> | set <title> <property> <value> | remove <title>]",
         aliases = {"titles"}
 )
 @Permission(permission = "tfm.player.titles")
@@ -40,10 +37,17 @@ public class Command_title extends FCommand
 
     private static final String MANAGE_TITLES = "tfm.manage.titles";
 
+    private static final List<String> SET_PROPERTIES = List.of("name", "abbreviation", "prefix", "determiner", "color", "weight", "announce", "addperm", "remperm");
+
+    private static final List<String> COLOR_NAMES = NamedTextColor.NAMES.keys()
+                                                                        .stream()
+                                                                        .sorted()
+                                                                        .toList();
+
     @Callback
     public void list(CommandSender sender)
     {
-        final List<Title> titles = plugin().titles().getTitlesSorted();
+        final List<? extends ITitle> titles = plugin().titles().getTitlesSorted();
 
         if (titles.isEmpty())
         {
@@ -71,7 +75,7 @@ public class Command_title extends FCommand
     @Subcommand("info")
     public void info(CommandSender sender, String titleId)
     {
-        final Title title = plugin().titles().getTitle(titleId);
+        final ITitle title = plugin().titles().getTitle(titleId);
 
         if (title == null)
         {
@@ -103,7 +107,7 @@ public class Command_title extends FCommand
     @Subcommand("of")
     public void of(CommandSender sender, Player target)
     {
-        final List<Title> held = plugin().titles().getHeldTitles(target);
+        final List<? extends ITitle> held = plugin().titles().getHeldTitles(target);
 
         if (held.isEmpty())
         {
@@ -125,7 +129,7 @@ public class Command_title extends FCommand
     public void grant(CommandSender sender, Player target, String titleId)
     {
         requireLocalConsole(sender);
-        final Title title = plugin().titles().getTitle(titleId);
+        final ITitle title = plugin().titles().getTitle(titleId);
 
         if (title == null)
         {
@@ -176,6 +180,94 @@ public class Command_title extends FCommand
 
         msg(target, "<gray>Your <title> title has been revoked.",
                 Placeholder.unparsed("title", titleId));
+    }
+
+    /**
+     * Edits one property of a title, creating the title when the id is new. Properties that grant
+     * capabilities go through the same console and {@code tfm.manage.titles} guard as granting.
+     */
+    @Callback
+    @Subcommand("set")
+    @Permission(permission = MANAGE_TITLES)
+    public void set(CommandSender sender, String titleId, String property, @Greedy String value)
+    {
+        requireLocalConsole(sender);
+
+        final String id = Title.normalizeId(titleId);
+        if (id.isEmpty())
+            throw new CommandFailException("A title id needs at least one letter, digit, underscore or hyphen.");
+
+        final Title title = Optional.ofNullable(titleManager().getTitle(id)).orElseGet(() -> new Title(id));
+        final String text = value.trim();
+
+        switch (property.toLowerCase())
+        {
+            case "name" -> title.setName(text);
+            case "abbreviation" -> title.setAbbreviation(text);
+            case "prefix" -> title.setPrefix(text.equalsIgnoreCase("none") ? null : text);
+            case "determiner" -> title.setDeterminer(text);
+            case "color" -> title.setColor(parseColor(text));
+            case "weight" -> title.setWeight(parseWeight(text));
+            case "announce" -> title.setAnnounce(parseFlag(text));
+            case "addperm" -> title.addPermission(text);
+            case "remperm" -> title.removePermission(text);
+            default -> throw new CommandFailException(String.format("Unknown property '%s'. Choose from: %s", property, String.join(", ", SET_PROPERTIES)));
+        }
+
+        titleManager().setTitle(title);
+
+        adminAction(sender, "<aqua>Set <property> of title <title>",
+                Placeholder.unparsed("property", property.toLowerCase()),
+                Placeholder.unparsed("title", title.getId()));
+    }
+
+    @Callback
+    @Subcommand("remove")
+    @Permission(permission = MANAGE_TITLES)
+    public void remove(CommandSender sender, String titleId)
+    {
+        requireLocalConsole(sender);
+
+        if (!titleManager().removeTitle(titleId))
+        {
+            msg(sender, "<red>No such title: <title>", Placeholder.unparsed("title", titleId));
+            return;
+        }
+
+        adminAction(sender, "<red>Removed title <title>", Placeholder.unparsed("title", titleId));
+    }
+
+    @Completer(value = "set", position = 0)
+    public List<String> completeSetTitle(CommandSender sender, String partial)
+    {
+        return matching(plugin().titles().getTitleIds(), partial);
+    }
+
+    @Completer(value = "set", position = 1)
+    public List<String> completeSetProperty(CommandSender sender, String partial)
+    {
+        return matching(SET_PROPERTIES, partial);
+    }
+
+    @Completer(value = "set", position = 2, scope = Completer.Scope.ARGUMENT)
+    public List<String> completeSetValue(CommandSender sender, String partial, List<String> priorArgs)
+    {
+        return switch (priorArgs.get(1).toLowerCase())
+        {
+            case "color" -> matching(COLOR_NAMES, partial);
+            case "announce" -> matching(List.of("true", "false"), partial);
+            case "prefix" -> matching(List.of("none"), partial);
+            case "remperm" -> plugin().titles().find(priorArgs.get(0))
+                                               .map(title -> matching(title.getPermissions(), partial))
+                                               .orElse(List.of());
+            default -> List.of();
+        };
+    }
+
+    @Completer(value = "remove", position = 0)
+    public List<String> completeRemove(CommandSender sender, String partial)
+    {
+        return matching(plugin().titles().getTitleIds(), partial);
     }
 
     @Completer(value = "info", position = 0)
@@ -238,9 +330,44 @@ public class Command_title extends FCommand
                          .toList();
     }
 
+    private static NamedTextColor parseColor(String name)
+    {
+        final NamedTextColor color = NamedTextColor.NAMES.value(name.toLowerCase());
+
+        if (color == null)
+            throw new CommandFailException(String.format("Unknown colour '%s'. Choose from: %s", name, String.join(", ", COLOR_NAMES)));
+
+        return color;
+    }
+
+    private static int parseWeight(String text)
+    {
+        try
+        {
+            return Integer.parseInt(text);
+        }
+        catch (NumberFormatException ex)
+        {
+            throw new CommandFailException(String.format("Invalid number: %s", text));
+        }
+    }
+
+    private static boolean parseFlag(String text)
+    {
+        if (!text.equalsIgnoreCase("true") && !text.equalsIgnoreCase("false"))
+            throw new CommandFailException(String.format("Expected true or false, got: %s", text));
+
+        return Boolean.parseBoolean(text);
+    }
+
     private void requireLocalConsole(CommandSender sender)
     {
         if (RemoteDispatchContext.isActive() || !sender.getName().equalsIgnoreCase("CONSOLE"))
             throw new CommandFailException("This command can only be used from the server panel console.");
+    }
+
+    private TitleManager titleManager()
+    {
+        return plugin().services().require(TitleManager.class);
     }
 }

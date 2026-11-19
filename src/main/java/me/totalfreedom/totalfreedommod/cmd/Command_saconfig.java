@@ -69,6 +69,7 @@ public class Command_saconfig extends FCommand
         admin.setRankId(rank.getId());
         plugin().players().saveData(admin);
         plugin().ranks().updatePlayerTeam(target);
+        target.updateCommands();
 
         msg(sender, "<gray>Set <player>'s rank to <rank>.",
                 Placeholder.unparsed("player", admin.getUsername()),
@@ -150,6 +151,7 @@ public class Command_saconfig extends FCommand
         admin.setIp(ip);
         admin.trustIp(ip);
         plugin().players().saveData(admin);
+        target.updateCommands();
 
         if (plugin().ranks() != null)
         {
@@ -196,7 +198,9 @@ public class Command_saconfig extends FCommand
                 Placeholder.unparsed("player", target.getName()));
 
         plugin().players().rekeyStaff(record, target);
+        target.updateCommands();
         plugin().ranks().updatePlayerTeam(target);
+        previousHolder.ifPresent(Player::updateCommands);
         previousHolder.ifPresent(plugin().ranks()::updatePlayerTeam);
         return true;
     }
@@ -224,6 +228,7 @@ public class Command_saconfig extends FCommand
         if (player != null && plugin().ranks() != null)
         {
             plugin().ranks().updatePlayerTeam(player);
+            player.updateCommands();
         }
 
         return true;

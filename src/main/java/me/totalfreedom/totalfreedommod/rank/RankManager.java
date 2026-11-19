@@ -1,5 +1,6 @@
 package me.totalfreedom.totalfreedommod.rank;
 
+import me.totalfreedom.api.title.ITitle;
 import me.totalfreedom.totalfreedommod.discord.DiscordBridge;
 
 import me.totalfreedom.api.FreedomAPI;
@@ -56,7 +57,7 @@ import me.totalfreedom.totalfreedommod.cmd.MessageUtils;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.api.display.Displayable;
 import me.totalfreedom.totalfreedommod.sql.PersistenceQueue;
-import me.totalfreedom.api.sql.adapter.RankRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.RankRepository;
 import me.totalfreedom.totalfreedommod.player.PlayerData;
 import me.totalfreedom.totalfreedommod.title.Title;
 import me.totalfreedom.totalfreedommod.util.*;
@@ -232,7 +233,7 @@ public class RankManager extends FreedomService implements IRankManager
         resolveInheritance();
         updateAllPlayerTeams();
         refreshConsoleBindings();
-        FLog.info(String.format("Loaded %d custom ranks from SQL database.", customRanks.size()));
+        FLog.info("Loaded {} custom ranks from SQL database.", customRanks.size());
 
         reconcileFromJsonIfNewer(repo);
         plugin.players().cleanUpAfterSqlLoad();
@@ -285,18 +286,17 @@ public class RankManager extends FreedomService implements IRankManager
         }
         catch (IllegalArgumentException ex)
         {
-            FLog.error(String.format("No bundled %s to install: %s", RANKS_FILENAME, ex.getMessage()));
+            FLog.error("No bundled {} to install", RANKS_FILENAME, ex);
             return;
         }
 
         if (!ranksFile.exists())
         {
-            FLog.error(String.format("Could not install a default %s; all guarded commands will be denied.",
-                    RANKS_FILENAME));
+            FLog.error("Could not install a default {}; all guarded commands will be denied.", RANKS_FILENAME);
             return;
         }
 
-        FLog.info(String.format("Installed the default %s.", RANKS_FILENAME));
+        FLog.info("Installed the default {}.", RANKS_FILENAME);
         loadFromJson();
     }
 
@@ -309,13 +309,13 @@ public class RankManager extends FreedomService implements IRankManager
         }
         catch (IOException ex)
         {
-            FLog.error("Could not read " + RANKS_FILENAME + ": " + ex.getMessage());
+            FLog.error("Could not read {}", RANKS_FILENAME, ex);
         }
 
         selfHealLegacyMarkers();
         resolveInheritance();
         updateAllPlayerTeams();
-        FLog.info("Loaded " + customRanks.size() + " custom ranks.");
+        FLog.info("Loaded {} custom ranks.", customRanks.size());
     }
 
     private Map<String, CustomRank> readJsonRanks() throws IOException
@@ -372,7 +372,7 @@ public class RankManager extends FreedomService implements IRankManager
         }
         catch (IOException ex)
         {
-            FLog.warn(String.format("Failed to read %s: %s", RANKS_FILENAME, ex.getMessage()));
+            FLog.warn("Failed to read {}", RANKS_FILENAME);
             return;
         }
 
@@ -393,8 +393,8 @@ public class RankManager extends FreedomService implements IRankManager
               .filter(Boolean::booleanValue)
               .flatMap(ignored ->
               {
-                FLog.info(String.format("%s is newer than the database; rebuilding it from the file's %d rank(s).",
-                                        RANKS_FILENAME, jsonRanks.size()));
+                FLog.info("{} is newer than the database; rebuilding it from the file's {} rank(s).",
+                        RANKS_FILENAME, jsonRanks.size());
                 return Flux.fromIterable(jsonRanks.values())
                            .concatMap(repo::save)
                            .then(repo.loadAllAsync())
@@ -405,8 +405,7 @@ public class RankManager extends FreedomService implements IRankManager
               })
               .onErrorResume(ex ->
               {
-                  FLog.warn(String.format("Failed to reconcile %s into the database: %s",
-                                             RANKS_FILENAME, ex.getMessage()));
+                  FLog.warn("Failed to reconcile {} into the database: {}", RANKS_FILENAME, ex.getMessage());
                   return Mono.empty();
               })
               .then());
@@ -443,9 +442,7 @@ public class RankManager extends FreedomService implements IRankManager
               .concatMap(rank -> repo.save(rank)
                                      .onErrorResume(ex ->
                                      {
-                                         FLog.error(String.format("Could not save rank %s to SQL: %s",
-                                                                   rank.getId(), 
-                                                                   ex.getMessage()));
+                                         FLog.error("Could not save rank {} to SQL", rank.getId(), ex);
                                          return Mono.empty();
                                      }))
               .then(writeJsonAsync()));
@@ -474,7 +471,7 @@ public class RankManager extends FreedomService implements IRankManager
         }
         catch (IOException ex)
         {
-            FLog.error(String.format("Could not save %s: %s", RANKS_FILENAME, ex.getMessage()));
+            FLog.error("Could not save {}: {}", RANKS_FILENAME, ex);
         }
     }
 
@@ -523,8 +520,8 @@ public class RankManager extends FreedomService implements IRankManager
         if (!rank.hasPermission(LEGACY_ADMIN_STATUS_NODE))
             return;
 
-        FLog.info("Rank '" + rank.getId() + "' holds " + LEGACY_ADMIN_STATUS_NODE
-                + "; replacing it with the " + ADMIN_STATUS_NODE + " marker.");
+        FLog.info("Rank '{}' holds {}; replacing it with the {} marker.",
+                rank.getId(), LEGACY_ADMIN_STATUS_NODE, ADMIN_STATUS_NODE);
         rank.removePermission(LEGACY_ADMIN_STATUS_NODE);
         rank.addPermission(ADMIN_STATUS_NODE);
     }
@@ -535,8 +532,8 @@ public class RankManager extends FreedomService implements IRankManager
             || !registry.getTrie().grants(rank.getId(), LEGACY_SENIOR_STATUS_NODE))
             return;
 
-        FLog.info("Rank '" + rank.getId() + "' already qualified as senior without the "
-                + SENIOR_STATUS_NODE + " node; granting it automatically.");
+        FLog.info("Rank '{}' already qualified as senior without the {} node; granting it automatically.",
+                rank.getId(), SENIOR_STATUS_NODE);
         rank.addPermission(SENIOR_STATUS_NODE);
     }
 
@@ -547,7 +544,7 @@ public class RankManager extends FreedomService implements IRankManager
 
         if (visited.contains(rank.getId()))
         {
-            FLog.warn("Circular inheritance detected for rank: " + rank.getId());
+            FLog.warn("Circular inheritance detected for rank: {}", rank.getId());
             return Set.of();
         }
         visited.add(rank.getId());
@@ -558,7 +555,7 @@ public class RankManager extends FreedomService implements IRankManager
         {
             CustomRank parent = customRanks.get(rank.getInheritFrom().toLowerCase());
             if (parent == null)
-                FLog.warn("Rank '" + rank.getId() + "' inherits from non-existent rank: " + rank.getInheritFrom());
+                FLog.warn("Rank '{}' inherits from non-existent rank: {}", rank.getId(), rank.getInheritFrom());
             else
                 perms.addAll(collectPermissions(parent, visited));
         }
@@ -596,31 +593,29 @@ public class RankManager extends FreedomService implements IRankManager
         final Scoreboard scoreboard = manager.getMainScoreboard();
         final Team currentTeam = scoreboard.getEntryTeam(player.getName());
         final CustomRank rank = getAssignedAdminRank(player);
-        final Title title = plugin.titles() == null || plugin.players().isImpostor(player)
+        final ITitle title = plugin.titles() == null || plugin.players().isImpostor(player)
                 ? null
                 : plugin.titles().getDisplayTitle(player);
 
         final boolean admin = rank != null && registry.hasMarker(rank, RankRegistry.ADMIN_TAG);
 
-        // same precedence as getDisplay: a held title outranks the rank on screen
-        final String teamName;
+        // names take the colour of the rank; a displayed title goes in the team prefix
+        final String rankTeamName;
         final NamedTextColor color;
 
-        if (title != null)
+        if (admin)
         {
-            teamName = createTeamName(title.getWeight(), title.getId());
-            color = title.getColor();
-        }
-        else if (admin)
-        {
-            teamName = createTeamName(rank.getLevel(), rank.getId());
+            rankTeamName = createTeamName(rank.getLevel(), rank.getId());
             color = rank.getColor();
         }
         else
         {
-            teamName = DEFAULT_TEAM_NAME;
+            rankTeamName = DEFAULT_TEAM_NAME;
             color = NamedTextColor.WHITE;
         }
+
+        final int rankLevel = admin ? rank.getLevel() : 0;
+        final String teamName = title == null ? rankTeamName : createTitleTeamName(rankTeamName, rankLevel, title);
 
         if (currentTeam != null && !currentTeam.getName().equals(teamName))
             currentTeam.removeEntry(player.getName());
@@ -631,25 +626,74 @@ public class RankManager extends FreedomService implements IRankManager
             team = scoreboard.registerNewTeam(teamName);
 
         team.color(color);
-        team.prefix(Component.empty());
+        team.prefix(title == null ? Component.empty() : title.getColoredTag().append(Component.space()));
         team.addEntry(player.getName());
     }
 
     private static final String DEFAULT_TEAM_NAME = "zz_default";
 
-    private static String createTeamName(final int sortKey, final String id)
+    /**
+     * The tab list sorts teams by name. Rank teams start with {@code 1} so they follow every title
+     * team, which starts with {@code 0}, and the two digits after it put higher levels first.
+     */
+    private static String createTeamName(final int level, final String id)
     {
-        final String name = String.format("%02d_%s",
-                99 - Math.max(0, Math.min(99, sortKey)),
+        final String name = String.format("1%02d_%s",
+                sortSlot(level),
                 id.replaceAll("[^A-Za-z0-9_\\-]", "_"));
 
         return name.length() > 16 ? name.substring(0, 16) : name;
     }
 
+    /**
+     * A team name for one rank and title pair. Titles order by weight, then by the holder's rank
+     * level, and a hash of the pair keeps each pair distinct within the 16 character limit.
+     */
+    private static String createTitleTeamName(final String rankTeamName, final int rankLevel, final ITitle title)
+    {
+        return String.format("0%02d%02d_%08x",
+                sortSlot(title.getWeight()),
+                sortSlot(rankLevel),
+                (rankTeamName + "/" + title.getId()).hashCode());
+    }
+
+    private static int sortSlot(final int value)
+    {
+        return 99 - Math.max(0, Math.min(99, value));
+    }
+
+    /**
+     * Orders players for listings: everyone displaying a title first, heaviest title first, then
+     * everyone displaying their rank, highest level first. Ties fall back to rank level and then
+     * name.
+     */
+    public Comparator<Player> byDisplayOrder()
+    {
+        return Comparator.comparing((Player player) -> !(getDisplay(player) instanceof Title))
+                         .thenComparing(Comparator.comparingInt(this::titleWeight).reversed())
+                         .thenComparing(Comparator.comparingInt(this::rankLevel).reversed())
+                         .thenComparing(Player::getName, String.CASE_INSENSITIVE_ORDER);
+    }
+
+    private int titleWeight(final Player player)
+    {
+        return getDisplay(player) instanceof Title title ? title.getWeight() : 0;
+    }
+
+    private int rankLevel(final Player player)
+    {
+        final CustomRank rank = getEffectiveRank(player);
+
+        return rank == null ? 0 : rank.getLevel();
+    }
+
     public void updateAllPlayerTeams()
     {
         for (Player player : server.getOnlinePlayers())
+        {
             updatePlayerTeam(player);
+            player.updateCommands();
+        }
     }
 
     /**
@@ -696,9 +740,7 @@ public class RankManager extends FreedomService implements IRankManager
                   .deleteAsync(removed.getId())
                   .onErrorResume(ex ->
                   {
-                      FLog.error(String.format("Could not delete rank %s from SQL: %s",
-                                                removed.getId(), 
-                                                ex.getMessage()));
+                      FLog.error("Could not delete rank {} from SQL", removed.getId(), ex);
                       return Mono.empty();
                   })
                   .then());
@@ -891,7 +933,7 @@ public class RankManager extends FreedomService implements IRankManager
             catch (Exception ex)
             {
                 player.sendMessage(Component.text("Error processing input: " + ex.getMessage()).color(NamedTextColor.RED));
-                FLog.warn("Error in chat input callback: " + ex.getMessage());
+                FLog.warn("Error in chat input callback", ex);
             }
 
             return true;
@@ -1271,8 +1313,10 @@ public class RankManager extends FreedomService implements IRankManager
                   .stream()
                   .filter(this::isAdmin)
                   .forEach(admin -> MessageUtils.send(admin,
-                          "<gray>[Verify] <white><player></white> joined on a staff record from an address it doesn't trust. If it's them, verify from console with <yellow>/saconfig add <player>",
-                          Placeholder.unparsed("player", player.getName())));
+                            "<gray>[Verify] <white><player></white> joined on a staff record from an address it doesn't trust. If it's them, verify from console with <yellow>/saconfig add <player></yellow>.",
+                            Placeholder.unparsed("player", player.getName())));
+
+            plugin.services().require(DiscordBridge.class).offerImpostorVerification(player);
             return;
         }
 

@@ -46,7 +46,7 @@ public final class SshQrServer
         scheduler = Executors.newSingleThreadScheduledExecutor();
         server.createContext("/qr", this::handle);
         server.start();
-        FLog.info("[SSH] QR setup server started on port " + port + ".");
+        FLog.info("[SSH] QR setup server started on port {}.", port);
     }
 
     public static void enqueue(String otpUri, String label, String token)
@@ -63,7 +63,7 @@ public final class SshQrServer
             }
             catch (IOException e)
             {
-                FLog.warn("[SSH] Failed to start QR server: " + e.getMessage());
+                FLog.warn("[SSH] Failed to start QR server", e);
             }
         }
     }
@@ -224,7 +224,7 @@ public final class SshQrServer
         }
         catch (IOException e)
         {
-            FLog.error("[SSH] Failed to load QR template '" + resourcePath + "': " + e.getMessage());
+            FLog.error("[SSH] Failed to load QR template '{}'", resourcePath, e);
             return "<html><body><p>Internal error.</p></body></html>";
         }
     }

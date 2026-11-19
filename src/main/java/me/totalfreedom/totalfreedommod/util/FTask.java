@@ -45,8 +45,7 @@ public final class FTask
         }
         catch (Throwable thrown)
         {
-            FLog.error(String.format("Scheduled task '%s' threw an uncaught %s", label, thrown.getClass().getName()));
-            FLog.error(thrown);
+            FLog.error("Scheduled task '{}' threw an uncaught {}", label, thrown.getClass().getName(), thrown);
         }
     }
 }

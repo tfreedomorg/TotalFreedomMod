@@ -163,10 +163,10 @@ public final class ProfileLoader
         }
         catch (final IOException ex)
         {
-            FLog.warn("Failed to copy template '%s' to world '%s': \n%s",
+            FLog.warn("Failed to copy template '{}' to world '{}'",
                       templateName, 
                       worldName, 
-                      ex.getMessage());
+                      ex);
             return false;
         }
     }
@@ -176,7 +176,8 @@ public final class ProfileLoader
         if (VALID_WORLD_NAME.matcher(worldName).matches())
             return true;
 
-        FLog.warn("Ignoring worlds/" + worldName + JSON_EXTENSION + ": a world name may only be lowercase letters, digits, underscores, or hyphens, so this world will not be loaded.");
+        FLog.warn("Ignoring worlds/{}{}: a world name may only be lowercase letters, digits, underscores, or hyphens, so this world will not be loaded.",
+                worldName, JSON_EXTENSION);
         return false;
     }
 
@@ -248,18 +249,14 @@ public final class ProfileLoader
                         }
                         catch (final IOException | JsonSyntaxException | IllegalStateException ex)
                         {
-                            FLog.warn("Failed to read bundled resource %s: \n%s",
-                                      path,
-                                      ExceptionUtils.getRootCauseMessage(ex));
+                            FLog.warn("Failed to read bundled resource {}", path, ex);
                         }
                     });
             }
         }
         catch (final IOException | URISyntaxException ex)
         {
-            FLog.warn("Failed to walk bundled %s resources: \n%s", 
-                      jarPath, 
-                      ex.getMessage());
+            FLog.warn("Failed to walk bundled {} resources", jarPath, ex);
         }
 
         return result;
