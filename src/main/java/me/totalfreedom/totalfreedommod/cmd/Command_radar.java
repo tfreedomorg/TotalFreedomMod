@@ -31,12 +31,13 @@ public class Command_radar extends FCommand
         final int radius = Math.clamp(limit, 1, 200);
         final Location center = sender.getLocation();
         final List<Player> nearbyPlayers = center.getWorld()
-                                                 .getPlayers()
-                                                 .stream()
-                                                 .filter(player -> !player.equals(sender))
-                                                 .filter(player -> player.getLocation().distance(center) <= radius)
-                                                 .sorted(Comparator.comparingDouble(player -> player.getLocation().distance(center)))
-                                                 .toList();
+                .getPlayers()
+                .stream()
+                .filter(player -> !player.equals(sender))
+                .filter(player -> player.getLocation().distance(center) <= radius)
+                .filter(player -> plugin().vanish().canSee(sender, player))
+                .sorted(Comparator.comparingDouble(player -> player.getLocation().distance(center)))
+                .toList();
 
         if (nearbyPlayers.isEmpty())
         {
