@@ -1,5 +1,6 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
+import me.totalfreedom.totalfreedommod.player.PlayerData;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -16,17 +17,19 @@ public class Command_findip extends FCommand
     @Callback
     public void findipSelf(Player player)
     {
-        findipPlayer(player, player);
+        findipPlayer(player, plugin().players().getData(player));
     }
 
     @Callback
-    public void findipPlayer(CommandSender sender, Player player)
+    public void findipPlayer(CommandSender sender,
+                             PlayerData data)
     {
-        msg(
-            sender,
-            "<gray><player></gray>'s IP(s): <ips>",
-            Placeholder.unparsed("player", player.getName()),
-            MessageUtils.joinedList("ips", plugin().players().getData(player).getStoredIp().stream().toList(), NamedTextColor.WHITE)
+        msg(sender,
+                "<gray><white><player></white>'s IP(s):</gray> <ips>",
+                data.hasCustomNickname() ?
+                        Placeholder.component("player", data.getDisplayedNickname()) :
+                        Placeholder.unparsed("player", data.getUsername()),
+                MessageUtils.joinedList("ips", data.getStoredIp().stream().toList(), NamedTextColor.WHITE)
         );
     }
 }

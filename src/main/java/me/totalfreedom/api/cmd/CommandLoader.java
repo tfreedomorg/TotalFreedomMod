@@ -18,6 +18,7 @@ import java.util.stream.Stream;
 
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
+import me.totalfreedom.totalfreedommod.player.PlayerData;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
@@ -108,6 +109,7 @@ public class CommandLoader extends FreedomService
         ResolverRegistry.register(new MaterialQueryArgumentProvider());
         ResolverRegistry.register(new PlayerArgumentResolver());
         ResolverRegistry.register(new PlayerListArgumentResolver());
+        ResolverRegistry.register(new PlayerDataArgumentResolver(), PlayerData.class);
         ResolverRegistry.register(new InetAddressListResolver());
         ResolverRegistry.register(new EnumArgumentResolver());
         ResolverRegistry.register(new BooleanArgumentResolver());
