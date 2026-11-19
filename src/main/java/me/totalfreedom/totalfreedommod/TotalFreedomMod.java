@@ -24,6 +24,7 @@ import me.totalfreedom.totalfreedommod.blocking.sweep.SweepScheduler;
 import me.totalfreedom.totalfreedommod.bridge.CoreProtectBridge;
 import me.totalfreedom.totalfreedommod.bridge.EssentialsBridge;
 import me.totalfreedom.totalfreedommod.bridge.LibsDisguisesBridge;
+import me.totalfreedom.totalfreedommod.bridge.EaglerBridge;
 import me.totalfreedom.totalfreedommod.bridge.WorldEditBridge;
 import me.totalfreedom.totalfreedommod.caging.Cager;
 import me.totalfreedom.totalfreedommod.cmd.CommandLoader;
@@ -129,6 +130,7 @@ public class TotalFreedomMod extends JavaPlugin
     public CoreProtectBridge cpb;
     public EssentialsBridge esb; // EssentialsBridge - Bridge to Essentials plugin
     public LibsDisguisesBridge ldb; // LibsDisguisesBridge - Bridge to LibsDisguises plugin
+    public EaglerBridge egb; // EaglerBridge - Bridge to EaglercraftXBackendRPC
     public WorldEditBridge web; // WorldEditBridge - Bridge to WorldEdit plugin
 
     @Override
@@ -284,6 +286,7 @@ public class TotalFreedomMod extends JavaPlugin
         cpb = bridges.registerService(CoreProtectBridge.class);
         esb = bridges.registerService(EssentialsBridge.class);
         ldb = bridges.registerService(LibsDisguisesBridge.class);
+        egb = bridges.registerService(EaglerBridge.class);
         web = bridges.registerService(WorldEditBridge.class);
         bridges.start();
 

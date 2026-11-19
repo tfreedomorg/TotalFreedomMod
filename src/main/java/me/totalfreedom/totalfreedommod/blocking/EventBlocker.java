@@ -24,6 +24,7 @@ import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.inventory.InventoryPickupItemEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.world.PortalCreateEvent;
+import org.bukkit.event.weather.LightningStrikeEvent;
 
 import me.totalfreedom.totalfreedommod.EntityWiper;
 import me.totalfreedom.totalfreedommod.FreedomService;
@@ -366,6 +367,17 @@ public class EventBlocker extends FreedomService
         {
             event.setCancelled(true);
         }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onLightningStrike(final LightningStrikeEvent event)
+    {
+        final LightningStrike bolt = event.getLightning();
+        bolt.getWorld()
+            .getPlayers()
+            .stream()
+            .filter(plugin.egb::isEaglerPlayer)
+            .forEach(player -> player.hideEntity(plugin, bolt));
     }
 
     private static boolean redstoneBlocked()
