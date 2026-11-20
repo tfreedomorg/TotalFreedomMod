@@ -100,7 +100,6 @@ public enum ConfigEntry
     BLOCK_SPECTATOR_TELEPORT(Boolean.class, "block_spectator_teleport"),
     //
     LANDMINES_ENABLED(Boolean.class, "landmines_enabled"),
-    TOSSMOB_ENABLED(Boolean.class, "tossmob_enabled"),
     MP44_ENABLED(Boolean.class, "mp44_enabled"),
     JUMPPAD_MODE(String.class, "jumppad.mode"),
     //

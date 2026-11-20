@@ -178,11 +178,12 @@ public class FreedomAggregate
         services.register(ServerPing.class, ServerPing::new);
 
         // Fun
-        services.register(ItemFun.class, ItemFun::new);
         services.register(Landminer.class, Landminer::new);
         services.register(MP44.class, MP44::new);
         services.register(Jumppads.class, Jumppads::new);
         services.register(Trailer.class, Trailer::new);
+        services.register(Clownfish.class, Clownfish::new);
+        services.register(Explosives.class, Explosives::new);
 
         // HTTPD
         services.register(HTTPDaemon.class, HTTPDaemon::new);

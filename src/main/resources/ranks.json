@@ -50,7 +50,6 @@
       "tfm.fun.landmine",
       "tfm.fun.mp44",
       "tfm.fun.spawnmob",
-      "tfm.fun.tossmob",
       "tfm.server.whitelist"
     ]
   },
@@ -67,7 +66,7 @@
     "inherit": "op",
     "permissions": [
       "tfm.marker.admin",
-      "tfm.fun.*",
+      "tfm.fun.explosives.arrows",
       "tfm.world.*",
       "tfm.server.*",
       "tfm.admin.adminchat",
@@ -138,7 +137,8 @@
       "tfm.admin.ban.perm",
       "tfm.admin.banlist.purge",
       "tfm.ssh.totp",
-      "tfm.vanish.bypass"
+      "tfm.vanish.bypass",
+      "tfm.fun.*"
     ]
   }
 }
