@@ -511,6 +511,13 @@ public class AdminList extends FreedomService
         // Re-populate online-admin cache from currently-online players.
         Bukkit.getOnlinePlayers()
                 .stream()
+                .peek(player ->
+                {
+                    if (!isAdmin(player) && plugin.pl != null)
+                    {
+                        plugin.pl.getPlayer(player).setAdminChat(false);
+                    }
+                })
                 .filter(this::isAdmin)
                 .forEach(onlineAdminPlayers::add);
 
