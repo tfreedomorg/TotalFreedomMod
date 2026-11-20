@@ -162,10 +162,6 @@ public class PlayerData implements IPlayerData
     private transient int freecamPlaceCount = 0;
     private transient boolean orbiting = false;
     private transient double orbitStrength = 10.0;
-    private transient boolean mobThrowerEnabled = false;
-    private transient EntityType mobThrowerEntity = EntityType.PIG;
-    private transient double mobThrowerSpeed = 4.0;
-    private final transient List<LivingEntity> mobThrowerQueue = new ArrayList<>();
     private transient BukkitTask mp44ScheduleTask = null;
     private transient boolean mp44Armed = false;
     private transient boolean mp44Firing = false;
@@ -945,44 +941,6 @@ public class PlayerData implements IPlayerData
         this.freecamPlaceCount = 0;
     }
 
-    public void enableMobThrower(EntityType mobThrowerCreature, double mobThrowerSpeed)
-    {
-        this.mobThrowerEnabled = true;
-        this.mobThrowerEntity = mobThrowerCreature;
-        this.mobThrowerSpeed = mobThrowerSpeed;
-    }
-
-    public void disableMobThrower()
-    {
-        this.mobThrowerEnabled = false;
-    }
-
-    public EntityType mobThrowerCreature()
-    {
-        return this.mobThrowerEntity;
-    }
-
-    public double mobThrowerSpeed()
-    {
-        return this.mobThrowerSpeed;
-    }
-
-    public boolean mobThrowerEnabled()
-    {
-        return this.mobThrowerEnabled;
-    }
-
-    public void enqueueMob(LivingEntity mob)
-    {
-        mobThrowerQueue.add(mob);
-        if (mobThrowerQueue.size() > 4)
-        {
-            final LivingEntity oldMob = mobThrowerQueue.removeFirst();
-            if (oldMob != null)
-                oldMob.damage(500.0);
-        }
-    }
-
     public void startArrowShooter()
     {
         this.stopArrowShooter();
@@ -1004,6 +962,7 @@ public class PlayerData implements IPlayerData
             {
                 final Arrow shot = shooter.launchProjectile(Arrow.class);
                 shot.setVelocity(shot.getVelocity().multiply(2.0));
+                shot.setShooter(player);
             });
         }, 1L, 1L);
         this.mp44Firing = true;

@@ -16,7 +16,7 @@ import me.totalfreedom.totalfreedommod.util.FUtil;
 
 @Permission(permission = "tfm.server.whitelist")
 @Command(name = "whitelist", description = "Manage the whitelist.", usage = "/<command> <on | off | list | count | add <player> | remove <player> | addall | purge>")
-public class Command_whitelist extends FCommand
+public class  Command_whitelist extends FCommand
 {
     @Callback
     @Subcommand("list")

@@ -467,7 +467,6 @@ explosive_radius: 4.0
 # Enable misc. features
 landmines_enabled: false
 mp44_enabled: false
-tossmob_enabled: false
 
 jumppad:
   mode: 'off'

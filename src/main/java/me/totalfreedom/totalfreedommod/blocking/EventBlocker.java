@@ -147,19 +147,6 @@ public class EventBlocker extends FreedomService
     }
 
     @EventHandler(priority = EventPriority.HIGH)
-    public void onProjectileHit(ProjectileHitEvent event)
-    {
-        if (ConfigEntry.ALLOW_EXPLOSIONS.getBoolean())
-        {
-            Projectile entity = event.getEntity();
-            if (event.getEntityType() == EntityType.ARROW)
-            {
-                entity.getWorld().createExplosion(entity.getLocation(), 2F);
-            }
-        }
-    }
-
-    @EventHandler(priority = EventPriority.HIGH)
     public void onEntityDamage(EntityDamageEvent event)
     {
         EntityDamageEvent.DamageCause cause = event.getCause();
