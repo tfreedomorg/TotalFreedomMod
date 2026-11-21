@@ -27,6 +27,6 @@ public class Command_op extends FCommand
     {
         adminAction(sender, "<aqua>Opping <player>", Placeholder.unparsed("player", player.getName()));
         player.setOp(true);
-        msg(player, "<yellow>You are now op!");
+        msg(player, YOU_ARE_OP);
     }
 }
