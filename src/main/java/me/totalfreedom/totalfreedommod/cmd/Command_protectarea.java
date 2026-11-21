@@ -2,6 +2,12 @@ package me.totalfreedom.totalfreedommod.cmd;
 
 import java.util.List;
 
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+
+import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
 import me.totalfreedom.totalfreedommod.ProtectArea.ProtectedRegion;
 import me.totalfreedom.totalfreedommod.bridge.WorldEditBridge;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Callback;
@@ -9,18 +15,12 @@ import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Command;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Permission;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Subcommand;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-
-import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
 
 @Command(name = "protectarea",
-    description = "Manage protected regions so that only superadmins can directly modify blocks within them. WorldEdit and other such plugins might bypass this.",
-    usage = "/<command> <list | clear | create <name> | info <region> | update <region> | delete <region>>",
-    aliases = {"protectregion", "protect"})
-@Permission(level = Rank.SUPER_ADMIN, permission = "tfm.admin.protectregion")
+        description = "Manage protected regions so that only superadmins can directly modify blocks within them. WorldEdit and other such plugins might bypass this.",
+        usage = "/<command> <list | clear | create <name> | info <region> | update <region> | delete <region>>",
+        aliases = {"protectregion", "protect"})
+@Permission(permission = "tfm.admin.protectregion")
 public class Command_protectarea extends FCommand
 {
     @Callback
@@ -54,7 +54,7 @@ public class Command_protectarea extends FCommand
 
     @Callback
     @Subcommand("create")
-    @Permission(level = Rank.SUPER_ADMIN, source = SourceType.ONLY_IN_GAME, permission = "tfm.admin.protectregion")
+    @Permission(source = SourceType.ONLY_IN_GAME, permission = "tfm.admin.protectregion")
     public void create(final Player sender, final String name)
     {
         checkEnabled();
@@ -76,7 +76,7 @@ public class Command_protectarea extends FCommand
 
     @Callback
     @Subcommand("update")
-    @Permission(level = Rank.SUPER_ADMIN, source = SourceType.ONLY_IN_GAME, permission = "tfm.admin.protectregion")
+    @Permission(source = SourceType.ONLY_IN_GAME, permission = "tfm.admin.protectregion")
     public void update(final Player sender, final ProtectedRegion region)
     {
         checkEnabled();

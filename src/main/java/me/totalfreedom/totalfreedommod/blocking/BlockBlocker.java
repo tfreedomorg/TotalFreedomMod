@@ -1,15 +1,6 @@
 package me.totalfreedom.totalfreedommod.blocking;
 
-import me.totalfreedom.totalfreedommod.FreedomService;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.blocking.sign.SignBlocks;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.util.FLog;
-import me.totalfreedom.totalfreedommod.util.FUtil;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -18,6 +9,16 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntitySpawnEvent;
 import org.bukkit.inventory.ItemStack;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+
+import me.totalfreedom.totalfreedommod.FreedomService;
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.blocking.sign.SignBlocks;
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.util.FLog;
+import me.totalfreedom.totalfreedommod.util.FUtil;
 
 public class BlockBlocker extends FreedomService
 {
@@ -126,7 +127,7 @@ public class BlockBlocker extends FreedomService
             }
             case SPAWNER:
             {
-                if (ConfigEntry.DISABLE_SPAWNER_PLACE.getBoolean())
+                if (plugin.gs.blocking(event.getBlock().getWorld().getName()).spawnerPlace())
                 {
                     player.sendMessage(Component.text("Spawners are currently disabled.", NamedTextColor.GRAY));
 
@@ -142,6 +143,7 @@ public class BlockBlocker extends FreedomService
                 event.setCancelled(true);
                 break;
             }
+            default: break;
         }
     }
 

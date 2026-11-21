@@ -1,19 +1,20 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Callback;
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Command;
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Permission;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import org.bukkit.Location;
-import org.bukkit.entity.Player;
-
 import java.util.Comparator;
 import java.util.List;
 
+import org.bukkit.Location;
+import org.bukkit.entity.Player;
+
+import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Callback;
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Command;
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Permission;
+
 @Command(name = "radar", description = "Shows nearby people sorted by distance.", usage = "/radar [radius]")
-@Permission(permission = "tfm.player.radar", level = Rank.OP, source = SourceType.ONLY_IN_GAME)
+@Permission(permission = "tfm.player.radar", source = SourceType.ONLY_IN_GAME)
 public class Command_radar extends FCommand
 {
     @Callback

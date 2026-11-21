@@ -1,10 +1,11 @@
 package me.totalfreedom.totalfreedommod.cmd.resolver;
 
-import com.google.common.collect.ImmutableMap;
-import me.totalfreedom.totalfreedommod.util.FUtil;
-
 import java.util.Arrays;
 import java.util.Map;
+
+import me.totalfreedom.totalfreedommod.util.FUtil;
+
+import com.google.common.collect.ImmutableMap;
 
 public interface AbstractParameterizedArgumentResolver<T> extends AbstractArgumentResolver<T>
 {

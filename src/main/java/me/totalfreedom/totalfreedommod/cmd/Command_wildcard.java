@@ -4,16 +4,17 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-import me.totalfreedom.totalfreedommod.ssh.AttributedConsoleSender;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.command.CommandSender;
 
-@Permission(level = Rank.SUPER_ADMIN, permission = "tfm.admin.wildcard")
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+import me.totalfreedom.totalfreedommod.ssh.AttributedConsoleSender;
+
+@Permission(permission = "tfm.admin.wildcard")
 @Command(
         name = "wildcard",
-        description = "Run any command on all users, username placeholder = ?.", 
+        description = "Run any command on all users, username placeholder = ?.",
         usage = "/wildcard <command> (use ? to insert each player's username)")
 public class Command_wildcard extends FCommand
 {
@@ -24,6 +25,12 @@ public class Command_wildcard extends FCommand
             "saconfig",
             "crash"
     );
+
+    @Completer(value = "", position = 0, scope = Completer.Scope.ARGUMENT_TO_WORD)
+    public List<String> completeCommand(CommandSender sender, String partial)
+    {
+        return CommandCandidates.inner(server(), sender, partial);
+    }
 
     @Callback
     public void wildcard(CommandSender sender, @Greedy String command)

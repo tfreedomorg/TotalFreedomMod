@@ -1,27 +1,33 @@
 package me.totalfreedom.totalfreedommod.admin;
 
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-import me.totalfreedom.totalfreedommod.util.ConfigInterfaces.ConfigLoadable;
-import me.totalfreedom.totalfreedommod.util.ConfigInterfaces.ConfigSavable;
-import me.totalfreedom.totalfreedommod.util.ConfigInterfaces.Validatable;
-import me.totalfreedom.totalfreedommod.util.FUtil;
+
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 
-public class Admin implements ConfigLoadable, ConfigSavable, Validatable
+import me.totalfreedom.totalfreedommod.util.ConfigInterfaces.ConfigLoadable;
+import me.totalfreedom.totalfreedommod.util.ConfigInterfaces.Validatable;
+import me.totalfreedom.totalfreedommod.util.FUtil;
+
+import com.google.common.collect.Lists;
+
+public class Admin implements ConfigLoadable, Validatable
 {
 
     private UUID uuid;
     private String configKey;
     private String name;
     private boolean active = true;
-    private Rank rank = Rank.SUPER_ADMIN;
-    private String customRankId = null;
+
+    /**
+     * The id of the rank this admin holds, resolved against {@code ranks.json}. Stored as an id
+     * rather than as a fixed tier so that defined ranks are first-class: an admin may hold
+     * any rank the registry knows, not just one of a handful the plugin ships with.
+     */
+    private String rankId = null;
+
     private final List<String> ips = Lists.newArrayList();
     private Date lastLogin = new Date();
     private String loginMessage = null;
@@ -48,8 +54,7 @@ public class Admin implements ConfigLoadable, ConfigSavable, Validatable
                 .append("- IPs: ").append(String.join(", ", ips)).append("\n")
                 .append("- Last Login: ").append(FUtil.dateToString(lastLogin)).append("\n")
                 .append("- Custom Login Message: ").append(loginMessage).append("\n")
-                .append("- Rank: ").append(rank.getName()).append("\n")
-                .append("- Custom Rank: ").append(customRankId != null ? customRankId : "none").append("\n")
+                .append("- Rank: ").append(rankId).append("\n")
                 .append("- Is Active: ").append(active);
 
         return output.toString();
@@ -68,31 +73,30 @@ public class Admin implements ConfigLoadable, ConfigSavable, Validatable
     {
         name = cs.getString("username", configKey);
         active = cs.getBoolean("active", true);
-        rank = Rank.findRank(cs.getString("rank"));
+        rankId = normaliseRankId(cs.getString("custom_rank"), cs.getString("rank"));
 
         ips.clear();
         ips.addAll(cs.getStringList("ips"));
         lastLogin = FUtil.stringToDate(cs.getString("last_login"));
         loginMessage = cs.getString("login_message", null);
-        customRankId = cs.getString("custom_rank", null);
     }
 
-    @Override
-    public void saveTo(ConfigurationSection cs)
+    /**
+     * Folds the two rank fields records used to carry into the single id used now.
+     * <p>
+     * {@code custom_rank} was the assigned rank and took precedence over {@code rank},
+     * which held one of the fixed tiers, so it is preferred here too. A tier name is lowercased to
+     * become an id, which is the convention the shipped {@code ranks.json} follows.
+     */
+    private static String normaliseRankId(final String customRank, final String legacyRank)
     {
-        Preconditions.checkArgument(isValid(), "Could not save admin entry: " + name + ". Entry not valid!");
-        cs.set("username", name);
-        cs.set("active", active);
-        cs.set("rank", rank.toString());
-        cs.set("ips", Lists.newArrayList(ips));
-        cs.set("last_login", FUtil.dateToString(lastLogin));
-        cs.set("login_message", loginMessage);
-        cs.set("custom_rank", customRankId);
-    }
+        if (customRank != null && !customRank.isBlank())
+            return customRank.toLowerCase();
 
-    public boolean isAtLeast(Rank pRank)
-    {
-        return rank.isAtLeast(pRank);
+        if (legacyRank != null && !legacyRank.isBlank())
+            return legacyRank.toLowerCase();
+
+        return null;
     }
 
     public boolean hasLoginMessage()
@@ -141,19 +145,14 @@ public class Admin implements ConfigLoadable, ConfigSavable, Validatable
         this.uuid = uuid;
     }
     
-    public Rank getRank()
+    public String getRankId()
     {
-        return rank;
+        return rankId;
     }
 
-    public String getCustomRankId()
+    public void setRankId(String rankId)
     {
-        return customRankId;
-    }
-
-    public void setCustomRankId(String customRankId)
-    {
-        this.customRankId = customRankId;
+        this.rankId = rankId == null ? null : rankId.toLowerCase();
     }
 
     public String getName()
@@ -196,11 +195,6 @@ public class Admin implements ConfigLoadable, ConfigSavable, Validatable
         return loginMessage;
     }
 
-    public void setRank(Rank rank)
-    {
-        this.rank = rank;
-    }
-
     public void setLoginMessage(String loginMessage)
     {
         this.loginMessage = loginMessage;
@@ -214,9 +208,10 @@ public class Admin implements ConfigLoadable, ConfigSavable, Validatable
     @Override
     public boolean isValid()
     {
+        // rankId is deliberately not required: an unset id means "whatever fills the admin-default
+        // role", which the registry resolves, so an older record without one is still valid.
         return configKey != null
                 && name != null
-                && rank != null
                 && !ips.isEmpty()
                 && lastLogin != null;
     }

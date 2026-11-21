@@ -1,0 +1,72 @@
+{
+  "shape": {
+    "mode": "density",
+    "bounds": { "minY": 0, "maxY": 256 },
+    "falloff": { "mode": "band", "centre": 80 },
+
+    "terrain": {
+      "noise": {
+        "type": "simplex",
+        "octaves": 3,
+        "frequency": 0.008,
+        "persistence": 0.45,
+        "lacunarity": 2.0,
+        "ridged": false
+      },
+      "warp": 0.02
+    }
+  },
+
+  "palette": {
+    "materials": {
+      "defaultBlock": "end_stone",
+      "fluidBlock": "water",
+      "bedrockBlock": "bedrock",
+      "bedrock": "NONE"
+    },
+    "surface": [
+      { "depthFrom": 0, "block": "end_stone" }
+    ],
+    "climate": {
+      "temperature": {
+        "type": "simplex",
+        "octaves": 1,
+        "frequency": 0.0018,
+        "persistence": 0.5,
+        "lacunarity": 2.0,
+        "ridged": false
+      },
+      "humidity": {
+        "type": "simplex",
+        "octaves": 1,
+        "frequency": 0.0018,
+        "persistence": 0.5,
+        "lacunarity": 2.0,
+        "ridged": false
+      },
+      "scale": 1.0
+    },
+    "fallback": "the_end",
+    "biomes": [
+      { "biome": "end_highlands", "minTemperature":  0.10, "maxTemperature": 1.00, "minHumidity": -1.00, "maxHumidity": 1.00 },
+      { "biome": "end_midlands",  "minTemperature": -0.40, "maxTemperature": 0.10, "minHumidity": -1.00, "maxHumidity": 1.00 }
+    ]
+  },
+
+  "features": [
+    { "type": "tree",    "rarity": 3, "minY": 40, "maxY": 200, "treeType": "CHORUS_PLANT", "biomes": ["end_highlands"] },
+    { "type": "boulder", "rarity": 1, "chance": 0.1, "minY": 40, "maxY": 200, "block": "obsidian", "size": 2 }
+  ],
+
+  "world": {
+    "environment": "the_end",
+    "generateStructures": false,
+    "vanilla": {
+      "surface": false,
+      "caves": false,
+      "decorations": false,
+      "mobs": true,
+      "structures": false
+    }
+  }
+}

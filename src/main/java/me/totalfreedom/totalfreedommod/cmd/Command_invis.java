@@ -2,22 +2,22 @@ package me.totalfreedom.totalfreedommod.cmd;
 
 import java.util.List;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Callback;
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Command;
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Permission;
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Subcommand;
-import me.totalfreedom.totalfreedommod.rank.Rank;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+import org.bukkit.potion.PotionEffectType;
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
-import org.bukkit.potion.PotionEffectType;
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Callback;
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Command;
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Permission;
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Subcommand;
 
 @Command(name = "invis", description = "Shows (and optionally clears) invisisible players", usage = "/invis [clear]")
-@Permission(level = Rank.SUPER_ADMIN, permission = "tfm.admin.invis")
+@Permission(permission = "tfm.admin.invis")
 public class Command_invis extends FCommand
 {
     @Callback
@@ -49,10 +49,7 @@ public class Command_invis extends FCommand
                                                                     player.displayName()
                                                                           .colorIfAbsent(NamedTextColor.WHITE)
                                                                           .hoverEvent(HoverEvent.showText(Component.text(player.getName())))
-                                                                          .clickEvent(ClickEvent.clickEvent(
-                                                                                                            ClickEvent.Action.RUN_COMMAND, 
-                                                                                                            ClickEvent.Payload.string("/tp" + (plugin().esb.isEssentialsEnabled() ? "o " : " ") + player.getName())
-                                                                                                        ))
+                                                                          .clickEvent(ClickEvent.runCommand("/tp" + (plugin().esb.isEssentialsEnabled() ? "o " : " ") + player.getName()))
                                                     )
                                                 .toList();
 

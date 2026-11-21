@@ -5,21 +5,16 @@ import java.util.Iterator;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Ambient;
-import org.bukkit.entity.Creature;
-import org.bukkit.entity.EnderDragon;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.Ghast;
-import org.bukkit.entity.Slime;
+import org.bukkit.entity.*;
 import org.bukkit.scheduler.BukkitRunnable;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.rank.Rank;
 import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+
 @Command(name = "mobpurge", description = "Purge all mobs in all worlds.", usage = "/mobpurge [world] [chunkX chunkZ | batchSize]", aliases = {"mp"})
-@Permission(permission = "tfm.server.mobpurge", level = Rank.SUPER_ADMIN)
+@Permission(permission = "tfm.server.mobpurge")
 public class Command_mobpurge extends FCommand
 {
     public static final int DEFAULT_BATCH_SIZE = 200;

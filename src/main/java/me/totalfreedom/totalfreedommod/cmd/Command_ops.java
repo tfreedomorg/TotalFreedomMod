@@ -3,8 +3,9 @@ package me.totalfreedom.totalfreedommod.cmd;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
 import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
+
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
 
 @Command(name = "ops", description = "Manage operators", usage = "/ops")
 @Permission(permission = "tfm.player.ops")

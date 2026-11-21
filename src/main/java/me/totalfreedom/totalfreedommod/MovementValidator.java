@@ -1,25 +1,46 @@
 package me.totalfreedom.totalfreedommod;
 
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.util.FLog;
+import io.papermc.paper.event.player.PlayerClientLoadedWorldEvent;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.WorldBorder;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.world.WorldLoadEvent;
-import io.papermc.paper.event.player.PlayerClientLoadedWorldEvent;
+
+import io.papermc.paper.event.player.AsyncChatEvent;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.util.FLog;
 
 public class MovementValidator extends FreedomService
 {
 
     public static final int MAX_XZ_COORD = 30000000;
+    private static final double REQUIRED_MOVEMENT = 5.0;
+
+    private final Map<UUID, Location> spawnLocations = new ConcurrentHashMap<>();
 
     public MovementValidator(TotalFreedomMod plugin)
     {
         super(plugin);
+    }
+
+    public boolean isMovementRequired(UUID id)
+    {
+        return id != null && spawnLocations.containsKey(id);
     }
 
     @Override
@@ -63,6 +84,66 @@ public class MovementValidator extends FreedomService
         {
             event.setCancelled(true); // illegal position, cancel it
         }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlayerMove(PlayerMoveEvent event)
+    {
+        if (event instanceof PlayerTeleportEvent || !event.hasChangedPosition())
+        {
+            return;
+        }
+
+        final Location spawnLocation = spawnLocations.get(event.getPlayer().getUniqueId());
+        if (spawnLocation != null && spawnLocation.getWorld().equals(event.getTo().getWorld())
+                && spawnLocation.distanceSquared(event.getTo()) >= REQUIRED_MOVEMENT * REQUIRED_MOVEMENT)
+        {
+            spawnLocations.remove(event.getPlayer().getUniqueId());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onPlayerJoin(PlayerJoinEvent event)
+    {
+        if (!ConfigEntry.SPAWN_REQUIRE_MOVEMENT.getBoolean(true))
+        {
+            return;
+        }
+
+        if (event.getPlayer() == null || plugin.al.isAdmin(event.getPlayer()))
+        {
+            return;
+        }
+
+        spawnLocations.put(event.getPlayer().getUniqueId(), event.getPlayer().getLocation().clone());
+    }
+
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event)
+    {
+        spawnLocations.remove(event.getPlayer().getUniqueId());
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onAsyncChat(AsyncChatEvent event)
+    {
+        cancelIfMovementRequired(event.getPlayer(), event::setCancelled);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event)
+    {
+        cancelIfMovementRequired(event.getPlayer(), event::setCancelled);
+    }
+
+    private void cancelIfMovementRequired(Player player, java.util.function.Consumer<Boolean> cancel)
+    {
+        if (player == null || plugin.al.isAdmin(player) || !spawnLocations.containsKey(player.getUniqueId()))
+        {
+            return;
+        }
+        player.sendMessage(Component.text("You must move 5 blocks before chatting or using commands.", NamedTextColor.RED));
+        cancel.accept(true);
     }
 
     /**

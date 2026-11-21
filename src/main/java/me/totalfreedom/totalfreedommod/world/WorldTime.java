@@ -2,6 +2,7 @@ package me.totalfreedom.totalfreedommod.world;
 
 import java.util.Arrays;
 import java.util.List;
+
 import org.bukkit.World;
 
 public enum WorldTime
@@ -46,9 +47,7 @@ public enum WorldTime
 
     public void setWorldToTime(World world)
     {
-        long time = world.getTime();
-        time -= time % 24000;
-        world.setTime(time + 24000 + getTimeTicks());
+        world.setTime(getTimeTicks());
     }
 
     public static WorldTime getByAlias(String needle)

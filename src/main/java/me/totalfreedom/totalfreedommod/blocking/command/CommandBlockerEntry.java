@@ -3,12 +3,16 @@ package me.totalfreedom.totalfreedommod.blocking.command;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import lombok.Getter;
-import me.totalfreedom.totalfreedommod.PluginProvider;
-import me.totalfreedom.totalfreedommod.util.FUtil;
-import net.kyori.adventure.text.format.NamedTextColor;
+
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+
+import net.kyori.adventure.text.format.NamedTextColor;
+
+import me.totalfreedom.totalfreedommod.PluginProvider;
+import me.totalfreedom.totalfreedommod.util.FUtil;
+
+import lombok.Getter;
 
 public class CommandBlockerEntry
 {
@@ -63,22 +67,14 @@ public class CommandBlockerEntry
     private final List<PatternToken> patternTokens;
     @Getter
     private final boolean wildcardPattern;
+    private final String bypassNode;
 
-    public CommandBlockerEntry(CommandBlockerRank rank, CommandBlockerAction action, String command, String message)
-    {
-        this(rank, action, command, (List<PatternToken>) null, message);
-    }
-
-    public CommandBlockerEntry(CommandBlockerRank rank, CommandBlockerAction action, String command, String subCommand, String message)
-    {
-        this(rank, action, command, tokenize(subCommand), message);
-    }
-
-    public CommandBlockerEntry(CommandBlockerRank rank, CommandBlockerAction action, String command, List<PatternToken> patternTokens, String message)
+    public CommandBlockerEntry(CommandBlockerRank rank, CommandBlockerAction action, String command, List<PatternToken> patternTokens, String message, String bypassNode)
     {
         this.rank = rank;
         this.action = action;
         this.command = command;
+        this.bypassNode = bypassNode;
         this.patternTokens = patternTokens == null ? Collections.emptyList() : Collections.unmodifiableList(new ArrayList<>(patternTokens));
         this.subCommand = renderTokens(this.patternTokens);
         boolean anyWildcard = false;
@@ -92,6 +88,11 @@ public class CommandBlockerEntry
         }
         this.wildcardPattern = anyWildcard;
         this.message = "&7" + (message == null || message.equals("_") ? "That command is blocked." : message);
+    }
+
+    public String getBypassNode()
+    {
+        return bypassNode;
     }
 
     public static List<PatternToken> tokenize(String raw)

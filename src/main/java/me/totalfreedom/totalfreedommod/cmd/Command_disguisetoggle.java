@@ -2,12 +2,12 @@ package me.totalfreedom.totalfreedommod.cmd;
 
 import org.bukkit.command.CommandSender;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.rank.Rank;
 import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
 
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+
 @Command(name = "disguisetoggle", description = "Toggle the disguise plugin", usage = "/disguisetoggle", aliases = {"dtoggle"})
-@Permission(permission = "tfm.admin.disguisetoggle", level = Rank.SUPER_ADMIN)
+@Permission(permission = "tfm.admin.disguisetoggle")
 public class Command_disguisetoggle extends FCommand
 {
     @Callback

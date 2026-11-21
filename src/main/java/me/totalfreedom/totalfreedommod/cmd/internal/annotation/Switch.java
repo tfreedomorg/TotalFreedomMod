@@ -1,10 +1,6 @@
 package me.totalfreedom.totalfreedommod.cmd.internal.annotation;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.*;
 
 /**
  * Marks a {@code boolean} handler parameter as an optional command-line switch (e.g. {@code -s}).

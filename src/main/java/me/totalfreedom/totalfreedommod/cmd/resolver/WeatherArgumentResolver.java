@@ -1,11 +1,12 @@
 package me.totalfreedom.totalfreedommod.cmd.resolver;
 
-import me.totalfreedom.totalfreedommod.cmd.MessageUtils;
-import me.totalfreedom.totalfreedommod.world.WorldWeather;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-
 import java.util.Arrays;
 import java.util.List;
+
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
+import me.totalfreedom.totalfreedommod.cmd.MessageUtils;
+import me.totalfreedom.totalfreedommod.world.WorldWeather;
 
 public class WeatherArgumentResolver implements AbstractArgumentResolver<WorldWeather> 
 {

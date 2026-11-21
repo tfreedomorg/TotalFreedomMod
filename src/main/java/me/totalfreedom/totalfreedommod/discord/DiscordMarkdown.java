@@ -2,6 +2,7 @@ package me.totalfreedom.totalfreedommod.discord;
 
 import java.util.EnumSet;
 import java.util.Set;
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.TextDecoration;

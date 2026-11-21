@@ -1,11 +1,12 @@
 package me.totalfreedom.totalfreedommod.sql.adapter;
 
-import me.totalfreedom.totalfreedommod.banning.PermBan;
-
 import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
+
+import reactor.core.publisher.Mono;
+
+import me.totalfreedom.totalfreedommod.banning.PermBan;
 
 /**
  * Repository interface for Permban data.
@@ -136,30 +137,41 @@ public interface PermbanRepository
      */
     void deleteAllSync() throws SQLException;
 
+    /**
+     * Epoch millis of the most recently updated permban row, or null if the table is empty.
+     * Used to compare SQL freshness against the permbans.json snapshot's last-modified time.
+     */
+    Long getMaxUpdatedAt() throws SQLException;
+
     // ============================================
     // Async Operations
     // ============================================
 
-    CompletableFuture<List<PermBan>> loadAllAsync();
+    Mono<List<PermBan>> loadAllAsync();
 
-    CompletableFuture<Integer> insertAsync(PermBan permban);
+    Mono<Integer> insertAsync(PermBan permban);
 
-    CompletableFuture<Boolean> updateAsync(PermBan permban);
+    Mono<Boolean> updateAsync(PermBan permban);
 
-    CompletableFuture<Boolean> deleteAsync(UUID uuid);
-    
+    Mono<Boolean> deleteAsync(UUID uuid);
+
     /**
      * Save permban asynchronously (insert or update).
      */
-    CompletableFuture<Integer> save(PermBan permban);
-    
+    Mono<Integer> save(PermBan permban);
+
     /**
      * Find all permbans asynchronously.
      */
-    CompletableFuture<List<PermBan>> findAll();
-    
+    Mono<List<PermBan>> findAll();
+
+    /**
+     * Delete every permban carrying {@code ip}, off the main thread.
+     */
+    Mono<Boolean> deleteByIpAsync(String ip);
+
     /**
      * Delete all permbans asynchronously.
      */
-    CompletableFuture<Void> deleteAll();
+    Mono<Void> deleteAll();
 }

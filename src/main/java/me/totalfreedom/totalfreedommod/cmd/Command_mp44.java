@@ -1,18 +1,17 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
+import org.bukkit.Material;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Callback;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Command;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Permission;
 import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Subcommand;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-
-import org.bukkit.Material;
-import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 
 @Command(name = "mp44", description = "Modern weaponry, FTW. Use 'draw' to start firing, 'sling' to stop firing.", usage = "/<command> <draw | sling>")
-@Permission(level = Rank.OP, source = SourceType.ONLY_IN_GAME, permission = "tfm.fun.mp44")
+@Permission(source = SourceType.ONLY_IN_GAME, permission = "tfm.fun.mp44")
 public class Command_mp44 extends FCommand
 {
     @Callback

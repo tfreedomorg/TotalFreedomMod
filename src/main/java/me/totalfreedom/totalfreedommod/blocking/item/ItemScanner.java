@@ -1,34 +1,24 @@
 package me.totalfreedom.totalfreedommod.blocking.item;
 
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Stream;
+
+import io.papermc.paper.block.BlockPredicate;
+import io.papermc.paper.datacomponent.DataComponentType;
 import io.papermc.paper.datacomponent.DataComponentTypes;
-import io.papermc.paper.datacomponent.item.BannerPatternLayers;
-import io.papermc.paper.datacomponent.item.BlocksAttacks;
-import io.papermc.paper.datacomponent.item.BundleContents;
-import io.papermc.paper.datacomponent.item.ChargedProjectiles;
-import io.papermc.paper.datacomponent.item.CustomModelData;
-import io.papermc.paper.datacomponent.item.Equippable;
-import io.papermc.paper.datacomponent.item.Fireworks;
-import io.papermc.paper.datacomponent.item.ItemAttributeModifiers;
-import io.papermc.paper.datacomponent.item.ItemContainerContents;
-import io.papermc.paper.datacomponent.item.ItemLore;
-import io.papermc.paper.datacomponent.item.JukeboxPlayable;
-import io.papermc.paper.datacomponent.item.PotionContents;
-import io.papermc.paper.datacomponent.item.SuspiciousStewEffects;
-import io.papermc.paper.datacomponent.item.UseRemainder;
-import io.papermc.paper.datacomponent.item.WritableBookContent;
-import io.papermc.paper.datacomponent.item.WrittenBookContent;
+import io.papermc.paper.datacomponent.item.*;
 import io.papermc.paper.datacomponent.item.attribute.AttributeModifierDisplay;
 import io.papermc.paper.datacomponent.item.blocksattacks.DamageReduction;
+import io.papermc.paper.datacomponent.item.consumable.ConsumeEffect;
 import io.papermc.paper.registry.set.RegistryKeySet;
+import io.papermc.paper.registry.tag.Tag;
 import io.papermc.paper.text.Filtered;
-import java.util.List;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.util.ComponentScanner;
-import net.kyori.adventure.key.Key;
-import net.kyori.adventure.text.Component;
 import org.bukkit.FireworkEffect;
 import org.bukkit.JukeboxSong;
 import org.bukkit.MusicInstrument;
+import org.bukkit.Registry;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.block.banner.PatternType;
@@ -36,6 +26,12 @@ import org.bukkit.damage.DamageType;
 import org.bukkit.entity.EntityType;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ItemType;
+
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.text.Component;
+
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.util.ComponentScanner;
 
 final class ItemScanner
 {
@@ -47,6 +43,7 @@ final class ItemScanner
     private static final int MAX_BOOK_PAGE_LENGTH = 1024;
     private static final int MAX_BOOK_PAGES = 100;
     private static final int MAX_INSTRUMENT_DESC_LENGTH = 256;
+    private static final float MAX_INSTRUMENT_RANGE = 1024.0F;
     private static final long MAX_AGGREGATE_TEXT = 262_144L;
     private static final double MAX_ITEM_SCALE = 4.0;
     private static final double MAX_WAYPOINT_RANGE = 16_384.0;
@@ -59,8 +56,12 @@ final class ItemScanner
     private static final int MAX_ATTRIBUTE_MODIFIERS = 64;
     private static final int MAX_DAMAGE_REDUCTIONS = 64;
     private static final int MAX_DAMAGE_TYPE_SET = 256;
+    private static final int MAX_PREDICATE_ENTRIES = 256;
+    private static final int MAX_AGGREGATE_PREDICATE_ENTRIES = 2048;
     private static final int MAX_NBT_NODES = 8192;
     private static final int MAX_NBT_DEPTH = 16;
+    private static final Optional<DataComponentType> LOCK_TYPE =
+            Optional.ofNullable(Registry.DATA_COMPONENT_TYPE.get(Key.key("minecraft", "lock")));
 
     private ItemScanner()
     {
@@ -81,6 +82,8 @@ final class ItemScanner
         OVERSIZED_EQUIPPABLE,
         OVERSIZED_CUSTOM_MODEL_DATA,
         OVERSIZED_BLOCKS_ATTACKS,
+        LOCK_COMPONENT,
+        OVERSIZED_PREDICATE,
         OVERSIZED_BOOK,
         OVERSIZED_ATTRIBUTE,
         OVERSIZED_ATTRIBUTE_COUNT,
@@ -90,14 +93,16 @@ final class ItemScanner
         CURSED_COMPONENT,
         CURSED_EQUIP_SOUND,
         SCAN_BUDGET_EXCEEDED,
-        PANIC_BLANKET_REJECT;
+        PANIC_BLANKET_REJECT,
+        OVERSIZED_TELEPORT,
+        INVALID_TELEPORT_DIAMETER;
 
         boolean isHangClass()
         {
             return switch (this)
             {
                 case CLEAN, OVERSIZED_NAME, OVERSIZED_LORE, OVERSIZED_BOOK, CURSED_EQUIP_SOUND,
-                     OVERSIZED_ATTRIBUTE_COUNT -> false;
+                     OVERSIZED_ATTRIBUTE_COUNT, LOCK_COMPONENT -> false;
                 default -> true;
             };
         }
@@ -121,6 +126,7 @@ final class ItemScanner
     private static final class Aggregate
     {
         private long text;
+        private long predicateEntries;
     }
 
     static Verdict scan(ItemStack item, boolean panicMode, int maxPotionEffects)
@@ -176,6 +182,12 @@ final class ItemScanner
             return effects;
         }
 
+        Verdict teleport = inspectTeleportConsumable(item, depth);
+        if (teleport.isCursed())
+        {
+            return teleport;
+        }
+
         Verdict firework = inspectFirework(item, depth);
         if (firework.isCursed())
         {
@@ -204,6 +216,18 @@ final class ItemScanner
         if (blocksAttacks.isCursed())
         {
             return blocksAttacks;
+        }
+
+        Verdict lock = inspectLock(item, depth);
+        if (lock.isCursed())
+        {
+            return lock;
+        }
+
+        Verdict predicates = inspectBlockPredicates(item, depth, agg);
+        if (predicates.isCursed())
+        {
+            return predicates;
         }
 
         // CUSTOM_NAME / ITEM_NAME — gate the serializer behind a safe-graph check
@@ -469,6 +493,69 @@ final class ItemScanner
         return Verdict.CLEAN;
     }
 
+    private static Verdict inspectTeleportConsumable(ItemStack item, int depth)
+    {
+        if (!item.hasData(DataComponentTypes.CONSUMABLE))
+        {
+            return Verdict.CLEAN;
+        }
+
+        try
+        {
+            Consumable consumable = item.getData(DataComponentTypes.CONSUMABLE);
+            if (consumable == null)
+            {
+                return Verdict.CLEAN;
+            }
+
+            int teleportCount = 0;
+            boolean invalidDiameter = false;
+            long observedDiameter = -1L;
+
+            for (ConsumeEffect effect : consumable.consumeEffects())
+            {
+                if (!(effect instanceof ConsumeEffect.TeleportRandomly teleport))
+                {
+                    continue;
+                }
+
+                teleportCount++;
+
+                // Reject multiple teleport effects
+                if (teleportCount > 1)
+                {
+                    return new Verdict(Reason.OVERSIZED_TELEPORT, teleportCount, depth);
+                }
+
+                float diameter = teleport.diameter();
+
+                if (!Float.isFinite(diameter)
+                        || diameter <= 0.0F
+                        || diameter > 64.0F)
+                {
+                    invalidDiameter = true;
+
+                    if (Float.isFinite(diameter))
+                    {
+                        observedDiameter = (long) Math.ceil(diameter);
+                    }
+                }
+            }
+
+            // Reject invalid teleport diamter
+            if (invalidDiameter)
+            {
+                return new Verdict(Reason.INVALID_TELEPORT_DIAMETER, observedDiameter, depth);
+            }
+        }
+        catch (Throwable t)
+        {
+            return new Verdict(Reason.UNINSPECTABLE_NBT, -1L, depth);
+        }
+
+        return Verdict.CLEAN;
+    }
+
     private static Verdict inspectBannerPatterns(ItemStack item, int depth)
     {
         try
@@ -495,6 +582,57 @@ final class ItemScanner
             return new Verdict(Reason.UNINSPECTABLE_NBT, -1L, depth);
         }
         return Verdict.CLEAN;
+    }
+
+    private static Verdict inspectLock(ItemStack item, int depth)
+    {
+        return LOCK_TYPE.filter(item::hasData)
+                        .map(type -> new Verdict(Reason.LOCK_COMPONENT, 0L, depth))
+                        .orElse(Verdict.CLEAN);
+    }
+
+    /**
+     * Counts block references in CAN_BREAK, CAN_PLACE_ON, and TOOL rules. Each list is
+     * decoded every time the item is loaded, so a container full of these items hangs
+     * the main thread when anything copies its block state (e.g. getHolder()).
+     * Counted per item and accumulated across nested contents.
+     */
+    private static Verdict inspectBlockPredicates(ItemStack item, int depth, Aggregate agg)
+    {
+        try
+        {
+            final long predicateEntries = Stream.of(DataComponentTypes.CAN_BREAK, DataComponentTypes.CAN_PLACE_ON)
+                                                .filter(item::hasData)
+                                                .map(item::getData)
+                                                .filter(Objects::nonNull)
+                                                .flatMap(predicate -> predicate.predicates().stream())
+                                                .map(BlockPredicate::blocks)
+                                                .mapToLong(ItemScanner::registrySetCost)
+                                                .sum();
+            final long toolEntries = Optional.ofNullable(item.getData(DataComponentTypes.TOOL))
+                                             .map(Tool::rules)
+                                             .orElse(List.of())
+                                             .stream()
+                                             .map(Tool.Rule::blocks)
+                                             .mapToLong(ItemScanner::registrySetCost)
+                                             .sum();
+            final long entries = predicateEntries + toolEntries;
+            agg.predicateEntries += entries;
+            if (entries > MAX_PREDICATE_ENTRIES || agg.predicateEntries > MAX_AGGREGATE_PREDICATE_ENTRIES)
+                return new Verdict(Reason.OVERSIZED_PREDICATE, agg.predicateEntries, depth);
+        }
+        catch (Throwable t)
+        {
+            return new Verdict(Reason.UNINSPECTABLE_NBT, -1L, depth);
+        }
+        return Verdict.CLEAN;
+    }
+
+    private static long registrySetCost(RegistryKeySet<?> blocks)
+    {
+        if (blocks == null)
+            return 1L;
+        return blocks instanceof Tag<?> ? 1L : Math.max(1L, blocks.size());
     }
 
     private static Verdict inspectEquippable(ItemStack item, int depth)
@@ -773,6 +911,9 @@ final class ItemScanner
             {
                 return Verdict.CLEAN;
             }
+            // Horn volume is range / 16, so huge or non-finite ranges broadcast an unbounded sound to every client
+            if (!(instrument.getRange() <= MAX_INSTRUMENT_RANGE))
+                return new Verdict(Reason.CURSED_COMPONENT, -1L, depth);
             description = instrument.description();
         }
         catch (Throwable t)

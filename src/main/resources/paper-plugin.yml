@@ -2,7 +2,7 @@ name: TotalFreedomMod
 version: '${tfm.build.version}'
 main: me.totalfreedom.totalfreedommod.TotalFreedomMod
 loader: me.totalfreedom.totalfreedommod.TFMLibraryLoader
-api-version: '1.21'
+api-version: '26.2'
 description: Plugin for the Total Freedom server.
 load: STARTUP
 authors:
@@ -16,7 +16,7 @@ dependencies:
       required: false
       join-classpath: true
     WorldEdit:
-      load: BEFORE
+      load: AFTER
       required: false
       join-classpath: true
     TF-WorldEdit:

@@ -1,9 +1,22 @@
 package me.totalfreedom.totalfreedommod.blocking.packet;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+
+import net.kyori.adventure.text.format.NamedTextColor;
+
 import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import com.github.retrooper.packetevents.event.PacketReceiveEvent;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
+import com.github.retrooper.packetevents.protocol.component.ComponentTypes;
+import com.github.retrooper.packetevents.protocol.component.builtin.item.ItemAttributeModifiers;
 import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
 import com.github.retrooper.packetevents.protocol.nbt.NBTCompound;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
@@ -13,32 +26,11 @@ import com.github.retrooper.packetevents.protocol.player.Equipment;
 import com.github.retrooper.packetevents.protocol.recipe.data.MerchantOffer;
 import com.github.retrooper.packetevents.protocol.world.chunk.Column;
 import com.github.retrooper.packetevents.util.Vector3d;
+import com.github.retrooper.packetevents.wrapper.play.client.*;
+import com.github.retrooper.packetevents.wrapper.play.server.*;
+
 import io.netty.buffer.ByteBuf;
-import com.github.retrooper.packetevents.protocol.component.ComponentTypes;
-import com.github.retrooper.packetevents.protocol.component.builtin.item.ItemAttributeModifiers;
-import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientChatCommand;
-import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientChatCommandUnsigned;
-import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientChatMessage;
-import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientCreativeInventoryAction;
-import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerPosition;
-import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerPositionAndRotation;
-import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientTabComplete;
-import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientVehicleMove;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerBlockEntityData;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerChunkData;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityEquipment;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetSlot;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnLivingEntity;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerUpdateAttributes;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerMerchantOffers;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerWindowItems;
-import io.github.retrooper.packetevents.util.SpigotConversionUtil;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import me.totalfreedom.totalfreedommod.blocking.entity.EntityMetaPacketGuard;
 import me.totalfreedom.totalfreedommod.blocking.item.ContainerPacketGuard;
@@ -49,9 +41,8 @@ import me.totalfreedom.totalfreedommod.player.FPlayer;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FSync;
 import me.totalfreedom.totalfreedommod.util.FTask;
-import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
+
+import io.github.retrooper.packetevents.util.SpigotConversionUtil;
 
 final class CrashPacketListener extends PacketListenerAbstract
 {
@@ -73,6 +64,7 @@ final class CrashPacketListener extends PacketListenerAbstract
     private final EntityMetaPacketGuard.Limits entityLimits;
     private final PacketSpamLimiter spamLimiter;
     private final MovementGuard movementGuard;
+    private final boolean movementGuardEnabled;
     private final CommandDepthGuard commandDepthGuard;
     // Last epoch-second we logged a depth block for a given user, so a flood produces at most one
     // console line per attacker per second instead of re-creating the log spam we are guarding against.
@@ -87,7 +79,8 @@ final class CrashPacketListener extends PacketListenerAbstract
 
     CrashPacketListener(TotalFreedomMod plugin, boolean sanitizeOutbound, boolean entityMetadataGuard,
                              EntityMetaPacketGuard.Limits entityLimits, PacketSpamLimiter spamLimiter,
-                             MovementGuard movementGuard, CommandDepthGuard commandDepthGuard,
+                             MovementGuard movementGuard, boolean movementGuardEnabled,
+                             CommandDepthGuard commandDepthGuard,
                              boolean signBlockEntityGuard,
                              boolean signChunkGuard, boolean blockAllSignPackets,
                              boolean spawnerBlockEntityGuard, boolean spawnerChunkGuard,
@@ -100,6 +93,7 @@ final class CrashPacketListener extends PacketListenerAbstract
         this.entityLimits = entityLimits;
         this.spamLimiter = spamLimiter;
         this.movementGuard = movementGuard;
+        this.movementGuardEnabled = movementGuardEnabled;
         this.commandDepthGuard = commandDepthGuard;
         this.signBlockEntityGuard = signBlockEntityGuard;
         this.signChunkGuard = signChunkGuard;
@@ -370,6 +364,18 @@ final class CrashPacketListener extends PacketListenerAbstract
             return false;
         }
 
+        if (plugin.mv != null && plugin.mv.isMovementRequired(id)
+                && movementGuard.recordAndCheckPendingJump(id, position.getX(), position.getY(), position.getZ()))
+        {
+            event.setCancelled(true);
+            return true;
+        }
+
+        if (!movementGuardEnabled)
+        {
+            return false;
+        }
+
         final MovementGuard.Decision decision = movementGuard.recordAndCheck(id, position.getX(), position.getZ());
         if (decision == MovementGuard.Decision.ALLOW)
         {
@@ -488,6 +494,8 @@ final class CrashPacketListener extends PacketListenerAbstract
     private void handleBlockEntityData(PacketSendEvent event)
     {
         WrapperPlayServerBlockEntityData wrapper = new WrapperPlayServerBlockEntityData(event);
+        // PacketEvents re-encodes every wrapped packet by default, so opt out until we actually change it
+        event.markForReEncode(false);
         NBTCompound nbt = wrapper.getNBT();
 
         if ((blockAllSignPackets || signBlockEntityGuard) && SignPacketGuard.isSignBlockEntity(nbt))
@@ -523,6 +531,8 @@ final class CrashPacketListener extends PacketListenerAbstract
         }
 
         WrapperPlayServerChunkData wrapper = new WrapperPlayServerChunkData(event);
+        // PacketEvents re-encodes every wrapped packet by default, so opt out until we actually change it
+        event.markForReEncode(false);
         Column column = wrapper.getColumn();
         boolean dirty = false;
 
@@ -547,7 +557,7 @@ final class CrashPacketListener extends PacketListenerAbstract
 
         if (dirty)
         {
-            event.markForReEncode(true);
+            event.markForReEncode(dirty);
         }
     }
 
@@ -575,6 +585,8 @@ final class CrashPacketListener extends PacketListenerAbstract
     private void handleEntityEquipment(PacketSendEvent event)
     {
         WrapperPlayServerEntityEquipment wrapper = new WrapperPlayServerEntityEquipment(event);
+        // PacketEvents re-encodes every wrapped packet by default, so opt out until we actually change it
+        event.markForReEncode(false);
         List<Equipment> equipment = wrapper.getEquipment();
         boolean dirty = false;
         for (Equipment slot : equipment)
@@ -588,13 +600,15 @@ final class CrashPacketListener extends PacketListenerAbstract
         if (dirty)
         {
             wrapper.setEquipment(equipment);
-            event.markForReEncode(true);
+            event.markForReEncode(dirty);
         }
     }
 
     private void handleSetSlot(PacketSendEvent event)
     {
         WrapperPlayServerSetSlot wrapper = new WrapperPlayServerSetSlot(event);
+        // PacketEvents re-encodes every wrapped packet by default, so opt out until we actually change it
+        event.markForReEncode(false);
         if (isCursed(wrapper.getItem()))
         {
             wrapper.setItem(EMPTY);
@@ -605,6 +619,8 @@ final class CrashPacketListener extends PacketListenerAbstract
     private void handleWindowItems(PacketSendEvent event)
     {
         WrapperPlayServerWindowItems wrapper = new WrapperPlayServerWindowItems(event);
+        // PacketEvents re-encodes every wrapped packet by default, so opt out until we actually change it
+        event.markForReEncode(false);
         boolean dirty = false;
 
         List<com.github.retrooper.packetevents.protocol.item.ItemStack> items = wrapper.getItems();
@@ -630,13 +646,15 @@ final class CrashPacketListener extends PacketListenerAbstract
 
         if (dirty)
         {
-            event.markForReEncode(true);
+            event.markForReEncode(dirty);
         }
     }
 
     private void handleMerchantOffers(PacketSendEvent event)
     {
         WrapperPlayServerMerchantOffers wrapper = new WrapperPlayServerMerchantOffers(event);
+        // PacketEvents re-encodes every wrapped packet by default, so opt out until we actually change it
+        event.markForReEncode(false);
         List<MerchantOffer> offers = wrapper.getMerchantOffers();
         List<MerchantOffer> safe = new ArrayList<>(offers.size());
         boolean dirty = false;
@@ -662,6 +680,8 @@ final class CrashPacketListener extends PacketListenerAbstract
     private void handleEntityMetadata(PacketSendEvent event)
     {
         WrapperPlayServerEntityMetadata wrapper = new WrapperPlayServerEntityMetadata(event);
+        // PacketEvents re-encodes every wrapped packet by default, so opt out until we actually change it
+        event.markForReEncode(false);
         List<EntityData<?>> metadata = wrapper.getEntityMetadata();
         boolean dirty = false;
         if (sanitizeOutbound)
@@ -681,13 +701,15 @@ final class CrashPacketListener extends PacketListenerAbstract
         if (dirty)
         {
             wrapper.setEntityMetadata(metadata);
-            event.markForReEncode(true);
+            event.markForReEncode(dirty);
         }
     }
 
     private void handleSpawnLivingEntity(PacketSendEvent event)
     {
         WrapperPlayServerSpawnLivingEntity wrapper = new WrapperPlayServerSpawnLivingEntity(event);
+        // PacketEvents re-encodes every wrapped packet by default, so opt out until we actually change it
+        event.markForReEncode(false);
         List<EntityData<?>> metadata = wrapper.getEntityMetadata();
         boolean dirty = false;
         if (sanitizeOutbound)
@@ -707,7 +729,7 @@ final class CrashPacketListener extends PacketListenerAbstract
         if (dirty)
         {
             wrapper.setEntityMetadata(metadata);
-            event.markForReEncode(true);
+            event.markForReEncode(dirty);
         }
     }
 
@@ -718,6 +740,8 @@ final class CrashPacketListener extends PacketListenerAbstract
             return;
         }
         WrapperPlayServerUpdateAttributes wrapper = new WrapperPlayServerUpdateAttributes(event);
+        // PacketEvents re-encodes every wrapped packet by default, so opt out until we actually change it
+        event.markForReEncode(false);
         List<WrapperPlayServerUpdateAttributes.Property> properties = wrapper.getProperties();
         if (EntityMetaPacketGuard.sanitizeAttributes(properties, entityLimits.maxScale()))
         {
@@ -753,6 +777,12 @@ final class CrashPacketListener extends PacketListenerAbstract
     private boolean isCursed(com.github.retrooper.packetevents.protocol.item.ItemStack peItem)
     {
         if (peItem == null || peItem.isEmpty())
+        {
+            return false;
+        }
+        // PacketEvents can't convert instruments on 26.3 and prints a stack trace every attempt;
+        // horns are still checked server side by ItemScanner.inspectInstrument
+        if (peItem.hasComponent(ComponentTypes.INSTRUMENT))
         {
             return false;
         }

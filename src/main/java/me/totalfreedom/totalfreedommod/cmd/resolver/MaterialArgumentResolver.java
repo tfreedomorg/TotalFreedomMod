@@ -1,10 +1,11 @@
 package me.totalfreedom.totalfreedommod.cmd.resolver;
 
-import net.kyori.adventure.key.InvalidKeyException;
-import net.kyori.adventure.key.Key;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
+
+import net.kyori.adventure.key.InvalidKeyException;
+import net.kyori.adventure.key.Key;
 
 public class MaterialArgumentResolver implements AbstractArgumentResolver<Material>
 {

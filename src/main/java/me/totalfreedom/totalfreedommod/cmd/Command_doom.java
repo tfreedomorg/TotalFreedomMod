@@ -1,18 +1,23 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
-import me.totalfreedom.totalfreedommod.admin.Admin;
-import me.totalfreedom.totalfreedommod.banning.Ban;
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
-
 import org.bukkit.GameMode;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
-@Permission(level = Rank.SENIOR_ADMIN, source = SourceType.ONLY_CONSOLE, permission = "tfm.fun.doom")
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+
+import me.totalfreedom.totalfreedommod.admin.Admin;
+import me.totalfreedom.totalfreedommod.banning.Ban;
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+
+/**
+ * Every other disciplinary or destructive command refuses an admin target through
+ * {@link FCommand#isProtectedAdmin} or {@link FCommand#isProtectedAdminByName}. 
+ * This one is the way an admin is removed, so it carries no such guard and is fenced by reach instead at console only.
+ */
+@Permission(source = SourceType.ONLY_CONSOLE, permission = "tfm.admin.senior.doom")
 @Command(name = "doom", description = "For the bad admins", usage = "/doom <player>")
 public class Command_doom extends FCommand
 {
@@ -25,13 +30,11 @@ public class Command_doom extends FCommand
         adminAction(sender, "<red>Casting oblivion over <player>", name);
         MessageUtils.broadcast("<red><player> will be completely obliviated!", name);
 
-        final String ip = player.getAddress().getAddress().getHostAddress().trim();
-
         // Remove from superadmin
         final Admin admin = getAdmin(player);
         if (admin != null)
         {
-            adminAction(sender, "<red>Removing <player> from the superadmin list", name);
+            adminAction(sender, "<red>Removing <player> from the admin list", name);
             plugin().al.removeAdmin(admin);
         }
 
@@ -74,7 +77,7 @@ public class Command_doom extends FCommand
 
         sync(() ->
         {
-            adminAction(sender, "<red>Banning <player>, IP: <ip>", name, Placeholder.unparsed("ip", ip));
+            adminAction(sender, "<red>Banning <player>", name);
             player.getWorld().createExplosion(player.getLocation(), 0F, false);
             kickPlayer(player, "<red>FUCKOFF, and get your shit together!");
         }, 3L * 20L);

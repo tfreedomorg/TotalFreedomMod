@@ -1,39 +1,39 @@
 package me.totalfreedom.totalfreedommod.blocking.command;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
+
+import org.bukkit.command.*;
+import org.bukkit.entity.Player;
+import org.bukkit.entity.minecart.CommandMinecart;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
+import org.bukkit.event.server.ServerCommandEvent;
+
 import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import me.totalfreedom.totalfreedommod.blocking.command.CommandBlockerEntry.PatternToken;
 import me.totalfreedom.totalfreedommod.blocking.command.CommandBlockerEntry.TokenType;
+import me.totalfreedom.totalfreedommod.cmd.internal.CommandHolder;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FUtil;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandMap;
-import org.bukkit.command.BlockCommandSender;
-import org.bukkit.command.CommandSender;
-import org.bukkit.command.ConsoleCommandSender;
-import org.bukkit.command.RemoteConsoleCommandSender;
-import org.bukkit.entity.minecart.CommandMinecart;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.server.ServerCommandEvent;
-import org.bukkit.event.player.PlayerCommandPreprocessEvent;
-import org.bukkit.entity.Player;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 public class CommandBlocker extends FreedomService
 {
 
     private final Pattern flagPattern = Pattern.compile("(:([0-9]){5,})");
     private final Pattern restrictedSelectorPattern = Pattern.compile("(?i)(?<![a-z0-9_])(?:@[aenrs](?=\\[|\\b)|@p(?=\\[))");
-    //
+
     private final Map<String, List<CommandBlockerEntry>> entriesByBaseCommand = Maps.newHashMap();
     private final List<String> unknownCommands = Lists.newArrayList();
     private List<String> serverCommandBlockedSubstrings = Lists.newArrayList();
@@ -100,6 +100,11 @@ public class CommandBlocker extends FreedomService
             final String[] specParts = commandSpec.split("\\s+");
             String commandName = specParts[0];
 
+            // Keyed on the label as written in config (minus the first slash), not the resolved
+            // command name, so the node is always stable regardless of plugin load order and "//fill"
+            // stays distinct from "/fill".
+            final String bypassNode = String.format("tfm.blocker.bypass.%s", commandName);
+
             final List<PatternToken> patternTokens = new ArrayList<>();
             boolean malformed = false;
             for (int i = 1; i < specParts.length; i++)
@@ -108,6 +113,7 @@ public class CommandBlocker extends FreedomService
                 {
                     continue;
                 }
+
                 PatternToken token = PatternToken.of(specParts[i]);
                 if (token.type == TokenType.MULTI && i != specParts.length - 1)
                 {
@@ -115,8 +121,10 @@ public class CommandBlocker extends FreedomService
                     malformed = true;
                     break;
                 }
+
                 patternTokens.add(token);
             }
+
             if (malformed)
             {
                 continue;
@@ -132,16 +140,15 @@ public class CommandBlocker extends FreedomService
                 commandName = command.getName().toLowerCase();
             }
 
-            final CommandBlockerEntry blockedCommandEntry = new CommandBlockerEntry(rank, action, commandName, patternTokens, message);
+            final CommandBlockerEntry blockedCommandEntry = new CommandBlockerEntry(rank, action, commandName, patternTokens, message, bypassNode);
             registerEntry(commandName, blockedCommandEntry);
 
-            if (command != null)
-            {
-                for (String alias : command.getAliases())
-                {
-                    registerEntry(alias.toLowerCase(), blockedCommandEntry);
-                }
-            }
+            Stream.concat(command != null ? command.getAliases().stream() : Stream.empty(),
+                          CommandHolder.listAliases(commandName).stream())
+                  .map(String::toLowerCase)
+                  .distinct()
+                  .forEach(alias -> registerEntry(alias, blockedCommandEntry));
+
             loadedCount++;
         }
 
@@ -172,6 +179,7 @@ public class CommandBlocker extends FreedomService
                 {
                     continue;
                 }
+
                 final String trimmed = token.trim();
                 if (!trimmed.isEmpty())
                 {
@@ -194,10 +202,8 @@ public class CommandBlocker extends FreedomService
             return;
         }
 
-        // Blocked commands
         if (isCommandBlocked(command, player, true))
         {
-            // CommandBlocker handles messages and broadcasts
             event.setCancelled(true);
         }
     }
@@ -220,6 +226,7 @@ public class CommandBlocker extends FreedomService
         {
             return;
         }
+
         if (sender instanceof ConsoleCommandSender || sender instanceof RemoteConsoleCommandSender)
         {
             return;
@@ -276,6 +283,7 @@ public class CommandBlocker extends FreedomService
 
         final long intervalTicks = Math.max(1, ConfigEntry.BLOCK_SERVER_COMMANDS_LOG_INTERVAL_TICKS.getInteger());
         final long nowTick = server.getCurrentTick();
+
         if (lastServerCommandBlockWarningTick == 0L || nowTick - lastServerCommandBlockWarningTick >= intervalTicks)
         {
             FLog.warning("[TFM] Blocked " + blockedServerCommandsSinceLastWarning
@@ -299,6 +307,7 @@ public class CommandBlocker extends FreedomService
         {
             normalized = normalized.substring(1);
         }
+
         normalized = normalized.toLowerCase();
 
         for (String token : serverCommandBlockedSubstrings)
@@ -329,23 +338,45 @@ public class CommandBlocker extends FreedomService
             return false;
         }
 
-        // Format
         command = command.toLowerCase().trim();
         command = command.startsWith("/") ? command.substring(1) : command;
 
-        // Check for plugin specific commands
         final String[] commandParts = command.split("\\s+");
         if (commandParts.length == 0 || commandParts[0].isEmpty())
         {
             return false;
         }
+
         if (commandParts[0].contains(":"))
         {
             if (doAction)
             {
                 FUtil.playerMsg(sender, "Plugin specific commands are disabled.");
             }
+
             return true;
+        }
+
+        // Admins may pass -1 to anything; others only to commands they hold the node for,
+        // keyed like the blocker bypass nodes (e.g. tfm.blocker.negative_one./limit for //limit -1).
+        final boolean bypassNegativeOneBlock = sender instanceof Player player
+                && (plugin.al.isAdmin(player)
+                || plugin.rm.hasPermission(player, String.format("tfm.blocker.negative_one.%s", commandParts[0])));
+
+        if (!bypassNegativeOneBlock)
+        {
+            for (String part : commandParts)
+            {
+                if (part.equals("-1"))
+                {
+                    if (doAction)
+                    {
+                        FUtil.playerMsg(sender, "I don't think so.");
+                    }
+
+                    return true;
+                }
+            }
         }
 
         for (String part : commandParts)
@@ -355,10 +386,12 @@ public class CommandBlocker extends FreedomService
             {
                 continue;
             }
+
             if (doAction)
             {
                 FUtil.playerMsg(sender, "That command contains an illegal number: " + matcher.group(1));
             }
+
             return true;
         }
 
@@ -386,7 +419,8 @@ public class CommandBlocker extends FreedomService
             return false;
         }
 
-        if (!ignoreRank && match.getRank().hasPermission(sender))
+        if (!ignoreRank && (match.getRank().hasPermission(sender)
+                || plugin.rm.hasPermission(sender, match.getBypassNode())))
         {
             return false;
         }

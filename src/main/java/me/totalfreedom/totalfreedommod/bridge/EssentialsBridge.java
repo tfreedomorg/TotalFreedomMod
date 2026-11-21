@@ -1,10 +1,11 @@
 package me.totalfreedom.totalfreedommod.bridge;
 
+import org.bukkit.Bukkit;
+import org.bukkit.plugin.Plugin;
+
 import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import me.totalfreedom.totalfreedommod.util.FLog;
-import org.bukkit.Bukkit;
-import org.bukkit.plugin.Plugin;
 
 public class EssentialsBridge extends FreedomService
 {

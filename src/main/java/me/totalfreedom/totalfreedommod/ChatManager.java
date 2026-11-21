@@ -1,32 +1,32 @@
 package me.totalfreedom.totalfreedommod;
 
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.player.FPlayer;
-import me.totalfreedom.totalfreedommod.player.PlayerData;
-import me.totalfreedom.totalfreedommod.util.AdventureUtil;
-import me.totalfreedom.totalfreedommod.util.FLog;
-import me.totalfreedom.totalfreedommod.util.FTask;
-import me.totalfreedom.totalfreedommod.util.FSync;
-import me.totalfreedom.totalfreedommod.util.ChatMentionUtil;
-import me.totalfreedom.totalfreedommod.util.FUtil;
-import me.totalfreedom.totalfreedommod.vault.VaultProviderRegistry;
-import static me.totalfreedom.totalfreedommod.util.FUtil.playerMsg;
+import io.papermc.paper.event.player.AsyncChatEvent;
+import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.server.PluginEnableEvent;
+import org.bukkit.plugin.Plugin;
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.ansi.ANSIComponentSerializer;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import org.bukkit.Bukkit;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
-import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.server.PluginEnableEvent;
-import org.bukkit.plugin.Plugin;
+
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.display.Displayable;
+import me.totalfreedom.totalfreedommod.player.FPlayer;
+import me.totalfreedom.totalfreedommod.player.PlayerData;
+import me.totalfreedom.totalfreedommod.title.Title;
+import me.totalfreedom.totalfreedommod.util.*;
+import me.totalfreedom.totalfreedommod.vault.VaultProviderRegistry;
+
+import static me.totalfreedom.totalfreedommod.util.FUtil.playerMsg;
 
 public class ChatManager extends FreedomService
 {
@@ -166,7 +166,7 @@ public class ChatManager extends FreedomService
 
         // Prefix and suffix come from the shared builder so chat, the tab list, and
         // the Vault Chat export all render identically — with or without Vault.
-        String prefix = buildPlayerPrefix(player, PrefixFormat.SECTION);
+        String prefix = buildPlayerPrefix(player, PrefixFormat.SECTION, false);
         String suffix = "";
         String worldName = player.getWorld().getName();
 
@@ -329,30 +329,11 @@ public class ChatManager extends FreedomService
      * Gets the configured prefix for a display rank/title.
      * Returns null if not configured (will use default).
      */
-    private String getConfigPrefix(me.totalfreedom.totalfreedommod.rank.Displayable display) {
+    private String getConfigPrefix(Displayable display) {
         if (display instanceof me.totalfreedom.totalfreedommod.rank.CustomRank) {
             me.totalfreedom.totalfreedommod.rank.CustomRank custom = (me.totalfreedom.totalfreedommod.rank.CustomRank) display;
             if (custom.getPrefix() != null && !custom.getPrefix().isEmpty()) {
                 return custom.getPrefix();
-            }
-        }
-        if (display instanceof me.totalfreedom.totalfreedommod.rank.Rank) {
-            me.totalfreedom.totalfreedommod.rank.Rank rank = (me.totalfreedom.totalfreedommod.rank.Rank) display;
-            switch (rank) {
-                case IMPOSTOR:
-                    return ConfigEntry.VAULT_PREFIX_IMPOSTOR.getString();
-                case NON_OP:
-                    return ConfigEntry.VAULT_PREFIX_NON_OP.getString();
-                case OP:
-                    return ConfigEntry.VAULT_PREFIX_OP.getString();
-                case SUPER_ADMIN:
-                    return ConfigEntry.VAULT_PREFIX_SUPER_ADMIN.getString();
-                case SENIOR_ADMIN:
-                    return ConfigEntry.VAULT_PREFIX_SENIOR_ADMIN.getString();
-                case SENIOR_CONSOLE:
-                    return ConfigEntry.VAULT_PREFIX_SENIOR_CONSOLE.getString();
-                default:
-                    return null;
             }
         }
         return null;
@@ -367,23 +348,27 @@ public class ChatManager extends FreedomService
         AMPERSAND
     }
 
-    public String buildPlayerPrefix(Player player, PrefixFormat format)
+    /**
+     * @param omitTitleTag leave out the tag of a displayed title, for callers whose output already
+     *                     carries it through the player's scoreboard team prefix
+     */
+    public String buildPlayerPrefix(Player player, PrefixFormat format, boolean omitTitleTag)
     {
-        String prefix = buildPrefixSection(player);
+        String prefix = buildPrefixSection(player, omitTitleTag);
         return format == PrefixFormat.AMPERSAND ? prefix.replace('§', '&') : prefix;
     }
 
-    private String buildPrefixSection(Player player)
+    private String buildPrefixSection(Player player, boolean omitTitleTag)
     {
         if (player == null)
         {
             return "";
         }
 
-        me.totalfreedom.totalfreedommod.rank.Displayable display = plugin.rm.getDisplay(player);
+        Displayable display = plugin.rm.getDisplay(player);
         String rankPrefix = "";
 
-        if (display != null)
+        if (display != null && !(omitTitleTag && display instanceof Title))
         {
             String configPrefix = getConfigPrefix(display);
             if (configPrefix != null && !configPrefix.isEmpty())
@@ -399,6 +384,9 @@ public class ChatManager extends FreedomService
                 }
             }
         }
+
+        if (!rankPrefix.isEmpty() && !rankPrefix.endsWith(" "))
+            rankPrefix = String.format("%s ", rankPrefix);
 
         String customTag = AdventureUtil.componentToLegacySection(getPlayerCustomTag(player));
         boolean enforcePrefix = Boolean.TRUE.equals(ConfigEntry.VAULT_CHAT_ENFORCE_PREFIX.getBoolean());

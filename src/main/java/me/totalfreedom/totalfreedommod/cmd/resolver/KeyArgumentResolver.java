@@ -1,8 +1,9 @@
 package me.totalfreedom.totalfreedommod.cmd.resolver;
 
+import org.bukkit.NamespacedKey;
+
 import net.kyori.adventure.key.InvalidKeyException;
 import net.kyori.adventure.key.Key;
-import org.bukkit.NamespacedKey;
 
 public class KeyArgumentResolver implements AbstractArgumentResolver<Key>
 {

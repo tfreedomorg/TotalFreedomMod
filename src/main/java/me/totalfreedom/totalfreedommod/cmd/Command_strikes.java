@@ -1,15 +1,15 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.player.PlayerData;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-@Permission(level = Rank.SUPER_ADMIN, permission = "tfm.admin.strike")
+import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+import me.totalfreedom.totalfreedommod.player.PlayerData;
+
+@Permission(permission = "tfm.admin.strike")
 @Command(name = "strikes", aliases = "strike", description = "Manages the strikes for a player.", usage = "/<command> <add | remove | clear> <player>")
 public class Command_strikes extends FCommand
 {

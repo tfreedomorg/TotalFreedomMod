@@ -1,11 +1,11 @@
 package me.totalfreedom.totalfreedommod.cmd.resolver;
 
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 
 public class PlayerListArgumentResolver implements AbstractArgumentResolver<List<Player>>
 {

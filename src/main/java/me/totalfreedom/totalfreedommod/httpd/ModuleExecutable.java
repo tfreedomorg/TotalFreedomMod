@@ -5,13 +5,16 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import lombok.Getter;
+
+import org.bukkit.Bukkit;
+
 import me.totalfreedom.totalfreedommod.PluginProvider;
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.framework.PluginComponent;
 import me.totalfreedom.totalfreedommod.httpd.module.HTTPDModule;
 import me.totalfreedom.totalfreedommod.util.FLog;
-import me.totalfreedom.totalfreedommod.framework.PluginComponent;
-import org.bukkit.Bukkit;
+
+import lombok.Getter;
 
 public abstract class ModuleExecutable
 {

@@ -1,16 +1,27 @@
 package me.totalfreedom.totalfreedommod;
 
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.lang.reflect.Type;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.bukkit.util.FileUtil;
+
+import me.totalfreedom.totalfreedommod.framework.PluginComponent;
 import me.totalfreedom.totalfreedommod.util.FLog;
 import me.totalfreedom.totalfreedommod.util.FUtil;
-import java.io.File;
-import java.io.IOException;
-import me.totalfreedom.totalfreedommod.framework.PluginComponent;
-import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.util.FileUtil;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 
 public class BackupManager extends PluginComponent<TotalFreedomMod>
 {
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Type BACKUP_DATA_TYPE = new TypeToken<Map<String, BackupEntry>>() {}.getType();
 
     public BackupManager(TotalFreedomMod plugin)
     {
@@ -25,76 +36,26 @@ public class BackupManager extends PluginComponent<TotalFreedomMod>
     public void createBackups(String file, boolean onlyWeekly)
     {
         final String save = file.split("\\.")[0];
-        final File configFile = new File(plugin.getDataFolder(), "backup/backup.yml");
-        if (!configFile.exists())
-        {
-            try
-            {
-                configFile.getParentFile().mkdirs();
-                configFile.createNewFile();
-            }
-            catch (IOException ex)
-            {
-                FLog.severe("Could not create backup.yml");
-            }
-        }
-        final YamlConfiguration config = YamlConfiguration.loadConfiguration(configFile);
+        final File configFile = new File(plugin.getDataFolder(), "backup/backup.json");
+        final Map<String, BackupEntry> data = loadBackupData(configFile);
+        final BackupEntry entry = data.getOrDefault(save, new BackupEntry(null, null));
 
-        // Weekly
-        if (!config.isInt(save + ".weekly"))
+        Long weekly = entry.weekly();
+        if (weekly == null || weekly + 3600L * 24 * 7 < FUtil.getUnixTime())
         {
             performBackup(file, "weekly");
-            config.set(save + ".weekly", FUtil.getUnixTime());
-        }
-        else
-        {
-            int lastBackupWeekly = config.getInt(save + ".weekly");
-
-            if (lastBackupWeekly + 3600 * 24 * 7 < FUtil.getUnixTime())
-            {
-                performBackup(file, "weekly");
-                config.set(save + ".weekly", FUtil.getUnixTime());
-            }
+            weekly = FUtil.getUnixTime();
         }
 
-        if (onlyWeekly)
-        {
-            try
-        {
-            config.save(configFile);
-        }
-        catch (IOException ex)
-        {
-            FLog.severe("Could not save backup.yml");
-        }
-            return;
-        }
-
-        // Daily
-        if (!config.isInt(save + ".daily"))
+        Long daily = entry.daily();
+        if (!onlyWeekly && (daily == null || daily + 3600L * 24 < FUtil.getUnixTime()))
         {
             performBackup(file, "daily");
-            config.set(save + ".daily", FUtil.getUnixTime());
-        }
-        else
-        {
-            int lastBackupDaily = config.getInt(save + ".daily");
-
-            if (lastBackupDaily + 3600 * 24 < FUtil.getUnixTime())
-            {
-                performBackup(file, "daily");
-                config.set(save + ".daily", FUtil.getUnixTime());
-            }
+            daily = FUtil.getUnixTime();
         }
 
-        try
-        {
-            config.save(configFile);
-        }
-        catch (IOException ex)
-        {
-            FLog.severe("Could not save backup.yml");
-        }
+        data.put(save, new BackupEntry(weekly, daily));
+        saveBackupData(configFile, data);
     }
 
     private void performBackup(String file, String type)
@@ -112,4 +73,42 @@ public class BackupManager extends PluginComponent<TotalFreedomMod>
         FileUtil.copy(oldYaml, newYaml);
     }
 
+    private Map<String, BackupEntry> loadBackupData(File configFile)
+    {
+        if (!configFile.exists())
+        {
+            return new HashMap<>();
+        }
+
+        try (FileReader reader = new FileReader(configFile))
+        {
+            Map<String, BackupEntry> data = GSON.fromJson(reader, BACKUP_DATA_TYPE);
+            return data != null ? data : new HashMap<>();
+        }
+        catch (IOException ex)
+        {
+            FLog.severe("Could not read backup.json: " + ex.getMessage());
+            return new HashMap<>();
+        }
+    }
+
+    private void saveBackupData(File configFile, Map<String, BackupEntry> data)
+    {
+        try
+        {
+            configFile.getParentFile().mkdirs();
+            try (FileWriter writer = new FileWriter(configFile))
+            {
+                GSON.toJson(data, BACKUP_DATA_TYPE, writer);
+            }
+        }
+        catch (IOException ex)
+        {
+            FLog.severe("Could not save backup.json: " + ex.getMessage());
+        }
+    }
+
+    private record BackupEntry(Long weekly, Long daily)
+    {
+    }
 }

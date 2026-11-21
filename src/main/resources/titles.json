@@ -1,0 +1,44 @@
+{
+  "master_builder": {
+    "name": "Master Builder",
+    "abbreviation": "MB",
+    "prefix": "&8[&aMB&8] ",
+    "color": "green",
+    "determiner": "a",
+    "weight": 10,
+    "announce": true,
+    "permissions": [
+      "tfm.world.adminworld"
+    ]
+  },
+  "developer": {
+    "name": "Developer",
+    "abbreviation": "Dev",
+    "prefix": "&8[&5Dev&8] ",
+    "color": "dark_purple",
+    "determiner": "a",
+    "weight": 20,
+    "announce": true,
+    "permissions": []
+  },
+  "executive": {
+    "name": "Executive",
+    "abbreviation": "Exec",
+    "prefix": "&8[&eExec&8] ",
+    "color": "yellow",
+    "determiner": "an",
+    "weight": 30,
+    "announce": true,
+    "permissions": []
+  },
+  "owner": {
+    "name": "Owner",
+    "abbreviation": "Owner",
+    "prefix": "&8[&9Owner&8] ",
+    "color": "blue",
+    "determiner": "the",
+    "weight": 40,
+    "announce": true,
+    "permissions": []
+  }
+}

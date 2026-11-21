@@ -26,6 +26,11 @@ server:
   # URL players should appeal for permanent bans at
   permban_url: https://tfreedom.org/appeal/
 
+  # Messages that are posted in the ingame chat only
+  messages:
+    player_join: '<gray><italic><player> has joined the game.</italic></gray>'
+    player_leave: '<gray><italic><player> has left the game.</italic></gray>'
+
   # Usernames granted the "owner" custom rank on join (case-sensitive).
   owners:
     - markbyron
@@ -108,7 +113,7 @@ allow:
 # Examples:
 #   - 'n:b:/mail sendall:&4You can't send mails to everyone!'
 #   - 's:a:/stop'
-#   - 'n:b:/ban:_'
+#   - 'n:b:/pardon:_'
 #   - 's:b:/clear {*}:_'           # allow "/clear" but block "/clear <anything>"
 #   - 's:b:/clear inventory {*}:_' # allow "/clear inventory" but block "/clear inventory <x>"
 #   - 's:b:/clear {?} {*}:_'       # allow "/clear" and "/clear x" but block "/clear x y..."
@@ -117,7 +122,6 @@ allow:
 blocked_commands:
     # Disabled commands
   - 'n:b:/time:Server-side time changing is disabled. Please use /ptime to set your own personal time.'
-  - 'n:b:/ban:_'
   - 'n:b:/pardon:_'
   - 'n:b:/ban-ip:_'
   - 'n:b:/pardon-ip:_'
@@ -146,6 +150,7 @@ blocked_commands:
 
   # Superadmin commands
   - 's:b:/save-all:_'
+  - 's:b:/ban:_'
   - 's:b:/kick:_'
   - 's:b:/socialspy:_'
   - 's:b:/replaceitem:_'
@@ -251,6 +256,7 @@ antispam:
 text_filter:
   enabled: true
   regex_filters: []
+  username_filters: []
 
 # MovementGuard
 # Used to monitor inbound movement packets (requires packetevents).
@@ -455,20 +461,6 @@ autoeject:
 freecam_trigger_count: 10
 explosive_radius: 4.0
 
-# Show all attempted commands in the log, will result in duplicate log messages
-preprocess_log: true
-
-# Disable certain events
-disable:
-  night: true
-  weather: true
-  spawners: false
-  spawner_place: false
-  portal_create: false
-  pistons: false
-  entity_spam: false
-  entity_spam_max: 750
-
 # Enable misc. features
 landmines_enabled: false
 mp44_enabled: false
@@ -487,22 +479,9 @@ moblimiter:
     - "minecraft:slime"
     - "minecraft:giant"
     - "minecraft:bat"
-
-# Flatlands
-flatlands:
-  generate: true
-
-  # Flatlands generation parameters - Uses CleanroomGenerator v1.2.1 syntax
-  # Format: [prefix]height|block|height|block|...
-  # Prefixes: . = no bedrock, ^ = start at y=-64 (1.18+ deep worlds)
-  # Examples:
-  #   "64|stone" - 1 bedrock + 64 stone
-  #   ".64|stone" - 64 stone, no bedrock  
-  #   "^64|stone" - starts at y=-64
-  #   "." - void world
-  # Block names support modern format like "minecraft:grass_block[snowy=true]"
-  # Legacy comma-separated format is still supported for backward compatibility
-  generate_params: 16|stone|32|dirt|1|grass_block
+  global_limits: []
+  chunk_limits:
+    - "minecraft:arrow=5"
 
 # Admin-Only Mode
 admin_only_mode: false
@@ -546,6 +525,9 @@ worldedit:
   max_pattern_blocks: 7
 
   block_clipboard_pattern: true
+
+  # Whether ops may create entities through WorldEdit.
+  allow_entities: false
 
   # Rate limits the number of WorldEdit operations for an operator.
   throttle:
@@ -662,8 +644,7 @@ discord:
   # Console-channel log flush interval, in milliseconds (ms).
   console_flush: 1500
 
-  # Maximum console lines held while waiting to be flushed. Past this the oldest are dropped and
-  # the next message says how many were lost, so a log burst cannot grow the queue without bound.
+  # Maximum console lines held while waiting to be flushed.
   console_queue_limit: 2000
 
   # How long an in-game /link code remains valid before expiring, in seconds.
@@ -674,8 +655,7 @@ discord:
     # Seconds between reconnect attempts.
     interval_seconds: 30
 
-    # Consecutive failed attempts before the bridge gives up and stays down until the server is
-    # restarted. Reset by any successful connection.
+    # Consecutive failed attempts before the bridge gives up and stays down until the server is restarted.
     max_attempts: 5
 
   # Messages posted to the public relay for server and player events.
@@ -687,13 +667,13 @@ discord:
     reload: '***TotalFreedomMod has been reloaded.***'
     say: '{message}'
     ban: |-
-      ***{sender} - Banning {player}***
+      ***{sender} - Banning {player} for {time}***
       Reason: {reason}
     kick: |-
       ***{sender} - Kicking {player}***
       Reason: {reason}
     tban: |-
-      ***{sender} - Tempbanning {player} for 5 minutes***
+      ***{sender} - Tempbanning {player} for {time}***
       Reason: {reason}
     warn: |-
       ***{sender} - Warning {player}***
@@ -822,6 +802,14 @@ disguises:
     - AREA_EFFECT_CLOUD
     - WITHER
 
+  # Disguise options that may not be set on an applied disguise, named by their
+  # LibsDisguises getter.
+  forbidden_options:
+    - isDisplayedInTab
+
+  # Maximum length of a disguise's tab list name.
+  max_tablist_name_length: 32
+
 # HTTPD server
 httpd:
   enabled: false
@@ -877,16 +865,6 @@ ssh:
   # Port used by the one-time QR code setup page served by /sshtotp.
   qr_port: 8765
 
-# Inactivity Auto-Kick (Requires Essentials)
-autokick:
-  enabled: true
-
-  # Percentage of server player capacity used at which players will be automatically kicked for being inactive. Range: 0.0 - 1.0
-  threshold: 0.9
-
-  # Time, in seconds, after which a player should be kicked when inactive
-  time: 120
-
 # Auto-Op - Automatically op players who join without op
 auto_op:
   enabled: true
@@ -909,6 +887,8 @@ spawn:
     # Valid options: always, first_join, never
     on_join: first_join
     on_respawn: true
+  # Requires movement after joining the server to chat or use commands
+  require_movement: true
 
 # Chat formatting settings
 # TotalFreedomMod can act as a chat plugin on its own and will display prefixes/custom tags, but it should cooperate with existing chat plugins as well.

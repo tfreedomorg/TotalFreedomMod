@@ -5,15 +5,15 @@ import org.bukkit.GameMode;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.rank.Rank;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+
 @Command(
-    name = "creative", 
-    description = "Quickly change your own gamemode to creative, or define someone's username to change theirs.", 
-    usage = "/creative <-a | [partialname]>", 
-    aliases = {"gmc"}
+        name = "creative",
+        description = "Quickly change your own gamemode to creative, or define someone's username to change theirs.",
+        usage = "/creative <-a | [partialname]>",
+        aliases = {"gmc"}
 )
 @Permission(permission = "tfm.player.creative")
 public class Command_creative extends FCommand
@@ -28,7 +28,7 @@ public class Command_creative extends FCommand
 
 	@Callback
 	@Subcommand("-a")
-	@Permission(permission = "tfm.admin.gamemode", level = Rank.SUPER_ADMIN)
+	@Permission(permission = "tfm.admin.gamemode")
 	public void changeGamemodeAll(CommandSender sender)
 	{
 		Bukkit.getOnlinePlayers().forEach(player -> player.setGameMode(GameMode.CREATIVE));
@@ -36,7 +36,7 @@ public class Command_creative extends FCommand
 	}
 
 	@Callback
-	@Permission(permission = "tfm.admin.gamemode", level = Rank.SUPER_ADMIN)
+	@Permission(permission = "tfm.admin.gamemode")
 	public void changeGamemodeOther(CommandSender sender, Player target)
 	{
 		target.setGameMode(GameMode.CREATIVE);

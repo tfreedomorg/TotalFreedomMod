@@ -1,6 +1,6 @@
-# TotalFreedomMod r03
+# TotalFreedomMod v26.9 - Sirius
 ![Release](https://img.shields.io/github/v/release/tfreedomorg/TotalFreedomMod?include_prereleases&style=plastic)
-![Version](https://img.shields.io/badge/version-26.7-green?style=plastic)
+![Version](https://img.shields.io/badge/version-26.7.1-green?style=plastic)
 ![License](https://img.shields.io/badge/license-TFGL%20v2.0-orange?style=plastic)
 ![Code size](https://img.shields.io/github/languages/code-size/tfreedomorg/TotalFreedomMod?style=plastic)
 
@@ -10,7 +10,7 @@ This plugin was originally coded by StevenLawson (Madgeek1450), with Jerom van d
 
 Since then, the plugin has been widely adopted by numerous servers in order to fully create the experience of a freedom server.  This repository seeks to bring that traditional server experience into the modern era by updating TotalFreedomMod to be compatible with newer versions of Minecraft servers.
 
-As of current, TotalFreedomMod is compatible with Paper 26.1.2 (last tested on 26.1.2-61-main@8dea6f1). It may work on older versions and/or server types, however there has been no testing performed to this end.
+As of current, TotalFreedomMod is compatible with Paper 26.3. It may work on older versions and/or server types, however there has been no testing performed to this end.
 
 ### Hard dependencies
 As of TotalFreedomMod 6.1.3, the plugin requires [JLine3](https://github.com/jline/jline3) and [Log4j2](https://github.com/apache/logging-log4j2) to compile, but they are not required at runtime.  The plugin requires no external dependencies in order to run.

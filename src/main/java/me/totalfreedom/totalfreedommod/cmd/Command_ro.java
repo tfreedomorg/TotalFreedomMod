@@ -4,18 +4,18 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-@Permission(level = Rank.SUPER_ADMIN, permission = "tfm.admin.ro")
+import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+
+@Permission(permission = "tfm.admin.ro")
 @Command(name = "ro", description = "Remove all blocks of a certain type in the radius of certain players.", usage = "/<command> <blocks> [radius] [players]")
 public class Command_ro extends FCommand
 {
@@ -29,7 +29,9 @@ public class Command_ro extends FCommand
     public void allPlayersWithRadius(CommandSender sender, @Resolve(value = "MaterialQuery", strategy = "mode=blocks,limit=24L,nonEmpty") List<Material> blocks, int radius)
     {
         removeNear(sender, blocks, radius, server().getOnlinePlayers().stream()
-                .filter(player -> !player.getWorld().getName().equalsIgnoreCase(plugin().wm.adminworld.getName()))
+                .filter(player -> !plugin().gs.profile(player.getWorld().getName())
+                                               .map(profile -> profile.world().roExempt())
+                                               .orElse(false))
                 .map(player -> (Player) player)
                 .toList());
     }

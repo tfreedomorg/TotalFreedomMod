@@ -1,19 +1,19 @@
 package me.totalfreedom.totalfreedommod.cmd;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.player.FPlayer;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import java.util.List;
+import java.util.Objects;
 
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import java.util.List;
-import java.util.Objects;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
-@Permission(level = Rank.SUPER_ADMIN, permission = "tfm.admin.mute")
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+import me.totalfreedom.totalfreedommod.player.FPlayer;
+
+@Permission(permission = "tfm.admin.mute")
 @Command(name = "stfu", aliases = "mute", description = "Mutes a player with brute force.", usage = "/<command> <<player> [reason] | list | purge | all>")
 public class Command_stfu extends FCommand
 {
@@ -67,12 +67,14 @@ public class Command_stfu extends FCommand
     {
         adminAction(sender, "<red>Muting all non-admins");
 
-        final List<FPlayer> players = server().getOnlinePlayers()
-                                              .stream()
-                                              .filter(player -> !isAdmin(player))
-                                              .map(player -> plugin().pl.getPlayer(player))
-                                              .peek(player -> player.setMuted(true))
-                                              .toList();
+        final List<? extends Player> players = server().getOnlinePlayers()
+                                                       .stream()
+                                                       .filter(player -> !isAdmin(player))
+                                                       .toList();
+
+        players.stream()
+               .map(plugin().pl::getPlayer)
+               .forEach(player -> player.setMuted(true));
 
         msg(sender, "<gray>Muted <count> players.", Formatter.number("count", players.size()));
     }
@@ -83,16 +85,19 @@ public class Command_stfu extends FCommand
         mutePlayerWithReason(sender, player, null);
     }
 
+    @Completer(value = "", position = 1)
+    public List<String> completeReason(CommandSender sender, String partial)
+    {
+        return NameCandidates.onlineTyped(server(), partial);
+    }
+
     @Callback
     public void mutePlayerWithReason(CommandSender sender, Player player, @Greedy String reason)
     {
         final FPlayer fplayer = fplayer(player);
 
-        if (isAdmin(player))
-        {
-            msg(sender, "<gray>This command cannot be used on other admins.");
+        if (isProtectedAdmin(sender, player))
             return;
-        }
 
         if (fplayer.isMuted())
         {
@@ -103,28 +108,20 @@ public class Command_stfu extends FCommand
         else
         {
             if (reason != null)
-            {
-                adminAction(   
-                            sender, "<red>Muting <player><newline>  Reason: <yellow><reason>",
+                adminAction(sender, "<red>Muting <player><newline>  Reason: <yellow><reason>",
                             Placeholder.unparsed("player", player.getName()),
-                            MessageUtils.parsed("reason", reason)
-                        );
-            }
+                            MessageUtils.parsed("reason", reason));
             else
-            {
-                adminAction(sender, "<red>Muting <player>", Placeholder.unparsed("player", player.getName()));
-            }
+                adminAction(sender, "<red>Muting <player>", 
+                            Placeholder.unparsed("player", player.getName()));
 
             fplayer.setMuted(true);
 
             if (reason != null)
-            {
-                msg(player, "<red>You have been muted. Reason: <yellow><reason>", MessageUtils.parsed("reason", reason));
-            }
+                msg(player, "<red>You have been muted. Reason: <yellow><reason>", 
+                    MessageUtils.parsed("reason", reason));
             else
-            {
                 msg(player, "<red>You have been muted.");
-            }
         }
     }
 }

@@ -1,13 +1,12 @@
 package me.totalfreedom.totalfreedommod.blocking;
 
-import me.totalfreedom.totalfreedommod.FreedomService;
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
-import me.totalfreedom.totalfreedommod.config.ConfigEntry;
-import me.totalfreedom.totalfreedommod.util.FLog;
-import net.kyori.adventure.key.Key;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+import java.util.*;
+
+import io.papermc.paper.registry.RegistryAccess;
+import io.papermc.paper.registry.RegistryKey;
 import org.bukkit.Location;
+import org.bukkit.Registry;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
@@ -15,20 +14,30 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockDispenseEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
+import org.bukkit.event.entity.EntitySpawnEvent;
 import org.bukkit.event.entity.SpawnerSpawnEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SpawnEggMeta;
 
-import java.util.*;
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+
+import me.totalfreedom.totalfreedommod.FreedomService;
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
+import me.totalfreedom.totalfreedommod.config.ConfigEntry;
+import me.totalfreedom.totalfreedommod.util.FLog;
 
 public class MobBlocker extends FreedomService
 {
 
     private final Map<UUID, Long> spawnEggCooldowns = new HashMap<>();
     private final Map<Location, Long> blockSpawnCooldowns = new HashMap<>();
-    private final List<Key> disabledMobs = new ArrayList<>();
+    private final Set<Key> disabledMobs = new HashSet<>();
+    private final Map<Key, Integer> globalEntityLimits = new HashMap<>();
+    private final Map<Key, Integer> chunkEntityLimits = new HashMap<>();
 
     private static final long SPAWN_EGG_COOLDOWN_MS = 1000L;
     private static final long SPAWNER_COOLDOWN_MS = 1000L;
@@ -85,23 +94,20 @@ public class MobBlocker extends FreedomService
     @Override
     protected void onStart()
     {
-        // Load mob type blacklist
-        if (ConfigEntry.MOB_LIMITER_ENABLED.getBoolean())
-        {
-            disabledMobs.addAll(ConfigEntry.MOB_LIMITER_DISABLED_MOBS.getStringList().stream()
-                    .filter(Key::parseable)
-                    .map(Key::key)
-                    .toList());
-
-            FLog.info("[MobLimiter] " + disabledMobs.size() + " disabled mob types loaded.");
-        }
+        loadTypes(ConfigEntry.MOB_LIMITER_DISABLED_MOBS.getStringList(), disabledMobs, "blocked mob");
+        loadLimits(ConfigEntry.MOB_LIMITER_GLOBAL_LIMITS.getStringList(), globalEntityLimits, "global");
+        loadLimits(ConfigEntry.MOB_LIMITER_CHUNK_LIMITS.getStringList(), chunkEntityLimits, "per-chunk");
+        FLog.info("[MobLimiter] Loaded " + disabledMobs.size() + " blocked mob type(s), "
+                + globalEntityLimits.size() + " global entity limit(s), and "
+                + chunkEntityLimits.size() + " per-chunk entity limit(s).");
     }
 
     @Override
     protected void onStop()
     {
-        // Clear mob type blacklist
         disabledMobs.clear();
+        globalEntityLimits.clear();
+        chunkEntityLimits.clear();
     }
 
     @EventHandler(priority = EventPriority.NORMAL)
@@ -126,11 +132,43 @@ public class MobBlocker extends FreedomService
             return;
         }
 
-        long count = event.getLocation().getWorld().getLivingEntities().stream()
-                .filter(entity -> !(entity instanceof HumanEntity))
+        long count = event.getLocation().getWorld().getEntities().stream()
+                .filter(entity -> entity != spawned)
+                .filter(entity -> entity instanceof LivingEntity && !(entity instanceof HumanEntity))
                 .count();
 
-        if (count > mobLimiterMax)
+        if (count >= mobLimiterMax)
+        {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onEntitySpawn(EntitySpawnEvent event)
+    {
+        if (!ConfigEntry.MOB_LIMITER_ENABLED.getBoolean())
+        {
+            return;
+        }
+
+        final Entity spawned = event.getEntity();
+        final Key type = spawned.getType().key();
+        final Integer globalLimit = globalEntityLimits.get(type);
+        final Integer chunkLimit = chunkEntityLimits.get(type);
+        if (globalLimit == null && chunkLimit == null)
+        {
+            return;
+        }
+
+        final World world = event.getLocation().getWorld();
+        if (globalLimit != null && countType(world.getEntities(), spawned, type) >= globalLimit)
+        {
+            event.setCancelled(true);
+            return;
+        }
+
+        if (chunkLimit != null
+                && countType(Arrays.asList(event.getLocation().getChunk().getEntities()), spawned, type) >= chunkLimit)
         {
             event.setCancelled(true);
         }
@@ -191,12 +229,26 @@ public class MobBlocker extends FreedomService
 
     public void blockMobType(EntityType type)
     {
-        disabledMobs.add(type.key());
+        if (disabledMobs.add(type.key()))
+        {
+            ConfigEntry.MOB_LIMITER_DISABLED_MOBS.setList(disabledMobs.stream()
+                    .map(Key::asString)
+                    .sorted()
+                    .toList());
+            plugin.config.save();
+        }
     }
 
     public void allowMobType(EntityType type)
     {
-        disabledMobs.remove(type.key());
+        if (disabledMobs.remove(type.key()))
+        {
+            ConfigEntry.MOB_LIMITER_DISABLED_MOBS.setList(disabledMobs.stream()
+                    .map(Key::asString)
+                    .sorted()
+                    .toList());
+            plugin.config.save();
+        }
     }
 
     public boolean isMobTypeBlocked(EntityType type)
@@ -206,6 +258,105 @@ public class MobBlocker extends FreedomService
 
     public List<Key> getBlockedMobTypes()
     {
-        return disabledMobs;
+        return disabledMobs.stream().sorted().toList();
+    }
+
+    public void setEntityLimit(EntityType type, boolean perChunk, int limit)
+    {
+        final Map<Key, Integer> limits = perChunk ? chunkEntityLimits : globalEntityLimits;
+        limits.put(type.key(), limit);
+        saveEntityLimits(perChunk);
+    }
+
+    public boolean removeEntityLimit(EntityType type, boolean perChunk)
+    {
+        final Map<Key, Integer> limits = perChunk ? chunkEntityLimits : globalEntityLimits;
+        if (limits.remove(type.key()) == null)
+        {
+            return false;
+        }
+        saveEntityLimits(perChunk);
+        return true;
+    }
+
+    public Map<Key, Integer> getEntityLimits(boolean perChunk)
+    {
+        return Map.copyOf(perChunk ? chunkEntityLimits : globalEntityLimits);
+    }
+
+    private static long countType(Collection<Entity> entities, Entity spawned, Key type)
+    {
+        return entities.stream()
+                .filter(entity -> entity != spawned)
+                .filter(entity -> entity.getType().key().equals(type))
+                .count();
+    }
+
+    private void loadTypes(List<String> configuredTypes, Set<Key> destination, String description)
+    {
+        final Registry<EntityType> entityTypes = RegistryAccess.registryAccess().getRegistry(RegistryKey.ENTITY_TYPE);
+        configuredTypes.forEach(value ->
+        {
+            if (!Key.parseable(value))
+            {
+                FLog.warning("[MobLimiter] Ignoring invalid " + description + " type key: " + value);
+                return;
+            }
+            final Key key = Key.key(value);
+            if (entityTypes.get(key) == null)
+            {
+                FLog.warning("[MobLimiter] Ignoring unknown " + description + " type: " + value);
+                return;
+            }
+            destination.add(key);
+        });
+    }
+
+    private void loadLimits(List<String> configuredLimits, Map<Key, Integer> destination, String scope)
+    {
+        final Registry<EntityType> entityTypes = RegistryAccess.registryAccess().getRegistry(RegistryKey.ENTITY_TYPE);
+        configuredLimits.forEach(value ->
+        {
+            final String[] parts = value.split("=", 2);
+            if (parts.length != 2 || !Key.parseable(parts[0]))
+            {
+                FLog.warning("[MobLimiter] Ignoring invalid " + scope + " entity limit: " + value);
+                return;
+            }
+
+            final Key key = Key.key(parts[0]);
+            if (entityTypes.get(key) == null)
+            {
+                FLog.warning("[MobLimiter] Ignoring unknown " + scope + " entity type: " + parts[0]);
+                return;
+            }
+
+            try
+            {
+                final int limit = Integer.parseInt(parts[1]);
+                if (limit <= 0)
+                {
+                    FLog.warning("[MobLimiter] Ignoring non-positive " + scope + " entity limit: " + value);
+                    return;
+                }
+                destination.put(key, limit);
+            }
+            catch (NumberFormatException ex)
+            {
+                FLog.warning("[MobLimiter] Ignoring invalid " + scope + " entity limit: " + value);
+            }
+        });
+    }
+
+    private void saveEntityLimits(boolean perChunk)
+    {
+        final Map<Key, Integer> limits = perChunk ? chunkEntityLimits : globalEntityLimits;
+        final ConfigEntry configEntry = perChunk ? ConfigEntry.MOB_LIMITER_CHUNK_LIMITS : ConfigEntry.MOB_LIMITER_GLOBAL_LIMITS;
+        configEntry.setList(limits.entrySet()
+                .stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(entry -> entry.getKey().asString() + "=" + entry.getValue())
+                .toList());
+        plugin.config.save();
     }
 }

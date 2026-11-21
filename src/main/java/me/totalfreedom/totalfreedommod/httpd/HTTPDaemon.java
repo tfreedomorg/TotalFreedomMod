@@ -7,17 +7,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import me.totalfreedom.totalfreedommod.FreedomService;
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.httpd.NanoHTTPD.Response;
-import me.totalfreedom.totalfreedommod.httpd.module.HTTPDModule;
-import me.totalfreedom.totalfreedommod.httpd.module.Module_file;
-import me.totalfreedom.totalfreedommod.httpd.module.Module_help;
-import me.totalfreedom.totalfreedommod.httpd.module.Module_list;
-import me.totalfreedom.totalfreedommod.httpd.module.Module_permbans;
-import me.totalfreedom.totalfreedommod.httpd.module.Module_players;
-import me.totalfreedom.totalfreedommod.httpd.module.Module_schematic;
+import me.totalfreedom.totalfreedommod.httpd.module.*;
 import me.totalfreedom.totalfreedommod.util.FLog;
 
 public class HTTPDaemon extends FreedomService

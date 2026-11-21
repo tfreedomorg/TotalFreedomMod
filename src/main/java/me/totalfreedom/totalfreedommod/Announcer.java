@@ -1,14 +1,17 @@
 package me.totalfreedom.totalfreedommod;
 
-import com.google.common.collect.Lists;
 import java.util.Collections;
 import java.util.List;
-import lombok.Getter;
+
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
+
 import me.totalfreedom.totalfreedommod.config.ConfigEntry;
 import me.totalfreedom.totalfreedommod.util.FTask;
 import me.totalfreedom.totalfreedommod.util.FUtil;
-import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitTask;
+
+import com.google.common.collect.Lists;
+import lombok.Getter;
 
 public class Announcer extends FreedomService
 {

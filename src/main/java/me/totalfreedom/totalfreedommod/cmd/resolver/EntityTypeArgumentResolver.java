@@ -2,11 +2,12 @@ package me.totalfreedom.totalfreedommod.cmd.resolver;
 
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
-import net.kyori.adventure.key.InvalidKeyException;
-import net.kyori.adventure.key.Key;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+
+import net.kyori.adventure.key.InvalidKeyException;
+import net.kyori.adventure.key.Key;
 
 public class EntityTypeArgumentResolver implements AbstractArgumentResolver<EntityType>
 {

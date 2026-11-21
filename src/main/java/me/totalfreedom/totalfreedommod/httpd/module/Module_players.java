@@ -1,13 +1,15 @@
 package me.totalfreedom.totalfreedommod.httpd.module;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import me.totalfreedom.totalfreedommod.admin.Admin;
 import me.totalfreedom.totalfreedommod.httpd.NanoHTTPD;
 import me.totalfreedom.totalfreedommod.util.FUtil;
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 public class Module_players extends HTTPDModule
 {
@@ -28,9 +30,15 @@ public class Module_players extends HTTPDModule
         final JsonArray senioradmins = new JsonArray();
         final JsonArray developers = new JsonArray();
 
-        // All online players
+        // All online players, excluding anyone vanished - this endpoint has no authenticated
+        // viewer to check a bypass permission against.
         for (Player player : Bukkit.getOnlinePlayers())
         {
+            if (plugin.vs.isVanished(player))
+            {
+                continue;
+            }
+
             players.add(player.getName());
             if (plugin.al.isAdmin(player) && !plugin.al.isAdminImpostor(player))
             {
@@ -42,15 +50,14 @@ public class Module_players extends HTTPDModule
         for (Admin admin : plugin.al.getActiveAdmins())
         {
             final String username = admin.getName();
-
-            switch (admin.getRank())
+            
+            if (plugin.al.grantsSeniorStatus(admin))
             {
-                case SUPER_ADMIN:
-                    superadmins.add(username);
-                    break;
-                case SENIOR_ADMIN:
-                    senioradmins.add(username);
-                    break;
+                senioradmins.add(username);
+            }
+            else
+            {
+                superadmins.add(username);
             }
         }
 

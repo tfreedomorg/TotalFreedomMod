@@ -1,15 +1,17 @@
 package me.totalfreedom.totalfreedommod.caging;
 
-import io.papermc.paper.datacomponent.item.ResolvableProfile;
 import java.util.ArrayList;
 import java.util.List;
-import me.totalfreedom.totalfreedommod.player.FPlayer;
+
+import io.papermc.paper.datacomponent.item.ResolvableProfile;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.Skull;
 import org.bukkit.entity.Player;
+
+import me.totalfreedom.totalfreedommod.player.FPlayer;
 
 public class CageData
 {

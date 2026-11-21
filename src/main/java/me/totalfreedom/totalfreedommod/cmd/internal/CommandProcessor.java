@@ -1,5 +1,20 @@
 package me.totalfreedom.totalfreedommod.cmd.internal;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
+import java.util.stream.IntStream;
+
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.ArgumentBuilder;
@@ -7,11 +22,18 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
-import io.papermc.paper.command.brigadier.Commands;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
+import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.command.brigadier.argument.ArgumentTypes;
 import io.papermc.paper.command.brigadier.argument.resolvers.selector.PlayerSelectorArgumentResolver;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+
 import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import me.totalfreedom.totalfreedommod.cmd.CommandFailException;
 import me.totalfreedom.totalfreedommod.cmd.FCommand;
@@ -28,26 +50,8 @@ import me.totalfreedom.totalfreedommod.cmd.internal.annotation.Switch;
 import me.totalfreedom.totalfreedommod.cmd.resolver.AbstractArgumentResolver;
 import me.totalfreedom.totalfreedommod.cmd.resolver.ArgumentResolutionException;
 import me.totalfreedom.totalfreedommod.util.FLog;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
-
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Supplier;
-import java.util.stream.IntStream;
 
 /**
  * Builds Brigadier command node trees from {@link FCommand} declarations and wires them
@@ -123,6 +127,7 @@ public final class CommandProcessor
 
     private static final Map<String, CommandProcessor> commands = new ConcurrentHashMap<>();
     private static final AtomicBoolean hooked = new AtomicBoolean(false);
+    private static final Set<String> claimed = ConcurrentHashMap.newKeySet();
 
     /**
      * Creates a processor for {@code command}; the first call also registers the
@@ -145,13 +150,17 @@ public final class CommandProcessor
         if (hooked.compareAndSet(false, true))
         {
             plugin.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event ->
-                commands.values().forEach(p -> p.registerWith(event.registrar())));
+            {
+                claimed.clear();
+                commands.values().forEach(p -> p.registerWith(event.registrar()));
+            });
         }
     }
 
     public static void reset()
     {
         commands.clear();
+        claimed.clear();
     }
 
     private final FCommand command;
@@ -178,12 +187,60 @@ public final class CommandProcessor
     {
         try
         {
-            registrar.register(buildNode().build(), description, aliases);
+            // Build node before evicting; a failure here must not leave the label evicted and unregistered
+            var node = buildNode().build();
+
+            evictConflicts(registrar);
+
+            Set<String> registered = registrar.register(node, description, aliases);
+
+            if (!registered.contains(commandName))
+            {
+                FLog.severe(String.format("/%s was rejected by the command registrar; another plugin already owns that label.",
+                    commandName));
+                return;
+            }
+
+            claimed.add(commandName);
+            aliases.stream().filter(registered::contains).forEach(claimed::add);
+
+            List<String> lost = aliases.stream().filter(alias -> !registered.contains(alias)).toList();
+            if (!lost.isEmpty())
+            {
+                FLog.warning(String.format("/%s registered, but these aliases are owned by other plugins: %s",
+                    commandName, String.join(", ", lost)));
+            }
+
             FLog.info(String.format("Registered /%s (aliases: %s)", commandName, String.join(", ", aliases)));
         }
         catch (Exception e)
         {
             FLog.severe(String.format("Failed to register /%s: \n%s", commandName, ExceptionUtils.getRootCauseMessage(e)));
+        }
+    }
+
+    private void evictConflicts(Commands registrar)
+    {
+        evict(registrar, commandName);
+        aliases.forEach(alias -> evict(registrar, alias));
+    }
+
+    private void evict(Commands registrar, String label)
+    {
+        if (claimed.contains(label))
+            return;
+
+        String owner = RootNodeEvictor.owner(registrar, label);
+        if (owner == null)
+            return;
+
+        if (RootNodeEvictor.evict(registrar, label))
+        {
+            FLog.debug(String.format("Evicted /%s from the dispatcher root (was %s)", label, owner));
+        }
+        else
+        {
+            FLog.warning(String.format("Could not evict /%s from the dispatcher root (owned by %s)", label, owner));
         }
     }
 
@@ -312,7 +369,7 @@ public final class CommandProcessor
     private static boolean isValidCompleterSignature(Method method)
     {
         Class<?>[] types = method.getParameterTypes();
-        return types.length == 2
+        return (types.length == 2 || (types.length == 3 && types[2] == List.class))
             && ArgumentResolver.isSenderType(types[0])
             && types[1] == String.class
             && method.getReturnType() == List.class;
@@ -444,8 +501,17 @@ public final class CommandProcessor
         return 1;
     }
 
-    private SuggestionProvider<CommandSourceStack> buildSuggestionProvider(Method completerMethod)
+    /**
+     * @param priorArgNames argument-node names of the positional parameters ahead of this one, in
+     *                      order, supplied to completers that declare the third parameter
+     */ 
+    private SuggestionProvider<CommandSourceStack> buildSuggestionProvider(Method completerMethod, boolean greedy, List<String> priorArgNames)
     {
+        Completer.Scope scope = completerMethod.getAnnotation(Completer.class).scope();
+        boolean replacesWord = greedy && scope != Completer.Scope.ARGUMENT;
+        boolean seesWholeArgument = greedy && scope != Completer.Scope.WORD;
+        boolean wantsPriorArgs = completerMethod.getParameterCount() == 3;
+
         return (ctx, builder) ->
         {
             CommandSender sender = ctx.getSource().getSender();
@@ -453,21 +519,67 @@ public final class CommandProcessor
             {
                 return builder.buildFuture();
             }
+
+            SuggestionsBuilder target = currentWord(builder, replacesWord);
+            String typed = seesWholeArgument ? builder.getRemaining() : target.getRemaining();
             try
             {
-                List<String> suggestions = (List<String>) completerMethod.invoke(command, sender, builder.getRemaining());
-                suggestions.forEach(builder::suggest);
+                List<String> suggestions = wantsPriorArgs
+                ? (List<String>) completerMethod.invoke(command, sender, typed, priorArgs(ctx, priorArgNames))
+                : (List<String>) completerMethod.invoke(command, sender, typed);
+                suggestions.forEach(target::suggest);
             }
             catch (Exception e)
             {
                 Throwable cause = e.getCause() != null ? e.getCause() : e;
                 FLog.severe(String.format("Error in completer %s: \n%s", completerMethod.getName(), ExceptionUtils.getRootCauseMessage(cause)));
             }
-            return builder.buildFuture();
+            return target.buildFuture();
         };
     }
 
+    private static SuggestionsBuilder currentWord(SuggestionsBuilder builder, boolean greedy)
+    {
+        if (!greedy)
+        {
+            return builder;
+        }
+
+        int lastSpace = builder.getRemaining().lastIndexOf(' ');
+        return lastSpace < 0 ? builder : builder.createOffset(builder.getStart() + lastSpace + 1);
+    }
+
     /**
+     * Text typed for the arguments named in {@code names}, in that order, for a completer that
+     * asked to see them.
+     * <p>
+     * Values are read back off the parsed nodes rather than out of the resolved arguments, so a
+     * completer sees the raw input even for arguments whose type would fail to resolve it. A name
+     * that has not been parsed yet yields and empty string, which happens only when the client asks
+     * about a position it has not reached.
+     */
+    /**
+     * Argument-node names of the positional parameters ahead of {@code position}, in order
+     */ 
+    private static List<String> argumentNames(List<Parameter> positionalParams, int position)
+    {
+        return positionalParams.subList(0, position)
+                               .stream()
+                               .map(Parameter::getName)
+                               .toList();
+    }
+
+    private static List<String> priorArgs(CommandContext<CommandSourceStack> ctx, List<String> names)
+    {
+        Map<String, String> typed = new HashMap<>();
+        ctx.getNodes().forEach(parsed -> typed.put(parsed.getNode().getName(), parsed.getRange().get(ctx.getInput())));
+
+        return names.stream()
+                    .map(name -> typed.getOrDefault(name,""))
+                    .toList();
+    }
+    
+     /** 
      * Default suggester for an argument with no explicit {@link Completer}: fuzzy-matches the partial
      * input against {@code candidates}, falling back to the enum's constant names when the parameter
      * is enum-typed and no candidates were produced.
@@ -696,7 +808,7 @@ public final class CommandProcessor
                         Method completer = completers.get(new CompleterKey(subPath, position));
                         Supplier<List<String>> candidates = candidatesFor(param);
                         if (completer != null) {
-                            arg.suggests(buildSuggestionProvider(completer));
+                            arg.suggests(buildSuggestionProvider(completer, greedy, argumentNames(positionalParams, position)));
                         } else if (candidates != null || type.isEnum()) {
                             arg.suggests(buildCandidateSuggestionProvider(candidates, type));
                         } else if (ArgumentResolver.isPlayerArgType(type)) {
@@ -732,7 +844,7 @@ public final class CommandProcessor
             CommandSourceStack source = ctx.getSource();
             CommandSender sender = PermissionGate.resolveSender(source.getSender());
 
-            if (!PermissionGate.test(plugin, sender, methodPermission, classPermission, true))
+            if (!PermissionGate.test(plugin, sender, methodPermission, true))
             {
                 return 0;
             }

@@ -4,6 +4,7 @@ import java.lang.reflect.Method;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
+
 import org.bukkit.Material;
 
 final class EntityDataRules

@@ -3,18 +3,19 @@ package me.totalfreedom.totalfreedommod.ssh;
 import java.util.Set;
 import java.util.UUID;
 
-import net.kyori.adventure.audience.Audience;
-import net.kyori.adventure.audience.ForwardingAudience;
-import net.kyori.adventure.audience.MessageType;
-import net.kyori.adventure.identity.Identity;
-import net.kyori.adventure.text.Component;
-
 import org.bukkit.Server;
 import org.bukkit.command.CommandSender;
 import org.bukkit.permissions.Permission;
 import org.bukkit.permissions.PermissionAttachment;
 import org.bukkit.permissions.PermissionAttachmentInfo;
 import org.bukkit.plugin.Plugin;
+import org.jetbrains.annotations.NotNull;
+
+import net.kyori.adventure.audience.Audience;
+import net.kyori.adventure.audience.ForwardingAudience;
+import net.kyori.adventure.chat.ChatType;
+import net.kyori.adventure.chat.SignedMessage;
+import net.kyori.adventure.text.Component;
 
 /**
  * Wraps a console-class {@link CommandSender} so that remote channels (SSH, Discord) can
@@ -55,21 +56,27 @@ public final class AttributedConsoleSender implements CommandSender, ForwardingA
     }
 
     @Override
-    public Audience audience()
+    public @NotNull Audience audience()
     {
         return delegate;
     }
 
-    /**
-     * Both {@link CommandSender} and {@link ForwardingAudience.Single} supply a default for this
-     * method, so it has to be disambiguated explicitly. Everything else on {@link Audience} routes
-     * through {@link #audience()}.
-     */
     @Override
-    @SuppressWarnings("deprecation")
-    public void sendMessage(final Identity source, final Component message, final MessageType type)
+    public void sendMessage(final Component message)
     {
-        delegate.sendMessage(source, message, type);
+        delegate.sendMessage(message);
+    }
+
+    @Override
+    public void sendMessage(final Component message, final ChatType.Bound boundChatType)
+    {
+        delegate.sendMessage(message, boundChatType);
+    }
+
+    @Override
+    public void sendMessage(final @NotNull SignedMessage signedMessage, final @NotNull ChatType.Bound boundChatType)
+    {
+        delegate.sendMessage(signedMessage, boundChatType);
     }
 
     @Override

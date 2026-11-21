@@ -1,0 +1,97 @@
+{
+  "shape": {
+    "mode": "density",
+    "bounds": { "minY": 0, "maxY": 128, "seaLevel": 32 },
+    "terrain": {
+      "noise": {
+        "type": "simplex",
+        "octaves": 4,
+        "frequency": 0.014,
+        "persistence": 0.5,
+        "lacunarity": 2.0,
+        "ridged": false
+      },
+      "warp": 0.04
+    },
+    "falloff": { "mode": "hollow", "centre": 66 },
+
+    "caves": {
+      "noise": {
+        "type": "simplex",
+        "octaves": 3,
+        "frequency": 0.03,
+        "persistence": 0.5,
+        "lacunarity": 2.0,
+        "ridged": true
+      },
+      "threshold": 0.78,
+      "minY": 5,
+      "maxY": 120,
+      "floodLevel": 32
+    }
+  },
+
+  "palette": {
+    "materials": {
+      "defaultBlock": "netherrack",
+      "fluidBlock": "lava",
+      "bedrockBlock": "bedrock",
+      "bedrock": "FLOOR_AND_ROOF"
+    },
+    "surface": [
+      { "biome": "soul_sand_valley", "depthFrom": 0, "depthTo": 3,   "block": "soul_sand" },
+      { "biome": "basalt_deltas",    "depthFrom": 0, "depthTo": 3,   "block": "basalt" },
+      { "biome": "warped_forest",    "depthFrom": 0, "depthTo": 0,   "block": "warped_nylium" },
+      { "biome": "crimson_forest",   "depthFrom": 0, "depthTo": 0,   "block": "crimson_nylium" },
+      {                              "depthFrom": 0, "block": "netherrack" }
+    ],
+    "climate": {
+      "temperature": {
+        "type": "simplex",
+        "octaves": 2,
+        "frequency": 0.0025,
+        "persistence": 0.5,
+        "lacunarity": 2.0,
+        "ridged": false
+      },
+      "humidity": {
+        "type": "simplex",
+        "octaves": 2,
+        "frequency": 0.0021,
+        "persistence": 0.5,
+        "lacunarity": 2.0,
+        "ridged": false
+      },
+      "scale": 1.6
+    },
+    "fallback": "nether_wastes",
+    "biomes": [
+      { "biome": "soul_sand_valley", "minTemperature": -1.00, "maxTemperature": -0.50, "minHumidity": -1.00, "maxHumidity":  1.00 },
+      { "biome": "warped_forest",    "minTemperature": -0.50, "maxTemperature":  0.00, "minHumidity":  0.10, "maxHumidity":  1.00 },
+      { "biome": "crimson_forest",   "minTemperature":  0.00, "maxTemperature":  0.60, "minHumidity":  0.10, "maxHumidity":  1.00 },
+      { "biome": "basalt_deltas",    "minTemperature":  0.60, "maxTemperature":  1.00, "minHumidity": -1.00, "maxHumidity": -0.30 }
+    ]
+  },
+
+  "features": [
+    { "type": "ore",     "rarity": 16, "minY": 5,  "maxY": 120, "block": "nether_quartz_ore", "size": 12 },
+    { "type": "ore",     "rarity": 8,  "minY": 8,  "maxY": 30,  "block": "nether_gold_ore",   "size": 8 },
+    { "type": "ore",     "rarity": 2,  "minY": 8,  "maxY": 22,  "block": "ancient_debris",    "size": 2 },
+    { "type": "patch",   "rarity": 6,  "minY": 30, "maxY": 100, "block": "warped_roots",      "size": 14, "biomes": ["warped_forest"] },
+    { "type": "patch",   "rarity": 6,  "minY": 30, "maxY": 100, "block": "crimson_roots",     "size": 14, "biomes": ["crimson_forest"] },
+    { "type": "boulder", "rarity": 2,  "minY": 30, "maxY": 110, "block": "blackstone",        "size": 3,  "biomes": ["basalt_deltas"] },
+    { "type": "lake",    "rarity": 1,  "chance": 0.15, "minY": 10, "maxY": 50, "block": "lava", "size": 5 }
+  ],
+
+  "world": {
+    "environment": "nether",
+    "generateStructures": false,
+    "vanilla": {
+      "surface": false,
+      "caves": false,
+      "decorations": false,
+      "mobs": true,
+      "structures": false
+    }
+  }
+}

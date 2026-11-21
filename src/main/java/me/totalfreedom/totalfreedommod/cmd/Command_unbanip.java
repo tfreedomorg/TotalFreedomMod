@@ -4,13 +4,13 @@ import java.net.InetAddress;
 
 import org.bukkit.command.CommandSender;
 
-import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
-import me.totalfreedom.totalfreedommod.rank.Rank;
-import me.totalfreedom.totalfreedommod.util.FUtil;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
+import me.totalfreedom.totalfreedommod.cmd.internal.annotation.*;
+import me.totalfreedom.totalfreedommod.util.FUtil;
+
 @Command(name = "unbanip", description = "Unbans an IP address.", usage = "/unbanip <ip>")
-@Permission(permission = "tfm.admin.ban", level = Rank.SUPER_ADMIN)
+@Permission(permission = "tfm.admin.ban")
 public class Command_unbanip extends FCommand
 {
     @Callback

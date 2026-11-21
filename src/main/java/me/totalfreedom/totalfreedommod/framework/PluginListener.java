@@ -1,7 +1,8 @@
 package me.totalfreedom.totalfreedommod.framework;
 
-import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 import org.bukkit.event.Listener;
+
+import me.totalfreedom.totalfreedommod.TotalFreedomMod;
 
 /**
  * Base class for plugin listeners.
