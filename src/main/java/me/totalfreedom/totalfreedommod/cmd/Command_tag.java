@@ -62,7 +62,7 @@ public class Command_tag extends FCommand
     {
         if (!(sender instanceof Player playerSender))
         {
-            msg(sender, "<gray>\"/tag set\" can't be used from the console.");
+            msg(sender, NOT_FROM_CONSOLE);
             return;
         }
 
