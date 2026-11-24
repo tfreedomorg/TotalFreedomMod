@@ -62,7 +62,8 @@ public final class DiscordConnection
                                                 .setEnabledIntents(IntentSet.of(Intent.GUILDS,
                                                                                 Intent.GUILD_MESSAGES,
                                                                                 Intent.MESSAGE_CONTENT,
-                                                                                Intent.DIRECT_MESSAGES))
+                                                                                Intent.DIRECT_MESSAGES,
+                                                                                Intent.GUILD_MESSAGE_REACTIONS))
                                                 .withGateway(handler::apply)
                                                 .then(Mono.error(DiscordConnection::disconnected))
                                                 .retryWhen(budget())

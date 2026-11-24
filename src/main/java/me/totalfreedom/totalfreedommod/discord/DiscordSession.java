@@ -21,6 +21,7 @@ import reactor.core.publisher.Mono;
  * @param publicChannel    public chat relay channel, absent when unconfigured or unresolvable
  * @param adminchatChannel admin chat relay channel, absent when unconfigured or unresolvable
  * @param consoleChannel   console relay channel, absent when unconfigured or unresolvable
+ * @param reportsChannel   player reports relay channel, absent when unconfigured or unresolvable
  * @param channelSummary   resolved channel names for the startup log line
  */
 public record DiscordSession(
@@ -30,6 +31,7 @@ public record DiscordSession(
                              Optional<Snowflake> publicChannel,
                              Optional<Snowflake> adminchatChannel,
                              Optional<Snowflake> consoleChannel,
+                             Optional<Snowflake> reportsChannel,
                              String channelSummary)
 {
     /**
