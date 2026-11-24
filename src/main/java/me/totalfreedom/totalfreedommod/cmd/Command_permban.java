@@ -101,8 +101,21 @@ public class Command_permban extends FCommand
                 msg(sender, "<red>Ignoring invalid IP/range: <ip>", Placeholder.unparsed("ip", ip));
         }
 
-        UUID uuid = online != null ? online.getUniqueId() : FUtil.usernameToUuid(canonicalName);
+        if (online == null)
+        {
+            async(task ->
+            {
+                final UUID uuid = FUtil.usernameToUuid(canonicalName);
+                sync(() -> finishAdd(sender, canonicalName, ips, null, uuid), 0L);
+            }, 0L);
+            return;
+        }
 
+        finishAdd(sender, canonicalName, ips, online, online.getUniqueId());
+    }
+
+    private void finishAdd(CommandSender sender, String canonicalName, Set<String> ips, Player online, UUID uuid)
+    {
         PermBan permban = plugin().pm.getPermban(canonicalName);
 
         final boolean existed = permban != null;
