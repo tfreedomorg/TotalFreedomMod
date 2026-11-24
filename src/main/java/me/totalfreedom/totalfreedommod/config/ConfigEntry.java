@@ -61,6 +61,7 @@ public enum ConfigEntry
     DISCORD_PUBLIC_CHANNEL_ID(String.class, "discord.public_channel_id"),
     DISCORD_ADMINCHAT_CHANNEL_ID(String.class, "discord.adminchat_channel_id"),
     DISCORD_CONSOLE_CHANNEL_ID(String.class, "discord.console_channel_id"),
+    DISCORD_REPORTS_CHANNEL_ID(String.class, "discord.reports_channel_id"),
     DISCORD_CHAT_FORMAT(String.class, "discord.chat_format"),
     DISCORD_CHANNEL_FORMAT(String.class, "discord.channel_format"),
     DISCORD_ADMINCHAT_FORMAT(String.class, "discord.adminchat_format"),

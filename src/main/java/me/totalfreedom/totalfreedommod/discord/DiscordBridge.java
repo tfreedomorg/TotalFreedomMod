@@ -129,6 +129,7 @@ public class DiscordBridge extends FreedomService
     private volatile Optional<DiscordChatRelay> chatRelay = Optional.empty();
     private volatile Optional<DiscordAdminchatRelay> adminchatRelay = Optional.empty();
     private volatile Optional<DiscordConsoleRelay> consoleRelay = Optional.empty();
+    private volatile Optional<DiscordReportRelay> reportRelay = Optional.empty();
     private volatile Optional<BukkitTask> cleanupTask = Optional.empty();
     private volatile int linkCodeTtlSeconds;
     private volatile boolean startedWhileReloading;
@@ -192,6 +193,7 @@ public class DiscordBridge extends FreedomService
         chatRelay = Optional.empty();
         adminchatRelay = Optional.empty();
         consoleRelay = Optional.empty();
+        reportRelay = Optional.empty();
         pendingLinks.clear();
     }
 
@@ -228,7 +230,8 @@ public class DiscordBridge extends FreedomService
         return Mono.zip(
                         resolveChannel(gateway, ConfigEntry.DISCORD_PUBLIC_CHANNEL_ID.getString(), "public_channel_id"),
                         resolveChannel(gateway, ConfigEntry.DISCORD_ADMINCHAT_CHANNEL_ID.getString(), "adminchat_channel_id"),
-                        resolveChannel(gateway, ConfigEntry.DISCORD_CONSOLE_CHANNEL_ID.getString(), "console_channel_id"))
+                        resolveChannel(gateway, ConfigEntry.DISCORD_CONSOLE_CHANNEL_ID.getString(), "console_channel_id"),
+                        resolveChannel(gateway, ConfigEntry.DISCORD_REPORTS_CHANNEL_ID.getString(), "reports_channel_id"))
                 .map(resolved -> new DiscordSession(
                         gateway,
                         guildId,
@@ -236,8 +239,9 @@ public class DiscordBridge extends FreedomService
                         resolved.getT1().id(),
                         resolved.getT2().id(),
                         resolved.getT3().id(),
-                        String.format("public: %s | adminchat: %s | console: %s",
-                                resolved.getT1().name(), resolved.getT2().name(), resolved.getT3().name())));
+                        resolved.getT4().id(),
+                        String.format("public: %s | adminchat: %s | console: %s | reports: %s",
+                                resolved.getT1().name(), resolved.getT2().name(), resolved.getT3().name(), resolved.getT4().name())));
     }
 
     private Mono<Void> publishSession(final GatewayDiscordClient gateway, final DiscordSession opened)
@@ -249,10 +253,12 @@ public class DiscordBridge extends FreedomService
         final DiscordChatRelay openedChat = new DiscordChatRelay(plugin, this);
         final DiscordAdminchatRelay openedAdminchat = new DiscordAdminchatRelay(plugin, this);
         final DiscordConsoleRelay openedConsole = new DiscordConsoleRelay(plugin, this);
+        final DiscordReportRelay openedReports = new DiscordReportRelay(plugin, this);
 
         chatRelay = Optional.of(openedChat);
         adminchatRelay = Optional.of(openedAdminchat);
         consoleRelay = Optional.of(openedConsole);
+        reportRelay = Optional.of(openedReports);
 
         session = Optional.of(opened);
 
@@ -271,7 +277,8 @@ public class DiscordBridge extends FreedomService
                 openedCommands.bind(gateway),
                 openedChat.bind(gateway),
                 openedAdminchat.bind(gateway),
-                openedConsole.bind(gateway));
+                openedConsole.bind(gateway),
+                openedReports.bind(gateway));
     }
 
     private void announceReady(final DiscordSession opened)
@@ -393,6 +400,15 @@ public class DiscordBridge extends FreedomService
                                           .replace("{until}", formatUntilForDiscord(expiry))));
     }
 
+    public void sendReportMessage(String reporter, String reportedPlayer, String reason)
+    {
+        if (currentReportsChannel().isEmpty())
+            return;
+
+        reportRelay.ifPresent(relay ->
+                relay.sendReport(reporter, reportedPlayer, reason));
+    }
+
     private static String formatTimeForDiscord(Date expiry)
     {
         if (expiry == null)
@@ -487,6 +503,11 @@ public class DiscordBridge extends FreedomService
     public Optional<Snowflake> currentConsoleChannel()
     {
         return getSession().flatMap(DiscordSession::consoleChannel);
+    }
+
+    public Optional<Snowflake> currentReportsChannel()
+    {
+        return getSession().flatMap(DiscordSession::reportsChannel);
     }
 
     public boolean isReady()

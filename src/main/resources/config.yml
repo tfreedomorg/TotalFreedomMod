@@ -630,6 +630,9 @@ discord:
   # ID for the admin console channel
   console_channel_id: ''
 
+  # ID for the player reports channel
+  reports_channel_id: ''
+
   # Format applied to Discord messages broadcast into in-game chat.
   # Available placeholders: {user}, {role}, {rolecolor}, {reply}, and {message}.
   chat_format: '&9[Discord] &r[{rolecolor}{role}&r] {user}{reply}&7: &f{message}'

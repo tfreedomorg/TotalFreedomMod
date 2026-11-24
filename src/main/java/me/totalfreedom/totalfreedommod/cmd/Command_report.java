@@ -10,6 +10,7 @@ import org.bukkit.entity.Player;
 import me.totalfreedom.api.cmd.FCommand;
 import me.totalfreedom.api.cmd.SourceType;
 import me.totalfreedom.api.cmd.annotation.*;
+import me.totalfreedom.totalfreedommod.discord.DiscordBridge;
 
 @Permission(source = SourceType.ONLY_IN_GAME, permission = "tfm.player.report")
 @Command(name = "report", description = "Report a player for admins to see.", usage = "/report <player> <reason>")
@@ -48,6 +49,7 @@ public class Command_report extends FCommand
         }
 
         plugin().services().require(ChatManager.class).reportAction(player, target, reason);
+        plugin().services().require(DiscordBridge.class).sendReportMessage(player.getName(), target.getName(), reason);
 
         if (sendFeedback)
         {
