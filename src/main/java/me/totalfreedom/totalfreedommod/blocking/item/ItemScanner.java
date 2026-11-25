@@ -60,8 +60,6 @@ final class ItemScanner
     private static final int MAX_AGGREGATE_PREDICATE_ENTRIES = 2048;
     private static final int MAX_NBT_NODES = 8192;
     private static final int MAX_NBT_DEPTH = 16;
-    private static final Optional<DataComponentType> LOCK_TYPE =
-            Optional.ofNullable(Registry.DATA_COMPONENT_TYPE.get(Key.key("minecraft", "lock")));
 
     private ItemScanner()
     {
@@ -82,7 +80,6 @@ final class ItemScanner
         OVERSIZED_EQUIPPABLE,
         OVERSIZED_CUSTOM_MODEL_DATA,
         OVERSIZED_BLOCKS_ATTACKS,
-        LOCK_COMPONENT,
         OVERSIZED_PREDICATE,
         OVERSIZED_BOOK,
         OVERSIZED_ATTRIBUTE,
@@ -102,7 +99,7 @@ final class ItemScanner
             return switch (this)
             {
                 case CLEAN, OVERSIZED_NAME, OVERSIZED_LORE, OVERSIZED_BOOK, CURSED_EQUIP_SOUND,
-                     OVERSIZED_ATTRIBUTE_COUNT, LOCK_COMPONENT -> false;
+                     OVERSIZED_ATTRIBUTE_COUNT -> false;
                 default -> true;
             };
         }
@@ -216,12 +213,6 @@ final class ItemScanner
         if (blocksAttacks.isCursed())
         {
             return blocksAttacks;
-        }
-
-        Verdict lock = inspectLock(item, depth);
-        if (lock.isCursed())
-        {
-            return lock;
         }
 
         Verdict predicates = inspectBlockPredicates(item, depth, agg);
@@ -582,13 +573,6 @@ final class ItemScanner
             return new Verdict(Reason.UNINSPECTABLE_NBT, -1L, depth);
         }
         return Verdict.CLEAN;
-    }
-
-    private static Verdict inspectLock(ItemStack item, int depth)
-    {
-        return LOCK_TYPE.filter(item::hasData)
-                        .map(type -> new Verdict(Reason.LOCK_COMPONENT, 0L, depth))
-                        .orElse(Verdict.CLEAN);
     }
 
     /**
