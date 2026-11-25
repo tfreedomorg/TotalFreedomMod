@@ -32,7 +32,7 @@ public class Command_opall extends FCommand
         {
             msg(player, "<aqua><name> - Opping all players on the server", Placeholder.unparsed("name", sender.getName()));
             player.setOp(true);
-            msg(player, "<yellow>You are now op!");
+            msg(player, YOU_ARE_OP);
 
             if (gamemode != null)
             {

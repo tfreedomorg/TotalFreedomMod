@@ -23,7 +23,7 @@ public class Command_deop extends FCommand
 
         if (player.isOnline())
         {
-            msg(player.getPlayer(), "<yellow>You are no longer op!");
+            msg(player.getPlayer(), YOU_ARE_NOT_OP);
         }
     }
 }
