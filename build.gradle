@@ -1,3 +1,5 @@
+import java.text.SimpleDateFormat
+
 plugins {
     id 'java'
     id 'com.gorylenko.gradle-git-properties' version '2.5.7'
@@ -79,13 +81,6 @@ dependencies {
     compileOnly 'org.apache.logging.log4j:log4j-core:2.24.3'
 }
 
-// ... is this really necessary???
-configurations.all {
-    resolutionStrategy {
-        force 'io.papermc.paper:paper-api:26.2.build.111-stable'
-    }
-}
-
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
     options.release = project.property('javaVersion') as int
@@ -105,17 +100,17 @@ gitProperties {
     gitPropertiesName = 'git.properties'
 }
 
-task addBuildTimeToGitProperties {
+tasks.register('addBuildTimeToGitProperties') {
     dependsOn generateGitProperties
     doLast {
         def gitPropsFile = file("${projectDir}/src/main/resources/git.properties")
         if (gitPropsFile.exists()) {
             def props = new Properties()
             props.load(new FileInputStream(gitPropsFile))
-            
-            def dateFormat = new java.text.SimpleDateFormat('yyyy-MM-dd HH:mm:ss')
+
+            def dateFormat = new SimpleDateFormat('yyyy-MM-dd HH:mm:ss')
             props.setProperty('git.build.time', dateFormat.format(new Date()))
-            
+
             def writer = new FileWriter(gitPropsFile)
             props.store(writer, null)
             writer.close()
@@ -133,16 +128,6 @@ processResources {
             buildAuthor: project.findProperty('buildAuthor') ?: 'TotalFreedom',
             buildCodeName: project.findProperty('buildCodeName') ?: 'Unnamed',
             buildVersion: project.version
-        )
-    }
-    
-    filesMatching('plugin.yml') {
-        expand(
-            tfm: [
-                build: [
-                    version: project.version
-                ]
-            ]
         )
     }
 

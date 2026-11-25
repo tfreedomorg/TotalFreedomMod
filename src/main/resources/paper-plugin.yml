@@ -23,10 +23,6 @@ dependencies:
       load: BEFORE
       required: false
       join-classpath: true
-    BukkitTelnet:
-      load: BEFORE
-      required: false
-      join-classpath: true
     Essentials:
       load: BEFORE
       required: false

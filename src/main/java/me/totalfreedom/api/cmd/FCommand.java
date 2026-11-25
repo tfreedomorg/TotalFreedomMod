@@ -42,11 +42,10 @@ import me.totalfreedom.totalfreedommod.util.FUtil;
  */
 public abstract class FCommand
 {
-
-    public static final Component YOU_ARE_OP = Component.text("You are now op!", NamedTextColor.YELLOW);
-    public static final Component YOU_ARE_NOT_OP = Component.text("You are no longer op!", NamedTextColor.YELLOW);
-    public static final Component NOT_FROM_CONSOLE = Component.text("This command may not be used from the console.", NamedTextColor.GRAY);
-    public static final Component PLAYER_NOT_FOUND = Component.text("Player not found!", NamedTextColor.GRAY);
+    public static final String YOU_ARE_OP = "<yellow>You are now OP!";
+    public static final String YOU_ARE_NOT_OP = "<yellow>You are no longer OP!";
+    public static final String NOT_FROM_CONSOLE = "<gray>This command may not be used from the console.";
+    public static final String PLAYER_NOT_FOUND = "<gray>Player not found!";
 
     // Eventually the above components will be converted to use this same MM string format.
     public static final String ADMIN_PROTECTED_MESSAGE = "<red>This command cannot be used on other admins.";
