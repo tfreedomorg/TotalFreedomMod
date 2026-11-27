@@ -3,6 +3,7 @@ package me.totalfreedom.totalfreedommod.cmd;
 import me.totalfreedom.totalfreedommod.discord.DiscordBridge;
 
 import me.totalfreedom.totalfreedommod.bridge.CoreProtectBridge;
+import me.totalfreedom.totalfreedommod.bridge.WorldEditBridge;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -194,6 +195,7 @@ public class Command_tempban extends FCommand
 
         try
         {
+            plugin().bridges().require(WorldEditBridge.class).cancel(player);
             final List<Player> affected = manager.banish(player, sender.getName(), reason, expiresAt);
             if (!silent)
                 affected.forEach(this::smitePlayer);
@@ -208,7 +210,7 @@ public class Command_tempban extends FCommand
 
             if (rollback)
             {
-                plugin().bridges().require(CoreProtectBridge.class).rollback(player.getName());
+                plugin().bridges().require(CoreProtectBridge.class).rollbackAfterDisconnect(player.getName());
             }
 
             if (!silent)
@@ -220,7 +222,7 @@ public class Command_tempban extends FCommand
                         Placeholder.unparsed("reason", reason == null ? "" : reason));
                 plugin().services()
                         .require(DiscordBridge.class)
-                        .sendTBanMessage(sender.getName(), targetName, reason, dateFormat.format(expiry));
+                        .sendTBanMessage(sender.getName(), targetName, reason, expiry);
             }
 
             affected.forEach(affectedPlayer -> msg(affectedPlayer,

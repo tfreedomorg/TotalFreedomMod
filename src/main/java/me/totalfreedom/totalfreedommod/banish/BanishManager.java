@@ -143,7 +143,7 @@ public class BanishManager extends FreedomService
             throw new IllegalStateException("That player is already banished.");
 
         final BanishEntry entry = new BanishEntry(ip, target.getName(), issuedBy, reason,
-                System.currentTimeMillis(), expiresAt);
+                System.currentTimeMillis(), expiresAt, target.getUniqueId());
         banishments.put(ip, entry);
         if (!save())
         {
@@ -193,7 +193,8 @@ public class BanishManager extends FreedomService
 
         return banishments.values()
                 .stream()
-                .filter(entry -> entry.username().equalsIgnoreCase(target))
+                .filter(entry -> entry.username().equalsIgnoreCase(target)
+                        || (entry.uuid() != null && entry.uuid().toString().equalsIgnoreCase(target)))
                 .findFirst();
     }
 
@@ -206,7 +207,11 @@ public class BanishManager extends FreedomService
 
         final BanishEntry entry = banishments.get(plugin.players().getData(player).getIp());
         if (entry == null)
+        {
+            if (player.getGameMode() == GameMode.SPECTATOR)
+                player.setGameMode(GameMode.CREATIVE);
             return;
+        }
 
         if (!packetListenerActive)
         {
@@ -309,8 +314,7 @@ public class BanishManager extends FreedomService
             catch (RuntimeException | LinkageError ex)
             {
                 packetListenerActive = false;
-                FLog.error("[BanishManager] Could not register the PacketEvents listener: " + ex.getMessage());
-                FLog.error(ex);
+                FLog.error("[BanishManager] Could not register the PacketEvents listener", ex);
                 retryPacketEventsRegistration(attempt);
             }
             return;
@@ -458,7 +462,7 @@ public class BanishManager extends FreedomService
                             entry.expiresAt() <= 0 ? maxExpiry : entry.expiresAt(),
                             Math.min(maxExpiry, now + MAX_BANISH_DURATION_MS));
                     banishments.put(ip, new BanishEntry(entry.ip(), entry.username(), entry.issuedBy(),
-                            entry.reason(), entry.createdAt(), expiresAt));
+                            entry.reason(), entry.createdAt(), expiresAt, entry.uuid()));
                 }
             });
             if (!save())
