@@ -5,6 +5,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.file.Files;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -15,7 +16,7 @@ import java.util.Optional;
 import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
 
-import me.totalfreedom.api.sql.adapter.PunishmentHistoryRepository;
+import me.totalfreedom.totalfreedommod.sql.adapter.PunishmentHistoryRepository;
 import me.totalfreedom.totalfreedommod.util.JsonUtil;
 
 public final class PunishJsonFallback implements PunishmentHistoryRepository
@@ -27,6 +28,7 @@ public final class PunishJsonFallback implements PunishmentHistoryRepository
                     .reversed();
 
     private final File file;
+    private PunishmentHistoryRepository migratedRepository;
 
     public PunishJsonFallback(File file)
     {
@@ -36,6 +38,12 @@ public final class PunishJsonFallback implements PunishmentHistoryRepository
     @Override
     public synchronized void recordPunishment(PunishmentHistoryEntry entry) throws SQLException
     {
+        if (migratedRepository != null)
+        {
+            migratedRepository.recordPunishment(entry);
+            return;
+        }
+
         final List<PunishmentHistoryEntry> entries = load();
         if (entries.stream().anyMatch(existing -> isSamePunishment(existing, entry)))
         {
@@ -56,6 +64,11 @@ public final class PunishJsonFallback implements PunishmentHistoryRepository
     @Override
     public synchronized List<PunishmentHistoryEntry> findByTarget(String target, int page, int pageSize) throws SQLException
     {
+        if (migratedRepository != null)
+        {
+            return migratedRepository.findByTarget(target, page, pageSize);
+        }
+
         final String normalized = normalizeLookup(target);
         if (normalized.isEmpty())
             return List.of();
@@ -70,6 +83,11 @@ public final class PunishJsonFallback implements PunishmentHistoryRepository
     @Override
     public synchronized List<PunishmentHistoryEntry> findByIp(String ip, int page, int pageSize) throws SQLException
     {
+        if (migratedRepository != null)
+        {
+            return migratedRepository.findByIp(ip, page, pageSize);
+        }
+
         final String normalized = normalizeLookup(ip);
         if (normalized.isEmpty())
             return List.of();
@@ -83,6 +101,11 @@ public final class PunishJsonFallback implements PunishmentHistoryRepository
     @Override
     public synchronized int countByTarget(String target) throws SQLException
     {
+        if (migratedRepository != null)
+        {
+            return migratedRepository.countByTarget(target);
+        }
+
         final String normalized = normalizeLookup(target);
         if (normalized.isEmpty())
             return 0;
@@ -96,6 +119,11 @@ public final class PunishJsonFallback implements PunishmentHistoryRepository
     @Override
     public synchronized int countByIp(String ip) throws SQLException
     {
+        if (migratedRepository != null)
+        {
+            return migratedRepository.countByIp(ip);
+        }
+
         final String normalized = normalizeLookup(ip);
         if (normalized.isEmpty())
             return 0;
@@ -108,6 +136,11 @@ public final class PunishJsonFallback implements PunishmentHistoryRepository
     @Override
     public synchronized List<PunishmentHistoryEntry> findCountable(String targetUuid, long since) throws SQLException
     {
+        if (migratedRepository != null)
+        {
+            return migratedRepository.findCountable(targetUuid, since);
+        }
+
         return load().stream()
                 .filter(entry -> equalsIgnoreCase(entry.targetUuid(), targetUuid))
                 .filter(entry -> entry.appliedAt() >= since)
@@ -120,14 +153,65 @@ public final class PunishJsonFallback implements PunishmentHistoryRepository
     @Override
     public synchronized Optional<PunishmentHistoryEntry> findById(long id) throws SQLException
     {
+        if (migratedRepository != null)
+        {
+            return migratedRepository.findById(id);
+        }
+
         return load().stream()
                 .filter(entry -> entry.id() == id)
                 .findFirst();
     }
 
+    /**
+     * Imports the fallback entries, archives the file only after success, then redirects held
+     * repository references to SQL so operations queued during startup use the migrated data.
+     */
+    public synchronized int migrateTo(PunishmentHistoryRepository repository) throws SQLException
+    {
+        final List<PunishmentHistoryEntry> entries = load();
+        for (PunishmentHistoryEntry entry : entries)
+        {
+            repository.recordPunishment(entry);
+        }
+
+        archiveAfterMigration();
+        migratedRepository = repository;
+        return entries.size();
+    }
+
+    private synchronized void archiveAfterMigration() throws SQLException
+    {
+        if (!file.exists())
+        {
+            return;
+        }
+
+        final String archivePath = String.format("%s.migrated", file.getAbsolutePath());
+        File archive = new File(archivePath);
+        for (int suffix = 1; archive.exists(); suffix++)
+        {
+            archive = new File(String.format("%s.%d", archivePath, suffix));
+        }
+
+        try
+        {
+            Files.move(file.toPath(), archive.toPath());
+        }
+        catch (IOException ex)
+        {
+            throw new SQLException("Could not archive punishment-history.json after migration.", ex);
+        }
+    }
+
     @Override
     public synchronized boolean revoke(long id, String revokedBy, long revokedAt) throws SQLException
     {
+        if (migratedRepository != null)
+        {
+            return migratedRepository.revoke(id, revokedBy, revokedAt);
+        }
+
         final List<PunishmentHistoryEntry> entries = load();
         for (int index = 0; index < entries.size(); index++)
         {

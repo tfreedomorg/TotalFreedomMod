@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 public class SQLitePunishmentHistoryRepository implements PunishmentHistoryRepository
@@ -23,6 +24,18 @@ public class SQLitePunishmentHistoryRepository implements PunishmentHistoryRepos
     @Override
     public void recordPunishment(PunishmentHistoryEntry entry) throws SQLException
     {
+        final Optional<PunishmentHistoryEntry> existingEntry = findExisting(entry);
+        if (existingEntry.isPresent())
+        {
+            final PunishmentHistoryEntry existing = existingEntry.get();
+            if (entry.isRevoked() && !existing.isRevoked())
+            {
+                revoke(existing.id(), entry.revokedBy(), entry.revokedAt());
+            }
+            saveIps(existing.id(), entry.ips());
+            return;
+        }
+
         String sql = """
             INSERT INTO punishment_history (
                 target_uuid,
@@ -33,8 +46,10 @@ public class SQLitePunishmentHistoryRepository implements PunishmentHistoryRepos
                 reason,
                 applied_at,
                 expires_at,
-                source
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                source,
+                revoked_at,
+                revoked_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
 
         long historyId = statementHandler.executeUpdateReturnKey(sql,
@@ -46,22 +61,11 @@ public class SQLitePunishmentHistoryRepository implements PunishmentHistoryRepos
                 entry.reason(),
                 entry.appliedAt(),
                 entry.expiryAt(),
-                entry.source());
+                entry.source(),
+                entry.revokedAt(),
+                entry.revokedBy());
 
-        if (entry.ips() == null || entry.ips().isEmpty())
-        {
-            return;
-        }
-
-        String ipSql = "INSERT INTO punishment_history_ips (history_id, ip) VALUES (?, ?)";
-        for (String ip : entry.ips())
-        {
-            if (ip == null || ip.isBlank())
-            {
-                continue;
-            }
-            statementHandler.executeUpdate(ipSql, historyId, ip);
-        }
+        saveIps(historyId, entry.ips());
     }
 
     @Override
@@ -225,6 +229,65 @@ public class SQLitePunishmentHistoryRepository implements PunishmentHistoryRepos
         }
 
         return entries;
+    }
+
+    private Optional<PunishmentHistoryEntry> findExisting(PunishmentHistoryEntry expected) throws SQLException
+    {
+        String sql = """
+            SELECT h.id, h.target_uuid, h.target_name, h.actor_uuid, h.actor_name,
+                   h.punishment_type, h.reason, h.applied_at, h.expires_at, h.source,
+                   h.revoked_at, h.revoked_by, NULL AS ip
+            FROM punishment_history h
+            WHERE h.applied_at = ?
+            """;
+
+        return executeSearch(sql, expected.appliedAt())
+                .stream()
+                .filter(existing -> isSamePunishment(existing, expected))
+                .findFirst();
+    }
+
+    private void saveIps(long historyId, List<String> ips) throws SQLException
+    {
+        if (ips == null || ips.isEmpty())
+        {
+            return;
+        }
+
+        for (String ip : ips)
+        {
+            if (ip == null || ip.isBlank())
+            {
+                continue;
+            }
+
+            final boolean exists;
+            try (PreparedStatement statement = statementHandler.prepareStatement(
+                    "SELECT 1 FROM punishment_history_ips WHERE history_id = ? AND ip = ?", historyId, ip);
+                 ResultSet rs = statement.executeQuery())
+            {
+                exists = rs.next();
+            }
+
+            if (!exists)
+            {
+                statementHandler.executeUpdate(
+                        "INSERT INTO punishment_history_ips (history_id, ip) VALUES (?, ?)", historyId, ip);
+            }
+        }
+    }
+
+    private static boolean isSamePunishment(PunishmentHistoryEntry left, PunishmentHistoryEntry right)
+    {
+        return Objects.equals(left.targetUuid(), right.targetUuid())
+                && Objects.equals(left.targetName(), right.targetName())
+                && Objects.equals(left.actorUuid(), right.actorUuid())
+                && Objects.equals(left.actorName(), right.actorName())
+                && Objects.equals(left.punishmentType(), right.punishmentType())
+                && Objects.equals(left.reason(), right.reason())
+                && left.appliedAt() == right.appliedAt()
+                && Objects.equals(left.expiryAt(), right.expiryAt())
+                && Objects.equals(left.source(), right.source());
     }
 
     private static String normalizeTarget(String target)
