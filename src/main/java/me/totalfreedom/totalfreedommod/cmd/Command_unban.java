@@ -11,6 +11,7 @@ import org.bukkit.entity.Player;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
 import me.totalfreedom.totalfreedommod.banning.Ban;
+import me.totalfreedom.totalfreedommod.banish.BanishManager;
 import me.totalfreedom.api.cmd.FCommand;
 import me.totalfreedom.api.cmd.CommandFailException;
 import me.totalfreedom.api.cmd.annotation.*;
@@ -42,8 +43,9 @@ public class Command_unban extends FCommand
         final PlayerData data = BanCommandUtil.getData(plugin(), playerName, player);
         final String name = BanCommandUtil.getCanonicalName(playerName, player, data);
         final Set<Ban> bans = BanCommandUtil.findLinkedBans(plugin(), playerName, player, data);
+        final boolean wasBanished = plugin().services().require(BanishManager.class).release(playerName).isPresent();
 
-        if (bans.isEmpty())
+        if (bans.isEmpty() && !wasBanished)
         {
             msg(sender, "<gray>No ban on record for <player>.", Placeholder.unparsed("player", playerName));
             return;
