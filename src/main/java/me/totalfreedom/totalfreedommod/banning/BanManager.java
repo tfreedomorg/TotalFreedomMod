@@ -658,12 +658,6 @@ public class BanManager extends FreedomService implements IBanManager
 
     private void recordPunishmentHistory(Ban ban)
     {
-        if (!plugin.database().isInitialized())
-        {
-            FLog.warn("Punishment history was not recorded because the SQL database is unavailable.");
-            return;
-        }
-
         final Player target = ban.getUuid() != null
                 ? server.getPlayer(ban.getUuid())
                 : ban.hasUsername() ? server.getPlayerExact(ban.getUsername()) : null;

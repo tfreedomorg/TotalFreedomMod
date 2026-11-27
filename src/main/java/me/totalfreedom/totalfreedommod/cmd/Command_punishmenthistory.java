@@ -2,8 +2,10 @@ package me.totalfreedom.totalfreedommod.cmd;
 
 import me.totalfreedom.totalfreedommod.player.PlayerData;
 import me.totalfreedom.api.cmd.FCommand;
+import me.totalfreedom.api.cmd.SourceType;
 import me.totalfreedom.api.cmd.annotation.Callback;
 import me.totalfreedom.api.cmd.annotation.Command;
+import me.totalfreedom.api.cmd.annotation.Completer;
 import me.totalfreedom.api.cmd.annotation.Permission;
 import me.totalfreedom.api.cmd.annotation.Subcommand;
 import me.totalfreedom.totalfreedommod.banning.PunishmentPoints;
@@ -11,31 +13,47 @@ import me.totalfreedom.totalfreedommod.sql.PunishmentHistoryEntry;
 import me.totalfreedom.totalfreedommod.sql.adapter.PunishmentHistoryRepository;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
-import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.object.ObjectContents;
+import net.kyori.adventure.text.object.PlayerHeadObjectContents;
 import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.BookMeta;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
 @Command(name = "punishmenthistory", description = "Shows a player's punishment history.", usage = "/<command> <player|ip> [page]", aliases = {"ph"})
-@Permission(permission = "tfm.admin.punishmenthistory")
+@Permission(permission = "tfm.admin.punishmenthistory", source = SourceType.BOTH)
 public class Command_punishmenthistory extends FCommand
 {
-    private static final int ENTRIES_PER_PAGE = 10;
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("MM/dd/yy").withLocale(Locale.US).withZone(ZoneOffset.UTC);
-    private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("MM/dd/yy HH:mm").withLocale(Locale.US).withZone(ZoneOffset.UTC);
+    private static final int ENTRIES_PER_BOOK = 99;
+    private static final int ENTRIES_PER_CONSOLE_PAGE = 10;
+    private static final int MAX_OVERVIEW_ENTRIES = 9;
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("MM/dd/yyyy - HH:mm")
+            .withLocale(Locale.US)
+            .withZone(ZoneOffset.UTC);
+
+    @Completer(value = "", position = 0)
+    public List<String> completeTarget(CommandSender sender, String partial)
+    {
+        return NameCandidates.online(server(), partial);
+    }
 
     @Callback
     public void showFirstPage(CommandSender sender, String target)
@@ -53,12 +71,6 @@ public class Command_punishmenthistory extends FCommand
     @Permission(permission = "tfm.admin.senior.revokepunishment")
     public void revoke(CommandSender sender, int id)
     {
-        if (!plugin().database().isInitialized())
-        {
-            msg(sender, "<gray>Punishment history is unavailable because the SQL database is not initialized.");
-            return;
-        }
-
         final PunishmentHistoryRepository repo = plugin().database().getPunishmentHistoryRepository();
         async(task ->
         {
@@ -99,12 +111,6 @@ public class Command_punishmenthistory extends FCommand
             return;
         }
 
-        if (!plugin().database().isInitialized())
-        {
-            msg(sender, "<gray>Punishment history is unavailable because the SQL database is not initialized.");
-            return;
-        }
-
         if (page < 1)
         {
             msg(sender, "<red>Invalid page. Please choose a page greater than zero.");
@@ -115,13 +121,14 @@ public class Command_punishmenthistory extends FCommand
         final boolean ipSearch = normalizedIp != null;
         final String searchTarget = ipSearch ? normalizedIp : target;
         final PunishmentHistoryRepository repo = plugin().database().getPunishmentHistoryRepository();
+        final int entriesPerPage = sender instanceof Player ? ENTRIES_PER_BOOK : ENTRIES_PER_CONSOLE_PAGE;
 
         async(task ->
         {
             try
             {
                 final int totalRecords = ipSearch ? repo.countByIp(searchTarget) : repo.countByTarget(searchTarget);
-                final int totalPages = Math.max(1, (int) Math.ceil((double) totalRecords / ENTRIES_PER_PAGE));
+                final int totalPages = Math.max(1, (int) Math.ceil((double) totalRecords / entriesPerPage));
 
                 if (page > totalPages)
                 {
@@ -132,8 +139,8 @@ public class Command_punishmenthistory extends FCommand
                 }
 
                 final List<PunishmentHistoryEntry> entries = ipSearch
-                        ? repo.findByIp(searchTarget, page, ENTRIES_PER_PAGE)
-                        : repo.findByTarget(searchTarget, page, ENTRIES_PER_PAGE);
+                        ? repo.findByIp(searchTarget, page, entriesPerPage)
+                        : repo.findByTarget(searchTarget, page, entriesPerPage);
 
                 // Points belong to a player's record, so there's nothing to total for an address.
                 final Optional<UUID> targetUuid = ipSearch
@@ -141,9 +148,10 @@ public class Command_punishmenthistory extends FCommand
                         : Optional.ofNullable(plugin().players().getData(searchTarget)).map(PlayerData::getUuid);
                 final Optional<Integer> points = targetUuid.isEmpty()
                         ? Optional.empty()
-                        : Optional.of(PunishmentPoints.total(repo.findCountable(targetUuid.get().toString(), PunishmentPoints.windowStart())));
+                        : Optional.of(PunishmentPoints.total(repo.findCountable(targetUuid.get().toString(),
+                                PunishmentPoints.windowStart())));
 
-                sync(() -> sendHistoryPage(sender, target, page, totalPages, entries, points), 0L);
+                sync(() -> sendHistoryPage(sender, target, page, totalPages, totalRecords, entries, points), 0L);
             }
             catch (SQLException | IllegalStateException ex)
             {
@@ -156,8 +164,8 @@ public class Command_punishmenthistory extends FCommand
         }, 0L);
     }
 
-    private void sendHistoryPage(CommandSender sender, String target, int page, int totalPages, List<PunishmentHistoryEntry> entries,
-                                 Optional<Integer> points)
+    private void sendHistoryPage(CommandSender sender, String target, int page, int totalPages, int totalRecords,
+                                 List<PunishmentHistoryEntry> entries, Optional<Integer> points)
     {
         if (entries.isEmpty())
         {
@@ -165,90 +173,170 @@ public class Command_punishmenthistory extends FCommand
             return;
         }
 
-        msg(sender, "<dark_red>History for <white><target><dark_red> (<page>/<total>, UTC)",
-                Placeholder.unparsed("target", target),
-                Formatter.number("page", page),
-                Formatter.number("total", totalPages));
-
-        points.ifPresent(total -> msg(sender, "<gray>Punishment points: <color><points></color>/<threshold>",
-                Placeholder.styling("color", total >= PunishmentPoints.REVIEW_THRESHOLD ? NamedTextColor.RED : NamedTextColor.WHITE),
-                Formatter.number("points", total),
-                Formatter.number("threshold", PunishmentPoints.REVIEW_THRESHOLD)));
-
-        for (int index = 0; index < entries.size(); index++)
+        if (!(sender instanceof Player player))
         {
-            sendHistoryEntry(sender, entries.get(index), (page - 1) * ENTRIES_PER_PAGE + index + 1);
+            sendConsoleHistoryPage(sender, target, page, totalPages, totalRecords, entries, points);
+            return;
         }
 
-        sendNavigation(sender, target, page, totalPages);
+        final List<Component> pages = new ArrayList<>(entries.size() + 1);
+        pages.add(buildOverviewPage(entries, points));
+        for (int index = 0; index < entries.size(); index++)
+        {
+            pages.add(buildHistoryPage(entries.get(index)));
+        }
+
+        final ItemStack book = new ItemStack(Material.WRITTEN_BOOK);
+        book.editMeta(BookMeta.class, meta ->
+        {
+            meta.title(MessageUtils.parse("<dark_red>Punishment History</dark_red>"));
+            meta.author(MessageUtils.parse("<gray>TotalFreedom</gray>"));
+            meta.pages(pages);
+        });
+
+        if (player.isOnline())
+        {
+            player.openBook(book);
+        }
     }
 
-    private void sendHistoryEntry(CommandSender sender, PunishmentHistoryEntry entry, int number)
+    private static Component buildOverviewPage(List<PunishmentHistoryEntry> entries, Optional<Integer> points)
+    {
+        Component overview = Component.empty();
+        final String targetName = entries.stream()
+                .map(PunishmentHistoryEntry::targetName)
+                .filter(name -> name != null && !name.isBlank())
+                .findFirst()
+                .orElse("(unknown)");
+        Component targetHeader = MessageUtils.parse("<dark_gray><target></dark_gray>",
+                Placeholder.unparsed("target", targetName));
+        if (PlayerHeadObjectContents.isValidName(targetName))
+        {
+            targetHeader = targetHeader.append(Component.space())
+                    .append(Component.object(ObjectContents.playerHead(targetName)));
+        }
+        overview = overview.append(targetHeader);
+
+        if (points.isPresent())
+        {
+            final int totalPoints = points.get();
+            final String pointsColor = totalPoints >= PunishmentPoints.REVIEW_THRESHOLD ? "red" : "dark_gray";
+            final Component pointsValue = MessageUtils.parse(
+                    String.format(Locale.ROOT, "<%s>%d/%d</%s>", pointsColor, totalPoints,
+                            PunishmentPoints.REVIEW_THRESHOLD, pointsColor));
+            overview = overview.append(Component.newline())
+                    .append(MessageUtils.parse("<black>Punishment points: </black><points>\n\n",
+                            Placeholder.component("points", pointsValue)));
+        }
+
+        final int visibleEntries = Math.min(entries.size(), MAX_OVERVIEW_ENTRIES);
+        for (int index = 0; index < visibleEntries; index++)
+        {
+            final PunishmentHistoryEntry entry = entries.get(index);
+            final Component revokedMarker = entry.isRevoked()
+                    ? MessageUtils.parse("<red> [REVOKED]</red>")
+                    : Component.empty();
+            final Component label = MessageUtils.parse("<dark_gray>#<id></dark_gray> <dark_red><type></dark_red><revoked>",
+                    Placeholder.unparsed("id", String.valueOf(entry.id())),
+                    Placeholder.unparsed("type", safe(entry.punishmentType(), "UNKNOWN")),
+                    Placeholder.component("revoked", revokedMarker))
+                    .clickEvent(ClickEvent.changePage(index + 2));
+            overview = overview.append(Component.newline())
+                    .append(label);
+        }
+
+        if (entries.size() > visibleEntries)
+        {
+            overview = overview.append(Component.newline())
+                    .append(MessageUtils.parse("<dark_gray>...</dark_gray>"));
+        }
+
+        return overview;
+    }
+
+    private Component buildHistoryPage(PunishmentHistoryEntry entry)
     {
         final String actor = safeActor(entry.actorName());
         final String type = safe(entry.punishmentType(), "UNKNOWN");
-        final Component details = buildHoverDetails(entry, actor, type);
-        final Component summary = Component.text(number + ". ", NamedTextColor.DARK_GRAY)
-                .append(Component.text(formatDate(entry.appliedAt()) + " ", NamedTextColor.GRAY))
-                .append(Component.text(type + " ", NamedTextColor.WHITE))
-                .append(Component.text("by ", NamedTextColor.DARK_GRAY))
-                .append(coloredActor(actor))
-                .append(entry.isRevoked() ? Component.text(" (appealed)", NamedTextColor.GREEN) : Component.empty())
-                .hoverEvent(HoverEvent.showText(details));
 
-        sender.sendMessage(summary);
-    }
+        final Component navigation = MessageUtils.parse("<dark_red>[Back to Overview]</dark_red>")
+                .clickEvent(ClickEvent.changePage(1));
 
-    private Component buildHoverDetails(PunishmentHistoryEntry entry, String actor, String type)
-    {
-        Component details = Component.text("Punishment details", NamedTextColor.GOLD)
+        return Component.empty()
+                .decoration(TextDecoration.ITALIC, false)
+                .append(bookField("Name",
+                        MessageUtils.parse("<dark_gray><name></dark_gray>",
+                                Placeholder.unparsed("name", safe(entry.targetName(), "(unknown)")))))
+                .append(bookField("Type",
+                        MessageUtils.parse("<red><type></red>", Placeholder.unparsed("type", type))))
+                .append(entry.isRevoked()
+                        ? bookField("Appeal",
+                                MessageUtils.parse("<red>Revoked on <date> by <actor></red>",
+                                        Placeholder.unparsed("date", formatDate(entry.revokedAt())),
+                                        Placeholder.unparsed("actor", safe(entry.revokedBy(), "unknown"))))
+                        : Component.empty())
+                .append(bookField("Issued By", coloredActor(actor)))
+                .append(bookField("Date and length",
+                        MessageUtils.parse("<dark_gray><date>\n<length></dark_gray>",
+                                Placeholder.unparsed("date", formatDate(entry.appliedAt())),
+                                Placeholder.unparsed("length", formatBanLength(entry)))))
                 .append(Component.newline())
-                .append(detailLine("ID", String.valueOf(entry.id())))
-                .append(detailLine("Type", type))
-                .append(detailLine("Target", safe(entry.targetName(), "(unknown)")))
-                .append(detailLine("Issued by", actor))
-                .append(detailLine("Applied", formatDateTime(entry.appliedAt())))
-                .append(detailLine("Expires", entry.hasExpiry() ? formatDateTime(entry.expiryAt()) : "Never"));
-
-        if (entry.targetUuid() != null && !entry.targetUuid().isBlank())
-        {
-            details = details.append(detailLine("UUID", entry.targetUuid()));
-        }
-
-        if (entry.reason() != null && !entry.reason().isBlank())
-        {
-            details = details.append(detailLine("Reason", entry.reason()));
-        }
-
-        if (entry.source() != null && !entry.source().isBlank())
-        {
-            details = details.append(detailLine("Source", entry.source()));
-        }
-
-        if (entry.isRevoked())
-        {
-            details = details.append(detailLine("Appealed", String.format("%s by %s", formatDateTime(entry.revokedAt()),
-                    safe(entry.revokedBy(), "(unknown)"))));
-        }
-
-        return details;
+                .append(bookField("Reason",
+                        MessageUtils.parse("<dark_gray><reason></dark_gray>",
+                                Placeholder.unparsed("reason", safe(entry.reason(), "No reason provided.")))))
+                .append(Component.newline())
+                .append(navigation);
     }
 
-    private static Component detailLine(String label, String value)
+    private void sendConsoleHistoryPage(CommandSender sender, String target, int page, int totalPages, int totalRecords,
+                                        List<PunishmentHistoryEntry> entries, Optional<Integer> points)
     {
-        return Component.newline()
-                .append(Component.text(label + ": ", NamedTextColor.GRAY))
-                .append(Component.text(value, NamedTextColor.WHITE));
+        MessageUtils.send(sender,
+                "<dark_red>Punishment history for <target> (page <page>/<totalpages>, <records> records)</dark_red>",
+                Placeholder.unparsed("target", target),
+                Formatter.number("page", page),
+                Formatter.number("totalpages", totalPages),
+                Formatter.number("records", totalRecords));
+
+        points.ifPresent(total -> MessageUtils.send(sender,
+                "<dark_gray>Punishment points: <points>/<threshold></dark_gray>",
+                Formatter.number("points", total),
+                Formatter.number("threshold", PunishmentPoints.REVIEW_THRESHOLD)));
+
+        for (PunishmentHistoryEntry entry : entries)
+        {
+            final String revoked = entry.isRevoked() ? " [REVOKED]" : "";
+            MessageUtils.send(sender, "<dark_gray>#<id> <type><revoked> | <date></dark_gray>",
+                    Placeholder.unparsed("id", String.valueOf(entry.id())),
+                    Placeholder.unparsed("type", safe(entry.punishmentType(), "UNKNOWN")),
+                    Placeholder.unparsed("revoked", revoked),
+                    Placeholder.unparsed("date", formatDate(entry.appliedAt())));
+            MessageUtils.send(sender, "<dark_gray>  Target: <target> | Issued by: <actor> | Length: <length></dark_gray>",
+                    Placeholder.unparsed("target", safe(entry.targetName(), "(unknown)")),
+                    Placeholder.unparsed("actor", safeActor(entry.actorName())),
+                    Placeholder.unparsed("length", formatBanLength(entry)));
+            MessageUtils.send(sender, "<gray>  Reason: <reason></gray>",
+                    Placeholder.unparsed("reason", safe(entry.reason(), "No reason provided.")));
+        }
+    }
+
+    private static Component bookField(String label, Component value)
+    {
+        return MessageUtils.parse("<black><label>:</black>\n<value>\n",
+                Placeholder.unparsed("label", label),
+                Placeholder.component("value", value));
     }
 
     private Component coloredActor(String actorName)
     {
         if (actorName.equalsIgnoreCase("CONSOLE"))
         {
-            return Component.text(actorName, NamedTextColor.RED);
+            return MessageUtils.parse("<dark_red><actor></dark_red>",
+                    Placeholder.unparsed("actor", actorName));
         }
 
-        final Component actor = Component.text(actorName, NamedTextColor.WHITE);
+        final Component actor = MessageUtils.parse("<dark_gray><actor></dark_gray>",
+                Placeholder.unparsed("actor", actorName));
         return plugin().players().getStaffByName(actorName)
                        .flatMap(PlayerData::getRankId)
                        .map(plugin().ranks()::getCustomRank)
@@ -256,77 +344,77 @@ public class Command_punishmenthistory extends FCommand
                        .orElse(actor);
     }
 
-    private void sendNavigation(CommandSender sender, String target, int page, int totalPages)
-    {
-        if (totalPages < 2)
-        {
-            return;
-        }
-
-        final int firstWindowPage = Math.max(1, page - 2);
-        final int lastWindowPage = Math.min(totalPages, page + 2);
-        Component pages = pageButton(target, "‹", page - 1, page > 1);
-
-        if (firstWindowPage > 1)
-        {
-            pages = pages.append(Component.space())
-                    .append(pageLink(target, 1, false));
-            if (firstWindowPage > 2)
-            {
-                pages = pages.append(Component.text(" … ", NamedTextColor.DARK_GRAY));
-            }
-        }
-
-        for (int currentPage = firstWindowPage; currentPage <= lastWindowPage; currentPage++)
-        {
-            pages = pages.append(Component.space())
-                    .append(pageLink(target, currentPage, currentPage == page));
-        }
-
-        if (lastWindowPage < totalPages)
-        {
-            if (lastWindowPage < totalPages - 1)
-            {
-                pages = pages.append(Component.text(" … ", NamedTextColor.DARK_GRAY));
-            }
-            pages = pages.append(Component.space())
-                    .append(pageLink(target, totalPages, page == totalPages));
-        }
-
-        pages = pages.append(Component.space())
-                .append(pageButton(target, "›", page + 1, page < totalPages));
-
-        sender.sendMessage(pages);
-    }
-
-    private static Component pageLink(String target, int page, boolean current)
-    {
-        final Component pageComponent = Component.text("[" + page + "]", current ? NamedTextColor.DARK_RED : NamedTextColor.GRAY)
-                .hoverEvent(HoverEvent.showText(Component.text("Go to page " + page, NamedTextColor.GRAY)))
-                .clickEvent(ClickEvent.runCommand("/ph " + target + " " + page));
-
-        return current ? pageComponent.decorate(TextDecoration.UNDERLINED) : pageComponent;
-    }
-
-    private static Component pageButton(String target, String label, int page, boolean enabled)
-    {
-        final Component button = Component.text("[" + label + "]", enabled ? NamedTextColor.GRAY : NamedTextColor.DARK_GRAY);
-        if (enabled)
-        {
-            return button.hoverEvent(HoverEvent.showText(Component.text("Go to page " + page, NamedTextColor.GRAY)))
-                    .clickEvent(ClickEvent.runCommand("/ph " + target + " " + page));
-        }
-        return button;
-    }
-
     private static String formatDate(long epochMillis)
     {
         return DATE_FORMAT.format(Instant.ofEpochMilli(epochMillis));
     }
 
-    private static String formatDateTime(long epochMillis)
+    private static String formatBanLength(PunishmentHistoryEntry entry)
     {
-        return DATE_TIME_FORMAT.format(Instant.ofEpochMilli(epochMillis));
+        final String punishmentType = safe(entry.punishmentType(), "").toUpperCase(Locale.ROOT);
+        if (punishmentType.equals("PERMBAN"))
+        {
+            return "Permanent";
+        }
+
+        if (!punishmentType.equals("BAN") && !punishmentType.equals("TEMPBAN"))
+        {
+            return "N/A";
+        }
+
+        if (!entry.hasExpiry())
+        {
+            return "N/A";
+        }
+
+        final Duration duration = Duration.between(Instant.ofEpochMilli(entry.appliedAt()),
+                Instant.ofEpochMilli(entry.expiryAt()));
+        if (duration.isNegative())
+        {
+            return "Unknown";
+        }
+
+        final List<String> fullParts = new ArrayList<>();
+        final List<String> shortParts = new ArrayList<>();
+        long seconds = duration.getSeconds();
+        if (seconds < 60)
+        {
+            seconds += duration.getNano() > 0 ? 1 : 0;
+            addDurationPart(fullParts, shortParts, seconds, "second", "s");
+            return formatDurationParts(fullParts, shortParts);
+        }
+
+        long minutes = seconds / 60;
+        if (seconds % 60 > 0 || duration.getNano() > 0)
+        {
+            minutes++;
+        }
+
+        final long days = minutes / 1_440;
+        minutes %= 1_440;
+        final long hours = minutes / 60;
+        minutes %= 60;
+
+        addDurationPart(fullParts, shortParts, days, "day", "d");
+        addDurationPart(fullParts, shortParts, hours, "hour", "h");
+        addDurationPart(fullParts, shortParts, minutes, "minute", "m");
+        return formatDurationParts(fullParts, shortParts);
+    }
+
+    private static String formatDurationParts(List<String> fullParts, List<String> shortParts)
+    {
+        final String fullDuration = String.join(" ", fullParts);
+        return fullDuration.length() <= 15 ? fullDuration : String.join(" ", shortParts);
+    }
+
+    private static void addDurationPart(List<String> fullParts, List<String> shortParts, long amount,
+                                        String fullUnit, String shortUnit)
+    {
+        if (amount > 0)
+        {
+            fullParts.add(amount + " " + fullUnit + (amount == 1 ? "" : "s"));
+            shortParts.add(amount + shortUnit);
+        }
     }
 
     private static String safe(String value, String fallback)

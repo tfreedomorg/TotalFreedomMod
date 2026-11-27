@@ -1,5 +1,6 @@
 package me.totalfreedom.totalfreedommod.sql;
 
+import java.io.File;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +35,7 @@ public class FreedomDatabase extends FreedomService implements IFreedomDatabase
     private StatementHandler statementHandler;
     private DatabaseAdapter adapter;
     private volatile boolean initialized = false;
+    private volatile boolean punishmentHistorySqlReady = false;
 
     /**
      * Callbacks waiting on the database, and whether they have already been drained. Both are
@@ -48,6 +50,7 @@ public class FreedomDatabase extends FreedomService implements IFreedomDatabase
      * {@link #recordPunishmentAsync(PunishmentHistoryEntry)}.
      */
     private final Object punishmentLock = new Object();
+    private PunishJsonFallback fallbackPunishmentHistoryRepository;
 
     public FreedomDatabase(FreedomAPI plugin)
     {
@@ -104,6 +107,15 @@ public class FreedomDatabase extends FreedomService implements IFreedomDatabase
             // Migrations have to finish before any domain reads SQL, so they ride this
             // chain rather than registering as another ready callback.
             .then(Mono.defer(() -> new YamlMigrationService(plugin, this).runMigrations()))
+            .then(Mono.fromCallable(() ->
+            {
+                synchronized (punishmentLock)
+                {
+                    migratePunishmentHistory();
+                    punishmentHistorySqlReady = true;
+                }
+                return true;
+            }))
             .subscribe(
                     ignored -> {},
                     ex -> FLog.error("Failed to initialize database, every domain stays on its JSON fallback", ex),
@@ -202,6 +214,8 @@ public class FreedomDatabase extends FreedomService implements IFreedomDatabase
         }
 
         initialized = false;
+        punishmentHistorySqlReady = false;
+        fallbackPunishmentHistoryRepository = null;
 
         // Cleared so a tfm reload queues the domains' swap callbacks again instead of running them immediately against a pool that is still being rebuilt. 
         readyFired = false;
@@ -331,11 +345,21 @@ public class FreedomDatabase extends FreedomService implements IFreedomDatabase
 
     public PunishmentHistoryRepository getPunishmentHistoryRepository()
     {
-        if (adapter == null)
+        if (adapter == null || !punishmentHistorySqlReady)
         {
-            throw new IllegalStateException("Database not initialized");
+            return fallbackPunishmentHistoryRepository();
         }
         return adapter.getPunishmentHistoryRepository();
+    }
+
+    private PunishJsonFallback fallbackPunishmentHistoryRepository()
+    {
+        if (fallbackPunishmentHistoryRepository == null)
+        {
+            fallbackPunishmentHistoryRepository =
+                    new PunishJsonFallback(new File(plugin.getDataFolder(), "punishment-history.json"));
+        }
+        return fallbackPunishmentHistoryRepository;
     }
 
     public void recordPunishment(Player target, CommandSender actor, String type, String reason, Long expiryAt, String source)
@@ -375,12 +399,6 @@ public class FreedomDatabase extends FreedomService implements IFreedomDatabase
      */
     public void recordPunishmentAsync(PunishmentHistoryEntry entry)
     {
-        if (!initialized)
-        {
-            FLog.warn("Punishment history was not recorded because the SQL database is unavailable.");
-            return;
-        }
-
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () ->
         {
             synchronized (punishmentLock)
@@ -444,14 +462,27 @@ public class FreedomDatabase extends FreedomService implements IFreedomDatabase
         readyCallbacks.clear();
     }
 
+    private void migratePunishmentHistory() throws SQLException
+    {
+        final PunishJsonFallback fallback = fallbackPunishmentHistoryRepository();
+        final PunishmentHistoryRepository sqlRepository = adapter.getPunishmentHistoryRepository();
+        final int migratedCount = fallback.migrateTo(sqlRepository);
+        if (migratedCount > 0)
+        {
+            FLog.info("Migrated {} punishment history entries from JSON to SQL", migratedCount);
+        }
+    }
+
     /**
      * {@code entry} with the UUID of whoever last joined under its target name, when it came
      * without one. Left as it is when the name was never seen.
      */
     private PunishmentHistoryEntry withKnownTarget(PunishmentHistoryEntry entry) throws SQLException
     {
-        if (entry.targetUuid() != null || entry.targetName() == null)
+        if (entry.targetUuid() != null || entry.targetName() == null || !punishmentHistorySqlReady)
+        {
             return entry;
+        }
 
         return getPlayerRepository().findByUsername(entry.targetName())
                                     .map(data -> entry.withTargetUuid(data.getUuid().toString()))

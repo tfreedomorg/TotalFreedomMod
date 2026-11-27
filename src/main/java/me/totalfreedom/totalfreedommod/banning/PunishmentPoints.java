@@ -33,6 +33,8 @@ public final class PunishmentPoints
     private static final Map<String, Integer> WEIGHTS = Map.of(
             "KICK", 1,
             "MUTE", 1,
+            "WARN", 1,
+            "SMITE", 1,
             "BLOCKCMD", 1,
             "TEMPBAN", 3,
             "BAN", 5);
